@@ -107,9 +107,8 @@ void Visualizer::drawNeuron(const Neuron* neuron, const sf::Vector2f& position) 
     
     window->draw(circle);
     
-    // Draw sample index number
-    sf::Font font; // Note: In a real implementation, you'd want to load a font
-    // For now, we'll skip text rendering to keep it simple
+    // Note: Text rendering would require loading a font
+    // For now, neuron identification is by position only
 }
 
 void Visualizer::drawConnection(const Connection* connection, 

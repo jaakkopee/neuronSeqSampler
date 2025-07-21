@@ -80,8 +80,15 @@ public:
                   << network.getNeuronCount() << " neurons and " 
                   << network.getConnectionCount() << " connections." << std::endl;
         
+        std::cout << "Controls:" << std::endl;
+        std::cout << "  - Mouse: Click to activate neurons" << std::endl;
+        std::cout << "  - Keys 1-4: Activate specific neurons" << std::endl;
+        std::cout << "  - Spacebar: Manual network activation" << std::endl;
+        std::cout << "  - GUI sliders: Adjust connection weights" << std::endl;
+        
         // Add some initial activation to get things started
         network.getNeuron(0)->setActivation(0.5f);
+        std::cout << "Added initial activation to neuron 1" << std::endl;
     }
     
     void run() {
