@@ -32,7 +32,7 @@ void GUI::createControlPanel() {
     
     // Create scrollable panel for sliders - adjusted for smaller control panel
     slidersPanel = tgui::ScrollablePanel::create({"50%", "85%"});
-    slidersPanel->setPosition("50%", "10%");
+    slidersPanel->setPosition("10%", "10%");
     slidersPanel->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40, 200));
     controlPanel->add(slidersPanel, "SlidersPanel");
 }
@@ -61,7 +61,7 @@ void GUI::createConnectionSliders() {
         // Create slider - made longer
         auto slider = tgui::Slider::create();
         slider->setPosition(30, yPos);
-        slider->setSize(80, 16);
+        slider->setSize(240, 16);
         slider->setMinimum(-1.2f);
         slider->setMaximum(1.2f);
         slider->setStep(0.01f);  // 240 steps: 2.4 range / 0.01 step = 240 steps
