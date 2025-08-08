@@ -17,8 +17,10 @@ void GUI::initialize() {
 
 void GUI::createControlPanel() {
     // Create main control panel - made even smaller
-    controlPanel = tgui::Panel::create({"25%", "100%"});
-    controlPanel->setPosition("75%", "0%");
+    // Adjusted to fit better in the window
+    controlPanel = tgui::Panel::create({"10%", "100%"});
+    controlPanel->setPosition("90%", "0%");
+    controlPanel->setSize({"10%", "100%"});
     controlPanel->getRenderer()->setBackgroundColor(tgui::Color(50, 50, 50, 180));
     gui->add(controlPanel, "ControlPanel");
     
