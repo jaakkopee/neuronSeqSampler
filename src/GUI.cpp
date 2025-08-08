@@ -16,20 +16,20 @@ void GUI::initialize() {
 }
 
 void GUI::createControlPanel() {
-    // Create main control panel
-    controlPanel = tgui::Panel::create({"60%", "100%"});
-    controlPanel->setPosition("40%", "0%");
+    // Create main control panel - made even smaller
+    controlPanel = tgui::Panel::create({"25%", "100%"});
+    controlPanel->setPosition("75%", "0%");
     controlPanel->getRenderer()->setBackgroundColor(tgui::Color(50, 50, 50, 180));
     gui->add(controlPanel, "ControlPanel");
     
     // Status label
     statusLabel = tgui::Label::create("Neuron Sequence Sampler");
     statusLabel->setPosition("5%", "2%");
-    statusLabel->setTextSize(18);
+    statusLabel->setTextSize(14);
     statusLabel->getRenderer()->setTextColor(tgui::Color::White);
     controlPanel->add(statusLabel, "StatusLabel");
     
-    // Create scrollable panel for sliders
+    // Create scrollable panel for sliders - adjusted for smaller control panel
     slidersPanel = tgui::ScrollablePanel::create({"90%", "85%"});
     slidersPanel->setPosition("5%", "10%");
     slidersPanel->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40, 200));
@@ -50,19 +50,20 @@ void GUI::createConnectionSliders() {
         const Connection* conn = connections[i].get();
         
         // Create label
-        auto label = tgui::Label::create("Connection " + std::to_string(i + 1) + ":");
-        label->setPosition(10, yPos);
-        label->setTextSize(14);
+        auto label = tgui::Label::create("C" + std::to_string(i + 1) + ":");
+        label->setPosition(5, yPos);
+        label->setTextSize(10);
         label->getRenderer()->setTextColor(tgui::Color::White);
         slidersPanel->add(label);
         connectionLabels.push_back(label);
         
-        // Create slider
+        // Create slider - made longer
         auto slider = tgui::Slider::create();
-        slider->setPosition(150, yPos);
-        slider->setSize(200, 20);
-        slider->setMinimum(-1.0f);
+        slider->setPosition(25, yPos);
+        slider->setSize(120, 16);
+        slider->setMinimum(-1.2f);
         slider->setMaximum(1.2f);
+        slider->setStep(0.1f);  // 24 steps: 2.4 range / 0.1 step = 24 steps
         slider->setValue(conn->getWeight());
         
         // Connect slider to callback
@@ -75,12 +76,12 @@ void GUI::createConnectionSliders() {
         
         // Value label
         auto valueLabel = tgui::Label::create(std::to_string(conn->getWeight()));
-        valueLabel->setPosition(360, yPos);
-        valueLabel->setTextSize(12);
+        valueLabel->setPosition(150, yPos);
+        valueLabel->setTextSize(9);
         valueLabel->getRenderer()->setTextColor(tgui::Color::Yellow);
         slidersPanel->add(valueLabel);
         
-        yPos += 35.0f;
+        yPos += 22.0f;  // Further reduced spacing
     }
     
     std::cout << "Created " << connectionSliders.size() << " connection sliders" << std::endl;
