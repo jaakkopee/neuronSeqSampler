@@ -16,11 +16,10 @@ void GUI::initialize() {
 }
 
 void GUI::createControlPanel() {
-    // Create main control panel - made even smaller
-    // Adjusted to fit better in the window
-    controlPanel = tgui::Panel::create({"10%", "100%"});
-    controlPanel->setPosition("90%", "0%");
-    controlPanel->setSize({"10%", "100%"});
+    // Create main control panel
+    controlPanel = tgui::Panel::create({"5%", "100%"});
+    controlPanel->setPosition("96%", "0%");
+    controlPanel->setSize({"5%", "100%"});
     controlPanel->getRenderer()->setBackgroundColor(tgui::Color(50, 50, 50, 180));
     gui->add(controlPanel, "ControlPanel");
     
@@ -32,8 +31,8 @@ void GUI::createControlPanel() {
     controlPanel->add(statusLabel, "StatusLabel");
     
     // Create scrollable panel for sliders - adjusted for smaller control panel
-    slidersPanel = tgui::ScrollablePanel::create({"90%", "85%"});
-    slidersPanel->setPosition("5%", "10%");
+    slidersPanel = tgui::ScrollablePanel::create({"50%", "85%"});
+    slidersPanel->setPosition("50%", "10%");
     slidersPanel->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40, 200));
     controlPanel->add(slidersPanel, "SlidersPanel");
 }
@@ -61,11 +60,11 @@ void GUI::createConnectionSliders() {
         
         // Create slider - made longer
         auto slider = tgui::Slider::create();
-        slider->setPosition(25, yPos);
-        slider->setSize(120, 16);
+        slider->setPosition(30, yPos);
+        slider->setSize(80, 16);
         slider->setMinimum(-1.2f);
         slider->setMaximum(1.2f);
-        slider->setStep(0.1f);  // 24 steps: 2.4 range / 0.1 step = 24 steps
+        slider->setStep(0.01f);  // 240 steps: 2.4 range / 0.01 step = 240 steps
         slider->setValue(conn->getWeight());
         
         // Connect slider to callback
@@ -78,7 +77,7 @@ void GUI::createConnectionSliders() {
         
         // Value label
         auto valueLabel = tgui::Label::create(std::to_string(conn->getWeight()));
-        valueLabel->setPosition(150, yPos);
+        valueLabel->setPosition(115, yPos);
         valueLabel->setTextSize(9);
         valueLabel->getRenderer()->setTextColor(tgui::Color::Yellow);
         slidersPanel->add(valueLabel);
