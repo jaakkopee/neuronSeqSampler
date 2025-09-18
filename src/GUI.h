@@ -18,6 +18,7 @@
 // Forward declarations
 class NeuronNetwork;
 class Visualizer;
+class Recorder;
 
 class GUI {
 private:
@@ -25,6 +26,7 @@ private:
     sf::RenderWindow* window;
     NeuronNetwork* network;
     Visualizer* visualizer;
+    Recorder* recorder;
     
     // GUI panels
     tgui::Panel::Ptr controlPanel;
@@ -52,6 +54,11 @@ private:
     void resetNetwork();
     void showAddNeuronDialog();
     
+    // Recording actions
+    void startRecording();
+    void stopRecording();
+    void showRecordingDialog();
+    
     // Sample file management
     std::vector<std::string> getSampleFiles(const std::string& directory);
     std::vector<std::string> getAllSampleDirectories();
@@ -60,7 +67,7 @@ private:
     void onSliderChanged(size_t connectionIndex, float value);
 
 public:
-    GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, Visualizer* visualizerPtr = nullptr);
+    GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, Visualizer* visualizerPtr = nullptr, Recorder* recorderPtr = nullptr);
     
     void initialize();
     void update();

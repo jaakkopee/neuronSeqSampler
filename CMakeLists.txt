@@ -40,6 +40,7 @@ set(SOURCES
     src/NeuronNetwork.cpp
     src/Visualizer.cpp
     src/AudioManager.cpp
+    src/Recorder.cpp
 )
 
 set(HEADERS
@@ -48,6 +49,7 @@ set(HEADERS
     src/NeuronNetwork.h
     src/Visualizer.h
     src/AudioManager.h
+    src/Recorder.h
 )
 
 # Add GUI files only if TGUI is available
@@ -59,11 +61,26 @@ endif()
 # Create executable
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
+# Create recorder demo executable
+add_executable(recorder_demo recorder_demo.cpp src/Recorder.cpp)
+
+# Create debug recorder executable
+add_executable(debug_recorder debug_recorder.cpp src/Recorder.cpp)
+
+# Create SFML audio test executable
+add_executable(test_sfml_audio test_sfml_audio.cpp)
+
 # Set compiler flags for SFML
 target_compile_options(${PROJECT_NAME} PRIVATE ${SFML_CFLAGS_OTHER})
+target_compile_options(recorder_demo PRIVATE ${SFML_CFLAGS_OTHER})
+target_compile_options(debug_recorder PRIVATE ${SFML_CFLAGS_OTHER})
+target_compile_options(test_sfml_audio PRIVATE ${SFML_CFLAGS_OTHER})
 
 # Link libraries
 target_link_libraries(${PROJECT_NAME} ${SFML_LIBRARIES})
+target_link_libraries(recorder_demo ${SFML_LIBRARIES})
+target_link_libraries(debug_recorder ${SFML_LIBRARIES})
+target_link_libraries(test_sfml_audio ${SFML_LIBRARIES})
 
 if(USE_TGUI)
     target_link_libraries(${PROJECT_NAME} ${TGUI_LIBRARY})

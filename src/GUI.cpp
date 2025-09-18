@@ -3,14 +3,19 @@
 #include "Connection.h"
 #include "AudioManager.h"
 #include "Visualizer.h"
+#include "Recorder.h"
 #include <iostream>
 #include <filesystem>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
 
-GUI::GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, Visualizer* visualizerPtr)
+GUI::GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, Visualizer* visualizerPtr, Recorder* recorderPtr)
     : gui(tguiGui)
     , window(renderWindow)
     , network(neuronNetwork)
     , visualizer(visualizerPtr)
+    , recorder(recorderPtr)
 {
 }
 
@@ -38,12 +43,19 @@ void GUI::createMenuBar() {
     menuBar->addMenuItem("Network", "Remove Connection");
     menuBar->addMenuItem("Network", "Reset Network");
     
+    // Add "Recording" menu
+    menuBar->addMenu("Recording");
+    menuBar->addMenuItem("Recording", "Start Recording");
+    menuBar->addMenuItem("Recording", "Stop Recording");
+    
     // Connect menu actions
     menuBar->connectMenuItem("Network", "Add Neuron", [this]() { this->addNeuron(); });
     menuBar->connectMenuItem("Network", "Remove Neuron", [this]() { this->removeNeuron(); });
     menuBar->connectMenuItem("Network", "Add Connection", [this]() { this->showConnectionDialog(); });
     menuBar->connectMenuItem("Network", "Remove Connection", [this]() { this->showRemoveConnectionDialog(); });
     menuBar->connectMenuItem("Network", "Reset Network", [this]() { this->resetNetwork(); });
+    menuBar->connectMenuItem("Recording", "Start Recording", [this]() { this->startRecording(); });
+    menuBar->connectMenuItem("Recording", "Stop Recording", [this]() { this->stopRecording(); });
     
     // Adjust control panel position to account for menu bar
     controlPanelTopOffset = 4.0f; // 4% for menu bar
@@ -744,4 +756,210 @@ std::vector<std::string> GUI::getAllSampleDirectories() {
     }
     
     return directories;
+}
+
+void GUI::startRecording() {
+    showRecordingDialog();
+}
+
+void GUI::stopRecording() {
+    if (!recorder) {
+        std::cerr << "No recorder available" << std::endl;
+        return;
+    }
+    
+    if (recorder->isCurrentlyRecording()) {
+        recorder->stopRecording();
+        
+        // Show success dialog
+        auto dialog = tgui::ChildWindow::create("Recording Stopped");
+        dialog->setSize(300, 150);
+        dialog->setPosition("50%", "50%");
+        
+        auto message = tgui::Label::create("Recording stopped and saved successfully!\n\nDuration: " + 
+                                          std::to_string(recorder->getRecordingDuration()) + " seconds");
+        message->setPosition(10, 40);
+        message->setSize(280, 60);
+        message->getRenderer()->setTextColor(tgui::Color::White);
+        dialog->add(message);
+        
+        auto okButton = tgui::Button::create("OK");
+        okButton->setPosition(100, 110);
+        okButton->setSize(100, 30);
+        okButton->onPress([=]() {
+            dialog->close();
+        });
+        dialog->add(okButton);
+        
+        gui->add(dialog);
+    } else {
+        // Show message that recording is not active
+        auto dialog = tgui::ChildWindow::create("Not Recording");
+        dialog->setSize(300, 120);
+        dialog->setPosition("50%", "50%");
+        
+        auto message = tgui::Label::create("No recording is currently active.");
+        message->setPosition(10, 40);
+        message->setSize(280, 30);
+        message->getRenderer()->setTextColor(tgui::Color::White);
+        dialog->add(message);
+        
+        auto okButton = tgui::Button::create("OK");
+        okButton->setPosition(100, 80);
+        okButton->setSize(100, 30);
+        okButton->onPress([=]() {
+            dialog->close();
+        });
+        dialog->add(okButton);
+        
+        gui->add(dialog);
+    }
+}
+
+void GUI::showRecordingDialog() {
+    if (!recorder) {
+        std::cerr << "No recorder available" << std::endl;
+        return;
+    }
+    
+    // Check if already recording
+    if (recorder->isCurrentlyRecording()) {
+        // Show message that recording is already active
+        auto dialog = tgui::ChildWindow::create("Already Recording");
+        dialog->setSize(300, 150);
+        dialog->setPosition("50%", "50%");
+        
+        auto message = tgui::Label::create("Recording is already in progress.\n\nUse 'Stop Recording' to end the current session.");
+        message->setPosition(10, 40);
+        message->setSize(280, 60);
+        message->getRenderer()->setTextColor(tgui::Color::White);
+        dialog->add(message);
+        
+        auto okButton = tgui::Button::create("OK");
+        okButton->setPosition(100, 110);
+        okButton->setSize(100, 30);
+        okButton->onPress([=]() {
+            dialog->close();
+        });
+        dialog->add(okButton);
+        
+        gui->add(dialog);
+        return;
+    }
+    
+    // Create recording dialog
+    auto dialog = tgui::ChildWindow::create("Start Recording");
+    dialog->setSize(400, 200);
+    dialog->setPosition("50%", "50%");
+    dialog->getRenderer()->setTitleBarHeight(30);
+    
+    // Filename input
+    auto filenameLabel = tgui::Label::create("Filename:");
+    filenameLabel->setPosition(10, 40);
+    filenameLabel->setSize(100, 25);
+    dialog->add(filenameLabel);
+    
+    auto filenameBox = tgui::EditBox::create();
+    filenameBox->setPosition(10, 70);
+    filenameBox->setSize(300, 25);
+    
+    // Generate default filename with timestamp
+    auto now = std::chrono::system_clock::now();
+    auto time_t = std::chrono::system_clock::to_time_t(now);
+    auto tm = *std::localtime(&time_t);
+    
+    std::stringstream ss;
+    ss << "recording_" << std::put_time(&tm, "%Y%m%d_%H%M%S") << ".wav";
+    filenameBox->setText(ss.str());
+    
+    dialog->add(filenameBox, "filenameBox");
+    
+    // Instructions
+    auto instructions = tgui::Label::create("Enter filename for the recording.\nThe file will be saved in the current directory.");
+    instructions->setPosition(10, 110);
+    instructions->setSize(380, 40);
+    instructions->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+    instructions->setTextSize(11);
+    dialog->add(instructions);
+    
+    // Buttons
+    auto startButton = tgui::Button::create("Start Recording");
+    startButton->setPosition(10, 160);
+    startButton->setSize(120, 30);
+    startButton->onPress([=]() {
+        auto filename = filenameBox->getText().toStdString();
+        
+        if (filename.empty()) {
+            std::cerr << "Filename cannot be empty" << std::endl;
+            return;
+        }
+        
+        // Ensure .wav extension
+        if (filename.length() < 4 || filename.substr(filename.length() - 4) != ".wav") {
+            filename += ".wav";
+        }
+        
+        if (recorder->startRecording(filename)) {
+            std::cout << "Started recording to: " << filename << std::endl;
+            
+            // Show recording status dialog
+            auto statusDialog = tgui::ChildWindow::create("Recording Active");
+            statusDialog->setSize(300, 150);
+            statusDialog->setPosition("50%", "50%");
+            
+            auto statusMessage = tgui::Label::create("Recording in progress...\n\nFile: " + filename + 
+                                                   "\n\nUse 'Stop Recording' menu to end.");
+            statusMessage->setPosition(10, 40);
+            statusMessage->setSize(280, 70);
+            statusMessage->getRenderer()->setTextColor(tgui::Color::White);
+            statusDialog->add(statusMessage);
+            
+            auto closeButton = tgui::Button::create("OK");
+            closeButton->setPosition(100, 115);
+            closeButton->setSize(100, 30);
+            closeButton->onPress([=]() {
+                statusDialog->close();
+            });
+            statusDialog->add(closeButton);
+            
+            gui->add(statusDialog);
+            
+        } else {
+            std::cerr << "Failed to start recording" << std::endl;
+            
+            // Show error dialog
+            auto errorDialog = tgui::ChildWindow::create("Recording Error");
+            errorDialog->setSize(300, 150);
+            errorDialog->setPosition("50%", "50%");
+            
+            auto errorMessage = tgui::Label::create("Failed to start recording.\n\nPlease check that a microphone is available.");
+            errorMessage->setPosition(10, 40);
+            errorMessage->setSize(280, 60);
+            errorMessage->getRenderer()->setTextColor(tgui::Color::Red);
+            errorDialog->add(errorMessage);
+            
+            auto okButton = tgui::Button::create("OK");
+            okButton->setPosition(100, 110);
+            okButton->setSize(100, 30);
+            okButton->onPress([=]() {
+                errorDialog->close();
+            });
+            errorDialog->add(okButton);
+            
+            gui->add(errorDialog);
+        }
+        
+        dialog->close();
+    });
+    dialog->add(startButton);
+    
+    auto cancelButton = tgui::Button::create("Cancel");
+    cancelButton->setPosition(140, 160);
+    cancelButton->setSize(100, 30);
+    cancelButton->onPress([=]() {
+        dialog->close();
+    });
+    dialog->add(cancelButton);
+    
+    gui->add(dialog);
 }

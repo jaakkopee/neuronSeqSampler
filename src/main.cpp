@@ -8,6 +8,7 @@
 #include "NeuronNetwork.h"
 #include "AudioManager.h"
 #include "Visualizer.h"
+#include "Recorder.h"
 #ifdef USE_TGUI
 #include "GUI.h"
 #endif
@@ -22,6 +23,7 @@ private:
     AudioManager audioManager;
     NeuronNetwork network;
     Visualizer visualizer;
+    Recorder recorder;
 #ifdef USE_TGUI
     GUI guiManager;
 #endif
@@ -35,11 +37,11 @@ public:
 #ifdef USE_TGUI
         , gui(window)
 #endif
-        , audioManager("samples/girliepop/", false)  // Don't load default samples
+        , audioManager("samples/girliepop/", true)  // Load default samples
         , network()
         , visualizer(&window, &network)
 #ifdef USE_TGUI
-        , guiManager(&gui, &window, &network, &visualizer)
+        , guiManager(&gui, &window, &network, &visualizer, &recorder)
 #endif
         , activationInterval(100.0f) // milliseconds
     {
@@ -71,6 +73,7 @@ public:
         std::cout << "  - Mouse: Click to activate neurons" << std::endl;
         std::cout << "  - Number keys: Activate specific neurons (when available)" << std::endl;
         std::cout << "  - Spacebar: Manual network activation" << std::endl;
+        std::cout << "  - R key: Toggle audio recording" << std::endl;
         std::cout << "  - GUI sliders: Adjust connection weights" << std::endl;
         std::cout << "  - Menu: Add/remove neurons and connections" << std::endl;
     }
@@ -108,6 +111,17 @@ public:
                     // Manual network activation
                     network.activate();
                     std::cout << "Manual network activation triggered" << std::endl;
+                }
+                else if (event.key.code == sf::Keyboard::R) {
+                    // Toggle recording with 'R' key
+                    if (recorder.isCurrentlyRecording()) {
+                        recorder.stopRecording();
+                        std::cout << "Recording stopped" << std::endl;
+                    } else {
+                        if (recorder.startRecording()) {
+                            std::cout << "Recording started (press R again to stop)" << std::endl;
+                        }
+                    }
                 }
                 else if (event.key.code >= sf::Keyboard::Num1 && 
                          event.key.code <= sf::Keyboard::Num9) {
