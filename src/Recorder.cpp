@@ -8,14 +8,15 @@
 #include <algorithm>
 
 Recorder::Recorder() 
-    : isRecordingToFile(false), currentlyRecording(false),
-      noiseGateEnabled(true), noiseGateThreshold(0.001f),  // Much lower threshold: 0.1%
-      highPassFilterEnabled(true), highPassFrequency(60.0f),  // Lower frequency: 60Hz
+    : isRecordingToFile(false), currentlyRecording(false), isInternalRecording(false),
+      recordingSampleRate(44100), recordingChannelCount(2), // Default to 44.1kHz stereo
+      noiseGateEnabled(false), noiseGateThreshold(0.001f),  // Disabled by default
+      highPassFilterEnabled(false), highPassFrequency(60.0f),  // Disabled by default
       filterPrevInput(0.0f), filterPrevOutput(0.0f)
 {
     // Set default recording parameters
     setSampleRate(44100);
-    setChannelCount(1); // Mono by default
+    setChannelCount(2); // Stereo by default for better quality
 }
 
 Recorder::~Recorder() {
@@ -71,13 +72,49 @@ bool Recorder::startRecording(const std::string& filename) {
     }
 }
 
+bool Recorder::startInternalRecording(const std::string& filename) {
+    if (isCurrentlyRecording()) {
+        std::cerr << "Already recording. Stop current recording first." << std::endl;
+        return false;
+    }
+    
+    // Clear previous samples
+    clearBuffer();
+    
+    if (!filename.empty()) {
+        outputFilename = filename;
+        isRecordingToFile = true;
+    } else {
+        // Generate default filename with timestamp
+        auto now = std::chrono::system_clock::now();
+        auto time_t = std::chrono::system_clock::to_time_t(now);
+        auto tm = *std::localtime(&time_t);
+        
+        std::stringstream ss;
+        ss << "internal_recording_" << std::put_time(&tm, "%Y%m%d_%H%M%S") << ".wav";
+        outputFilename = ss.str();
+        isRecordingToFile = true;
+    }
+    
+    // Mark as internal recording (no microphone)
+    isInternalRecording = true;
+    currentlyRecording = true;
+    
+    std::cout << "Started internal recording to: " << outputFilename << std::endl;
+    std::cout << "Capturing AudioManager output..." << std::endl;
+    
+    return true;
+}
+
 void Recorder::stopRecording() {
     if (!isCurrentlyRecording()) {
         return;
     }
     
-    // Stop SFML recording
-    sf::SoundRecorder::stop();
+    // Stop SFML recording only if not internal recording
+    if (!isInternalRecording) {
+        sf::SoundRecorder::stop();
+    }
     
     if (isRecordingToFile && !outputFilename.empty()) {
         if (saveToFile(outputFilename)) {
@@ -90,6 +127,8 @@ void Recorder::stopRecording() {
     }
     
     isRecordingToFile = false;
+    isInternalRecording = false;
+    currentlyRecording = false;
 }
 
 bool Recorder::isCurrentlyRecording() const {
@@ -113,12 +152,14 @@ void Recorder::clearBuffer() {
 }
 
 void Recorder::setSampleRate(unsigned int sampleRate) {
+    recordingSampleRate = sampleRate; // Store for internal recording
     sf::SoundRecorder::setProcessingInterval(sf::milliseconds(10));
     // Note: SFML doesn't allow setting custom sample rates directly
     // The actual sample rate will be determined by the audio device
 }
 
 void Recorder::setChannelCount(unsigned int channelCount) {
+    recordingChannelCount = channelCount; // Store for internal recording
     sf::SoundRecorder::setChannelCount(channelCount);
 }
 
@@ -144,8 +185,8 @@ float Recorder::getRecordingDuration() const {
     std::lock_guard<std::mutex> lock(samplesMutex);
     if (samples.empty()) return 0.0f;
     
-    unsigned int sampleRate = sf::SoundRecorder::getSampleRate();
-    unsigned int channels = sf::SoundRecorder::getChannelCount();
+    unsigned int sampleRate = getEffectiveSampleRate();
+    unsigned int channels = getEffectiveChannelCount();
     
     return static_cast<float>(samples.size()) / (sampleRate * channels);
 }
@@ -172,8 +213,8 @@ void Recorder::addSamples(const std::vector<sf::Int16>& newSamples) {
 bool Recorder::onStart() {
     currentlyRecording = true;
     std::cout << "Recording started..." << std::endl;
-    std::cout << "Sample rate: " << sf::SoundRecorder::getSampleRate() << " Hz" << std::endl;
-    std::cout << "Channels: " << sf::SoundRecorder::getChannelCount() << std::endl;
+    std::cout << "Sample rate: " << getEffectiveSampleRate() << " Hz" << std::endl;
+    std::cout << "Channels: " << getEffectiveChannelCount() << std::endl;
     return true;
 }
 
@@ -212,8 +253,8 @@ bool Recorder::writeWavFile(const std::string& filename) {
         // Create WAV header
         WavHeader header = createWavHeader(
             dataSize,
-            sf::SoundRecorder::getSampleRate(),
-            sf::SoundRecorder::getChannelCount()
+            getEffectiveSampleRate(),
+            getEffectiveChannelCount()
         );
         
         // Write header
@@ -233,6 +274,27 @@ bool Recorder::writeWavFile(const std::string& filename) {
         std::cerr << "Error writing WAV file: " << e.what() << std::endl;
         file.close();
         return false;
+    }
+}
+
+unsigned int Recorder::getEffectiveSampleRate() const {
+    if (isInternalRecording) {
+        // For internal recording, use our stored sample rate
+        return recordingSampleRate;
+    } else {
+        // For external recording, use SFML's sample rate
+        unsigned int sampleRate = sf::SoundRecorder::getSampleRate();
+        return (sampleRate > 0) ? sampleRate : recordingSampleRate; // Fallback to stored rate
+    }
+}
+
+unsigned int Recorder::getEffectiveChannelCount() const {
+    if (isInternalRecording) {
+        // For internal recording, use our stored channel count
+        return recordingChannelCount;
+    } else {
+        // For external recording, use SFML's channel count
+        return sf::SoundRecorder::getChannelCount();
     }
 }
 
@@ -273,7 +335,7 @@ sf::Int16 Recorder::applyHighPassFilter(sf::Int16 sample) {
     
     // Simple high-pass filter (RC high-pass)
     // cutoff frequency calculation
-    float sampleRate = static_cast<float>(sf::SoundRecorder::getSampleRate());
+    float sampleRate = static_cast<float>(getEffectiveSampleRate());
     float RC = 1.0f / (2.0f * M_PI * highPassFrequency);
     float dt = 1.0f / sampleRate;
     float alpha = RC / (RC + dt);
@@ -291,9 +353,10 @@ sf::Int16 Recorder::applyHighPassFilter(sf::Int16 sample) {
 }
 
 void Recorder::processSample(sf::Int16& sample) {
+    // Filters disabled - pass samples through unchanged
     // Apply noise gate first
-    sample = applyNoiseGate(sample);
+    // sample = applyNoiseGate(sample);
     
-    // Then apply high-pass filter
-    sample = applyHighPassFilter(sample);
+    // Then apply high-pass filter  
+    // sample = applyHighPassFilter(sample);
 }

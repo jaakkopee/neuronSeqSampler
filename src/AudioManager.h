@@ -3,12 +3,21 @@
 #include <unordered_map>
 #include <string>
 #include <memory>
+#include <vector>
+#include <mutex>
+
+class Recorder; // Forward declaration
 
 class AudioManager {
 private:
     std::unordered_map<int, std::unique_ptr<sf::SoundBuffer>> soundBuffers;
     std::unordered_map<int, std::unique_ptr<sf::Sound>> sounds;
     std::string samplesDirectory;
+    
+    // Internal recording support
+    Recorder* internalRecorder;
+    bool recordingOutput;
+    mutable std::mutex recordingMutex;
 
 public:
     AudioManager(const std::string& samplesDir = "samples/girliepop/", bool loadDefaults = false);
@@ -23,4 +32,10 @@ public:
     void stopAllSounds();
     
     bool isSampleLoaded(int sampleIndex) const;
+    
+    // Internal recording methods
+    void setInternalRecorder(Recorder* recorder);
+    void startInternalRecording();
+    void stopInternalRecording();
+    bool isRecordingOutput() const;
 };

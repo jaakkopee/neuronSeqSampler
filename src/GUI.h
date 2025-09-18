@@ -19,6 +19,7 @@
 class NeuronNetwork;
 class Visualizer;
 class Recorder;
+class AudioManager;
 
 class GUI {
 private:
@@ -27,6 +28,7 @@ private:
     NeuronNetwork* network;
     Visualizer* visualizer;
     Recorder* recorder;
+    AudioManager* audioManager;
     
     // GUI panels
     tgui::Panel::Ptr controlPanel;
@@ -56,8 +58,12 @@ private:
     
     // Recording actions
     void startRecording();
+    void startInternalRecording();
+    void startExternalRecording();
     void stopRecording();
     void showRecordingDialog();
+    void showInternalRecordingDialog();
+    void showExternalRecordingDialog();
     
     // Sample file management
     std::vector<std::string> getSampleFiles(const std::string& directory);
@@ -67,7 +73,9 @@ private:
     void onSliderChanged(size_t connectionIndex, float value);
 
 public:
-    GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, Visualizer* visualizerPtr = nullptr, Recorder* recorderPtr = nullptr);
+    public:
+    GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, 
+        Visualizer* visualizerPtr, Recorder* recorderPtr, AudioManager* audioMgr);
     
     void initialize();
     void update();

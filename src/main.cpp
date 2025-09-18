@@ -41,7 +41,7 @@ public:
         , network()
         , visualizer(&window, &network)
 #ifdef USE_TGUI
-        , guiManager(&gui, &window, &network, &visualizer, &recorder)
+        , guiManager(&gui, &window, &network, &visualizer, &recorder, &audioManager)
 #endif
         , activationInterval(100.0f) // milliseconds
     {
@@ -51,6 +51,9 @@ public:
     void initialize() {
         // Set up the network with audio manager
         network.setAudioManager(&audioManager);
+        
+        // Set up internal recording connection
+        audioManager.setInternalRecorder(&recorder);
         
         // Start with an empty network - users can add neurons via the menu
         
@@ -116,10 +119,20 @@ public:
                     // Toggle recording with 'R' key
                     if (recorder.isCurrentlyRecording()) {
                         recorder.stopRecording();
+                        audioManager.stopInternalRecording();
                         std::cout << "Recording stopped" << std::endl;
                     } else {
-                        if (recorder.startRecording()) {
-                            std::cout << "Recording started (press R again to stop)" << std::endl;
+                        if (event.key.shift) {
+                            // Shift+R: External microphone recording
+                            if (recorder.startRecording()) {
+                                std::cout << "External recording started (press R again to stop)" << std::endl;
+                            }
+                        } else {
+                            // R: Internal recording of NeuronSeqSampler output
+                            if (recorder.startInternalRecording()) {
+                                audioManager.startInternalRecording();
+                                std::cout << "Internal recording started - capturing NeuronSeqSampler output (press R again to stop)" << std::endl;
+                            }
                         }
                     }
                 }

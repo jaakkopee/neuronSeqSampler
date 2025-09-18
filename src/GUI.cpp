@@ -10,12 +10,13 @@
 #include <iomanip>
 #include <sstream>
 
-GUI::GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, Visualizer* visualizerPtr, Recorder* recorderPtr)
+GUI::GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, Visualizer* visualizerPtr, Recorder* recorderPtr, AudioManager* audioMgr)
     : gui(tguiGui)
     , window(renderWindow)
     , network(neuronNetwork)
     , visualizer(visualizerPtr)
     , recorder(recorderPtr)
+    , audioManager(audioMgr)
 {
 }
 
@@ -45,7 +46,8 @@ void GUI::createMenuBar() {
     
     // Add "Recording" menu
     menuBar->addMenu("Recording");
-    menuBar->addMenuItem("Recording", "Start Recording");
+    menuBar->addMenuItem("Recording", "Record NeuronSeq Output");
+    menuBar->addMenuItem("Recording", "Record External Microphone");
     menuBar->addMenuItem("Recording", "Stop Recording");
     
     // Connect menu actions
@@ -54,7 +56,8 @@ void GUI::createMenuBar() {
     menuBar->connectMenuItem("Network", "Add Connection", [this]() { this->showConnectionDialog(); });
     menuBar->connectMenuItem("Network", "Remove Connection", [this]() { this->showRemoveConnectionDialog(); });
     menuBar->connectMenuItem("Network", "Reset Network", [this]() { this->resetNetwork(); });
-    menuBar->connectMenuItem("Recording", "Start Recording", [this]() { this->startRecording(); });
+    menuBar->connectMenuItem("Recording", "Record NeuronSeq Output", [this]() { this->startInternalRecording(); });
+    menuBar->connectMenuItem("Recording", "Record External Microphone", [this]() { this->startExternalRecording(); });
     menuBar->connectMenuItem("Recording", "Stop Recording", [this]() { this->stopRecording(); });
     
     // Adjust control panel position to account for menu bar
@@ -759,13 +762,27 @@ std::vector<std::string> GUI::getAllSampleDirectories() {
 }
 
 void GUI::startRecording() {
-    showRecordingDialog();
+    // For backward compatibility, default to internal recording
+    startInternalRecording();
+}
+
+void GUI::startInternalRecording() {
+    showInternalRecordingDialog();
+}
+
+void GUI::startExternalRecording() {
+    showExternalRecordingDialog();
 }
 
 void GUI::stopRecording() {
     if (!recorder) {
         std::cerr << "No recorder available" << std::endl;
         return;
+    }
+    
+    // Stop internal recording if active
+    if (audioManager && audioManager->isRecordingOutput()) {
+        audioManager->stopInternalRecording();
     }
     
     if (recorder->isCurrentlyRecording()) {
@@ -955,6 +972,301 @@ void GUI::showRecordingDialog() {
     
     auto cancelButton = tgui::Button::create("Cancel");
     cancelButton->setPosition(140, 160);
+    cancelButton->setSize(100, 30);
+    cancelButton->onPress([=]() {
+        dialog->close();
+    });
+    dialog->add(cancelButton);
+    
+    gui->add(dialog);
+}
+
+void GUI::showInternalRecordingDialog() {
+    if (!recorder || !audioManager) {
+        std::cerr << "Recorder or AudioManager not available" << std::endl;
+        return;
+    }
+    
+    // Check if already recording
+    if (recorder->isCurrentlyRecording()) {
+        // Show message that recording is already active
+        auto dialog = tgui::ChildWindow::create("Already Recording");
+        dialog->setSize(300, 150);
+        dialog->setPosition("50%", "50%");
+        
+        auto message = tgui::Label::create("Recording is already in progress.\n\nUse 'Stop Recording' to end the current session.");
+        message->setPosition(10, 40);
+        message->setSize(280, 60);
+        message->getRenderer()->setTextColor(tgui::Color::White);
+        dialog->add(message);
+        
+        auto okButton = tgui::Button::create("OK");
+        okButton->setPosition(100, 110);
+        okButton->setSize(100, 30);
+        okButton->onPress([=]() {
+            dialog->close();
+        });
+        dialog->add(okButton);
+        
+        gui->add(dialog);
+        return;
+    }
+    
+    // Create internal recording dialog
+    auto dialog = tgui::ChildWindow::create("Record NeuronSeq Output");
+    dialog->setSize(450, 250);
+    dialog->setPosition("50%", "50%");
+    dialog->getRenderer()->setTitleBarHeight(30);
+    
+    // Description
+    auto description = tgui::Label::create("This will record the audio output from NeuronSeqSampler\n(the samples being played by neurons).");
+    description->setPosition(10, 40);
+    description->setSize(430, 40);
+    description->getRenderer()->setTextColor(tgui::Color(180, 180, 255));
+    description->setTextSize(12);
+    dialog->add(description);
+    
+    // Filename input
+    auto filenameLabel = tgui::Label::create("Filename:");
+    filenameLabel->setPosition(10, 90);
+    filenameLabel->setSize(100, 25);
+    dialog->add(filenameLabel);
+    
+    auto filenameBox = tgui::EditBox::create();
+    filenameBox->setPosition(10, 120);
+    filenameBox->setSize(350, 25);
+    
+    // Generate default filename with timestamp
+    auto now = std::chrono::system_clock::now();
+    auto time_t = std::chrono::system_clock::to_time_t(now);
+    auto tm = *std::localtime(&time_t);
+    
+    std::stringstream ss;
+    ss << "neuronseq_output_" << std::put_time(&tm, "%Y%m%d_%H%M%S") << ".wav";
+    filenameBox->setText(ss.str());
+    
+    dialog->add(filenameBox, "filenameBox");
+    
+    // Instructions
+    auto instructions = tgui::Label::create("Play some neurons after starting the recording to capture their output.\nThe recording will capture each sample as it's triggered.");
+    instructions->setPosition(10, 160);
+    instructions->setSize(430, 30);
+    instructions->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+    instructions->setTextSize(11);
+    dialog->add(instructions);
+    
+    // Buttons
+    auto startButton = tgui::Button::create("Start Recording");
+    startButton->setPosition(10, 205);
+    startButton->setSize(140, 30);
+    startButton->onPress([=]() {
+        auto filename = filenameBox->getText().toStdString();
+        
+        if (filename.empty()) {
+            std::cerr << "Filename cannot be empty" << std::endl;
+            return;
+        }
+        
+        // Ensure .wav extension
+        if (filename.length() < 4 || filename.substr(filename.length() - 4) != ".wav") {
+            filename += ".wav";
+        }
+        
+        if (recorder->startInternalRecording(filename)) {
+            audioManager->startInternalRecording();
+            std::cout << "Started internal recording to: " << filename << std::endl;
+            
+            // Show recording status dialog
+            auto statusDialog = tgui::ChildWindow::create("Internal Recording Active");
+            statusDialog->setSize(350, 180);
+            statusDialog->setPosition("50%", "50%");
+            
+            auto statusMessage = tgui::Label::create("Recording NeuronSeq output...\n\nFile: " + filename + 
+                                                   "\n\nTrigger neurons to capture their samples!\nUse 'Stop Recording' menu to end.");
+            statusMessage->setPosition(10, 40);
+            statusMessage->setSize(330, 100);
+            statusMessage->getRenderer()->setTextColor(tgui::Color::White);
+            statusDialog->add(statusMessage);
+            
+            auto closeButton = tgui::Button::create("OK");
+            closeButton->setPosition(125, 145);
+            closeButton->setSize(100, 30);
+            closeButton->onPress([=]() {
+                statusDialog->close();
+            });
+            statusDialog->add(closeButton);
+            
+            gui->add(statusDialog);
+            
+        } else {
+            std::cerr << "Failed to start internal recording" << std::endl;
+        }
+        
+        dialog->close();
+    });
+    dialog->add(startButton);
+    
+    auto cancelButton = tgui::Button::create("Cancel");
+    cancelButton->setPosition(160, 205);
+    cancelButton->setSize(100, 30);
+    cancelButton->onPress([=]() {
+        dialog->close();
+    });
+    dialog->add(cancelButton);
+    
+    gui->add(dialog);
+}
+
+void GUI::showExternalRecordingDialog() {
+    // This is essentially the same as the original showRecordingDialog
+    // but with clarification that it's for external microphone
+    if (!recorder) {
+        std::cerr << "No recorder available" << std::endl;
+        return;
+    }
+    
+    // Check if already recording
+    if (recorder->isCurrentlyRecording()) {
+        // Show message that recording is already active
+        auto dialog = tgui::ChildWindow::create("Already Recording");
+        dialog->setSize(300, 150);
+        dialog->setPosition("50%", "50%");
+        
+        auto message = tgui::Label::create("Recording is already in progress.\n\nUse 'Stop Recording' to end the current session.");
+        message->setPosition(10, 40);
+        message->setSize(280, 60);
+        message->getRenderer()->setTextColor(tgui::Color::White);
+        dialog->add(message);
+        
+        auto okButton = tgui::Button::create("OK");
+        okButton->setPosition(100, 110);
+        okButton->setSize(100, 30);
+        okButton->onPress([=]() {
+            dialog->close();
+        });
+        dialog->add(okButton);
+        
+        gui->add(dialog);
+        return;
+    }
+    
+    // Create external recording dialog
+    auto dialog = tgui::ChildWindow::create("Record External Microphone");
+    dialog->setSize(450, 280);
+    dialog->setPosition("50%", "50%");
+    dialog->getRenderer()->setTitleBarHeight(30);
+    
+    // Description
+    auto description = tgui::Label::create("This will record from your system's microphone input.\nNote: JACK must be stopped for microphone access to work.");
+    description->setPosition(10, 40);
+    description->setSize(430, 40);
+    description->getRenderer()->setTextColor(tgui::Color(255, 180, 180));
+    description->setTextSize(12);
+    dialog->add(description);
+    
+    // Filename input
+    auto filenameLabel = tgui::Label::create("Filename:");
+    filenameLabel->setPosition(10, 90);
+    filenameLabel->setSize(100, 25);
+    dialog->add(filenameLabel);
+    
+    auto filenameBox = tgui::EditBox::create();
+    filenameBox->setPosition(10, 120);
+    filenameBox->setSize(350, 25);
+    
+    // Generate default filename with timestamp
+    auto now = std::chrono::system_clock::now();
+    auto time_t = std::chrono::system_clock::to_time_t(now);
+    auto tm = *std::localtime(&time_t);
+    
+    std::stringstream ss;
+    ss << "microphone_" << std::put_time(&tm, "%Y%m%d_%H%M%S") << ".wav";
+    filenameBox->setText(ss.str());
+    
+    dialog->add(filenameBox, "filenameBox");
+    
+    // Instructions
+    auto instructions = tgui::Label::create("Requirements:\n• Run './manage_jack.sh stop' before recording\n• Run './optimize_mic.sh' for best quality\n• Ensure microphone is connected and enabled");
+    instructions->setPosition(10, 160);
+    instructions->setSize(430, 60);
+    instructions->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+    instructions->setTextSize(11);
+    dialog->add(instructions);
+    
+    // Buttons
+    auto startButton = tgui::Button::create("Start Recording");
+    startButton->setPosition(10, 235);
+    startButton->setSize(140, 30);
+    startButton->onPress([=]() {
+        auto filename = filenameBox->getText().toStdString();
+        
+        if (filename.empty()) {
+            std::cerr << "Filename cannot be empty" << std::endl;
+            return;
+        }
+        
+        // Ensure .wav extension
+        if (filename.length() < 4 || filename.substr(filename.length() - 4) != ".wav") {
+            filename += ".wav";
+        }
+        
+        if (recorder->startRecording(filename)) {
+            std::cout << "Started external recording to: " << filename << std::endl;
+            
+            // Show recording status dialog
+            auto statusDialog = tgui::ChildWindow::create("External Recording Active");
+            statusDialog->setSize(350, 150);
+            statusDialog->setPosition("50%", "50%");
+            
+            auto statusMessage = tgui::Label::create("Recording from microphone...\n\nFile: " + filename + 
+                                                   "\n\nUse 'Stop Recording' menu to end.");
+            statusMessage->setPosition(10, 40);
+            statusMessage->setSize(330, 70);
+            statusMessage->getRenderer()->setTextColor(tgui::Color::White);
+            statusDialog->add(statusMessage);
+            
+            auto closeButton = tgui::Button::create("OK");
+            closeButton->setPosition(125, 115);
+            closeButton->setSize(100, 30);
+            closeButton->onPress([=]() {
+                statusDialog->close();
+            });
+            statusDialog->add(closeButton);
+            
+            gui->add(statusDialog);
+            
+        } else {
+            std::cerr << "Failed to start external recording" << std::endl;
+            
+            // Show error dialog with specific troubleshooting
+            auto errorDialog = tgui::ChildWindow::create("Recording Error");
+            errorDialog->setSize(400, 200);
+            errorDialog->setPosition("50%", "50%");
+            
+            auto errorMessage = tgui::Label::create("Failed to start microphone recording.\n\nTroubleshooting:\n• Stop JACK: ./manage_jack.sh stop\n• Optimize audio: ./optimize_mic.sh\n• Check microphone connection");
+            errorMessage->setPosition(10, 40);
+            errorMessage->setSize(380, 120);
+            errorMessage->getRenderer()->setTextColor(tgui::Color::Red);
+            errorMessage->setTextSize(11);
+            errorDialog->add(errorMessage);
+            
+            auto okButton = tgui::Button::create("OK");
+            okButton->setPosition(150, 165);
+            okButton->setSize(100, 30);
+            okButton->onPress([=]() {
+                errorDialog->close();
+            });
+            errorDialog->add(okButton);
+            
+            gui->add(errorDialog);
+        }
+        
+        dialog->close();
+    });
+    dialog->add(startButton);
+    
+    auto cancelButton = tgui::Button::create("Cancel");
+    cancelButton->setPosition(160, 235);
     cancelButton->setSize(100, 30);
     cancelButton->onPress([=]() {
         dialog->close();

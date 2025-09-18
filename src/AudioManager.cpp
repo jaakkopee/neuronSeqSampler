@@ -1,8 +1,9 @@
 #include "AudioManager.h"
+#include "Recorder.h"
 #include <iostream>
 
 AudioManager::AudioManager(const std::string& samplesDir, bool loadDefaults) 
-    : samplesDirectory(samplesDir)
+    : samplesDirectory(samplesDir), internalRecorder(nullptr), recordingOutput(false)
 {
     if (loadDefaults) {
         loadDefaultSamples();
@@ -46,6 +47,22 @@ bool AudioManager::playSample(int sampleIndex) {
         it->second->stop();
         it->second->play();
         std::cout << "Playing sample " << sampleIndex << std::endl;
+        
+        // If internal recording is active, capture the sample data
+        if (recordingOutput && internalRecorder) {
+            std::lock_guard<std::mutex> lock(recordingMutex);
+            auto bufferIt = soundBuffers.find(sampleIndex);
+            if (bufferIt != soundBuffers.end()) {
+                const sf::SoundBuffer* buffer = bufferIt->second.get();
+                const sf::Int16* samples = buffer->getSamples();
+                std::size_t sampleCount = buffer->getSampleCount();
+                
+                // Add the sample data to the recorder
+                internalRecorder->addSamples(samples, sampleCount);
+                std::cout << "Captured " << sampleCount << " samples to internal recorder" << std::endl;
+            }
+        }
+        
         return true;
     }
     
@@ -70,4 +87,26 @@ void AudioManager::stopAllSounds() {
 
 bool AudioManager::isSampleLoaded(int sampleIndex) const {
     return soundBuffers.find(sampleIndex) != soundBuffers.end();
+}
+
+void AudioManager::setInternalRecorder(Recorder* recorder) {
+    std::lock_guard<std::mutex> lock(recordingMutex);
+    internalRecorder = recorder;
+}
+
+void AudioManager::startInternalRecording() {
+    std::lock_guard<std::mutex> lock(recordingMutex);
+    recordingOutput = true;
+    std::cout << "Started internal recording of AudioManager output" << std::endl;
+}
+
+void AudioManager::stopInternalRecording() {
+    std::lock_guard<std::mutex> lock(recordingMutex);
+    recordingOutput = false;
+    std::cout << "Stopped internal recording of AudioManager output" << std::endl;
+}
+
+bool AudioManager::isRecordingOutput() const {
+    std::lock_guard<std::mutex> lock(recordingMutex);
+    return recordingOutput;
 }

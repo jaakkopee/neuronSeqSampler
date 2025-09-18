@@ -12,7 +12,12 @@ private:
     std::string outputFilename;
     bool isRecordingToFile;
     bool currentlyRecording;
+    bool isInternalRecording; // Flag for internal recording mode
     mutable std::mutex samplesMutex;
+    
+    // Recording parameters
+    unsigned int recordingSampleRate; // Store sample rate for internal recording
+    unsigned int recordingChannelCount; // Store channel count
     
     // Noise reduction settings
     bool noiseGateEnabled;
@@ -47,6 +52,7 @@ public:
     
     // Recording control
     bool startRecording(const std::string& filename = "");
+    bool startInternalRecording(const std::string& filename = ""); // For capturing AudioManager output
     void stopRecording();
     bool isCurrentlyRecording() const;
     
@@ -80,6 +86,10 @@ protected:
 private:
     bool writeWavFile(const std::string& filename);
     WavHeader createWavHeader(sf::Uint32 dataSize, sf::Uint32 sampleRate, sf::Uint16 channels);
+    
+    // Helper methods to get effective recording parameters
+    unsigned int getEffectiveSampleRate() const;
+    unsigned int getEffectiveChannelCount() const;
     
     // Audio processing functions
     sf::Int16 applyNoiseGate(sf::Int16 sample);
