@@ -1,5 +1,6 @@
-NeuronSeq is back. Now as a sampler. Python it is, so no massive processing capacity but for testing and demo purposes works just fine.
-Now implemented in c++ by copilot. Implementation not tested by jaakkopee.
+NeuronSeqSampler is a sampler controlled by a neural network.
+To start exploring, create a couple of neurons and
+connect them via the menu.
 
 ## Audio Recording
 
