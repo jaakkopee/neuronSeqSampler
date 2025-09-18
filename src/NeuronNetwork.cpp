@@ -1,5 +1,6 @@
 #include "NeuronNetwork.h"
 #include "AudioManager.h"
+#include <algorithm>
 
 NeuronNetwork::NeuronNetwork() 
     : audioManager(nullptr)
@@ -49,4 +50,40 @@ void NeuronNetwork::resetFiredFlags() {
     for (auto& neuron : neurons) {
         neuron->resetFiredFlag();
     }
+}
+
+bool NeuronNetwork::removeNeuron(size_t index) {
+    if (index >= neurons.size()) {
+        return false;
+    }
+    
+    Neuron* neuronToRemove = neurons[index].get();
+    
+    // Remove all connections that involve this neuron
+    connections.erase(
+        std::remove_if(connections.begin(), connections.end(),
+            [neuronToRemove](const std::unique_ptr<Connection>& conn) {
+                return conn->getSource() == neuronToRemove || conn->getTarget() == neuronToRemove;
+            }),
+        connections.end()
+    );
+    
+    // Remove the neuron itself
+    neurons.erase(neurons.begin() + index);
+    
+    return true;
+}
+
+bool NeuronNetwork::removeConnection(size_t index) {
+    if (index >= connections.size()) {
+        return false;
+    }
+    
+    connections.erase(connections.begin() + index);
+    return true;
+}
+
+void NeuronNetwork::clearNetwork() {
+    connections.clear();
+    neurons.clear();
 }

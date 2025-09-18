@@ -35,11 +35,11 @@ public:
 #ifdef USE_TGUI
         , gui(window)
 #endif
-        , audioManager("samples/girliepop/")
+        , audioManager("samples/girliepop/", false)  // Don't load default samples
         , network()
         , visualizer(&window, &network)
 #ifdef USE_TGUI
-        , guiManager(&gui, &window, &network)
+        , guiManager(&gui, &window, &network, &visualizer)
 #endif
         , activationInterval(100.0f) // milliseconds
     {
@@ -50,19 +50,7 @@ public:
         // Set up the network with audio manager
         network.setAudioManager(&audioManager);
         
-        // Create neurons (matching the Python implementation)
-        for (int i = 1; i <= 4; i++) {
-            network.addNeuron(i, -0.2f, 1.0f, 1.0f, ActivationFunction::Linear);
-        }
-        
-        // Connect neurons in a matrix (all to all except self-connections)
-        for (size_t i = 0; i < network.getNeuronCount(); i++) {
-            for (size_t j = 0; j < network.getNeuronCount(); j++) {
-                if (i != j) {
-                    network.connect(network.getNeuron(i), network.getNeuron(j), 0.0f);
-                }
-            }
-        }
+        // Start with an empty network - users can add neurons via the menu
         
         // Set up visualizer canvas area (left side of window)
         visualizer.setCanvasArea(50.0f, 50.0f, 700.0f, 700.0f);
@@ -76,19 +64,15 @@ public:
         guiManager.setGUIArea(400.0f, 0.0f, 624.0f, 800.0f);
 #endif
         
-        std::cout << "Neuron Sequence Sampler initialized with " 
-                  << network.getNeuronCount() << " neurons and " 
-                  << network.getConnectionCount() << " connections." << std::endl;
+        std::cout << "Neuron Sequence Sampler initialized with empty network." << std::endl;
+        std::cout << "Use the 'Network' menu to add neurons and connections." << std::endl;
         
         std::cout << "Controls:" << std::endl;
         std::cout << "  - Mouse: Click to activate neurons" << std::endl;
-        std::cout << "  - Keys 1-4: Activate specific neurons" << std::endl;
+        std::cout << "  - Number keys: Activate specific neurons (when available)" << std::endl;
         std::cout << "  - Spacebar: Manual network activation" << std::endl;
         std::cout << "  - GUI sliders: Adjust connection weights" << std::endl;
-        
-        // Add some initial activation to get things started
-        network.getNeuron(0)->setActivation(0.5f);
-        std::cout << "Added initial activation to neuron 1" << std::endl;
+        std::cout << "  - Menu: Add/remove neurons and connections" << std::endl;
     }
     
     void run() {
@@ -126,12 +110,14 @@ public:
                     std::cout << "Manual network activation triggered" << std::endl;
                 }
                 else if (event.key.code >= sf::Keyboard::Num1 && 
-                         event.key.code <= sf::Keyboard::Num4) {
-                    // Direct neuron activation with number keys
+                         event.key.code <= sf::Keyboard::Num9) {
+                    // Direct neuron activation with number keys (1-9)
                     int neuronIndex = event.key.code - sf::Keyboard::Num1;
                     if (neuronIndex < static_cast<int>(network.getNeuronCount())) {
                         network.getNeuron(neuronIndex)->activate(0.5f);
                         std::cout << "Activated neuron " << (neuronIndex + 1) << std::endl;
+                    } else if (network.getNeuronCount() == 0) {
+                        std::cout << "No neurons in network. Use the Network menu to add neurons." << std::endl;
                     }
                 }
             }
@@ -139,11 +125,14 @@ public:
     }
     
     void handleNeuronClick(int mouseX, int mouseY) {
-        // Simple click detection - activate first neuron for demo
+        // Click detection in the visualization area
         if (mouseX >= 50 && mouseX <= 750 && mouseY >= 50 && mouseY <= 750) {
             if (network.getNeuronCount() > 0) {
+                // For now, activate the first neuron - could be enhanced to detect specific neurons
                 network.getNeuron(0)->activate(0.8f);
                 std::cout << "Neuron activated by mouse click" << std::endl;
+            } else {
+                std::cout << "No neurons in network. Use the Network menu to add neurons." << std::endl;
             }
         }
     }

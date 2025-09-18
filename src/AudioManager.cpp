@@ -1,15 +1,20 @@
 #include "AudioManager.h"
 #include <iostream>
 
-AudioManager::AudioManager(const std::string& samplesDir) 
+AudioManager::AudioManager(const std::string& samplesDir, bool loadDefaults) 
     : samplesDirectory(samplesDir)
 {
-    loadDefaultSamples();
+    if (loadDefaults) {
+        loadDefaultSamples();
+    }
 }
 
 bool AudioManager::loadSample(int sampleIndex, const std::string& filename) {
     std::string fullPath = samplesDirectory + filename;
-    
+    return loadSampleFromPath(sampleIndex, fullPath);
+}
+
+bool AudioManager::loadSampleFromPath(int sampleIndex, const std::string& fullPath) {
     auto buffer = std::make_unique<sf::SoundBuffer>();
     if (!buffer->loadFromFile(fullPath)) {
         std::cerr << "Failed to load audio file: " << fullPath << std::endl;

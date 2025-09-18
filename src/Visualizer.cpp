@@ -24,6 +24,10 @@ void Visualizer::setCanvasArea(float x, float y, float width, float height) {
     calculateNeuronPositions();
 }
 
+void Visualizer::refreshLayout() {
+    calculateNeuronPositions();
+}
+
 void Visualizer::calculateNeuronPositions() {
     if (!network) return;
     

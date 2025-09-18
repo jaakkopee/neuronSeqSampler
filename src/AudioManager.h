@@ -11,10 +11,11 @@ private:
     std::string samplesDirectory;
 
 public:
-    AudioManager(const std::string& samplesDir = "samples/girliepop/");
+    AudioManager(const std::string& samplesDir = "samples/girliepop/", bool loadDefaults = false);
     ~AudioManager() = default;
     
     bool loadSample(int sampleIndex, const std::string& filename);
+    bool loadSampleFromPath(int sampleIndex, const std::string& fullPath);
     void loadDefaultSamples();
     bool playSample(int sampleIndex);
     

@@ -37,6 +37,7 @@ public:
     
     void setCanvasArea(float x, float y, float width, float height);
     void render();
+    void refreshLayout(); // Call this when the network structure changes
     
     // Settings
     void setNeuronRadius(float radius) { neuronRadius = radius; }

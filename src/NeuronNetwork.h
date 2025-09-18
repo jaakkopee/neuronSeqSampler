@@ -18,12 +18,18 @@ public:
     ~NeuronNetwork() = default;
     
     void setAudioManager(AudioManager* manager);
+    AudioManager* getAudioManager() const { return audioManager; }
     
     Neuron* addNeuron(int sampleIndex, float initialActivation = 0.0f, 
                       float threshold = 1.0f, float decayRate = 1.0f, 
                       ActivationFunction func = ActivationFunction::Linear);
     
     Connection* connect(Neuron* source, Neuron* target, float weight = 1.0f);
+    
+    // Removal methods
+    bool removeNeuron(size_t index);
+    bool removeConnection(size_t index);
+    void clearNetwork();
     
     void activate();
     void resetFiredFlags();
