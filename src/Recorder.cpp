@@ -100,6 +100,15 @@ bool Recorder::startInternalRecording(const std::string& filename) {
     isInternalRecording = true;
     currentlyRecording = true;
     
+    // Initialize timing for real-time recording
+    recordingStartTime = std::chrono::steady_clock::now();
+    
+    // Clear and prepare the real-time buffer
+    {
+        std::lock_guard<std::mutex> lock(realtimeBufferMutex);
+        realtimeBuffer.clear();
+    }
+    
     std::cout << "Started internal recording to: " << outputFilename << std::endl;
     std::cout << "Capturing AudioManager output..." << std::endl;
     
@@ -114,6 +123,9 @@ void Recorder::stopRecording() {
     // Stop SFML recording only if not internal recording
     if (!isInternalRecording) {
         sf::SoundRecorder::stop();
+    } else {
+        // For internal recording, finalize the real-time buffer
+        finalizeRealtimeBuffer();
     }
     
     if (isRecordingToFile && !outputFilename.empty()) {
@@ -210,6 +222,31 @@ void Recorder::addSamples(const std::vector<sf::Int16>& newSamples) {
     samples.insert(samples.end(), newSamples.begin(), newSamples.end());
 }
 
+void Recorder::addSampleAtTime(const sf::Int16* sampleData, size_t sampleCount) {
+    if (!sampleData || sampleCount == 0 || !isInternalRecording) return;
+    
+    std::lock_guard<std::mutex> lock(realtimeBufferMutex);
+    
+    // Calculate current time position in samples since recording started
+    auto now = std::chrono::steady_clock::now();
+    auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(now - recordingStartTime).count();
+    
+    // Convert elapsed time to sample position
+    size_t bufferPosition = (elapsedMs * recordingSampleRate * recordingChannelCount) / 1000;
+    
+    // Ensure buffer is large enough
+    size_t requiredSize = bufferPosition + sampleCount;
+    if (realtimeBuffer.size() < requiredSize) {
+        realtimeBuffer.resize(requiredSize, 0.0f); // Fill with silence
+    }
+    
+    // Mix the new sample data into the buffer at the correct time position
+    mixSampleIntoBuffer(sampleData, sampleCount, bufferPosition);
+    
+    std::cout << "Mixed " << sampleCount << " samples at position " << bufferPosition 
+              << " (elapsed: " << elapsedMs << "ms)" << std::endl;
+}
+
 bool Recorder::onStart() {
     currentlyRecording = true;
     std::cout << "Recording started..." << std::endl;
@@ -275,6 +312,45 @@ bool Recorder::writeWavFile(const std::string& filename) {
         file.close();
         return false;
     }
+}
+
+void Recorder::finalizeRealtimeBuffer() {
+    std::lock_guard<std::mutex> bufferLock(realtimeBufferMutex);
+    std::lock_guard<std::mutex> samplesLock(samplesMutex);
+    
+    // Convert float buffer to Int16 samples
+    samples.clear();
+    samples.reserve(realtimeBuffer.size());
+    
+    for (float sample : realtimeBuffer) {
+        // Clamp and convert to Int16
+        sample = std::max(-1.0f, std::min(1.0f, sample));
+        samples.push_back(static_cast<sf::Int16>(sample * 32767.0f));
+    }
+    
+    std::cout << "Finalized real-time buffer: " << realtimeBuffer.size() 
+              << " samples converted to Int16" << std::endl;
+    
+    // Clear the real-time buffer
+    realtimeBuffer.clear();
+}
+
+void Recorder::mixSampleIntoBuffer(const sf::Int16* sampleData, size_t sampleCount, size_t bufferOffset) {
+    // Mix sample data into the real-time buffer with proper audio mixing
+    for (size_t i = 0; i < sampleCount && (bufferOffset + i) < realtimeBuffer.size(); ++i) {
+        float newSample = static_cast<float>(sampleData[i]) / 32767.0f;
+        
+        // Simple audio mixing: add samples together and clamp
+        realtimeBuffer[bufferOffset + i] += newSample;
+        
+        // Clamp to prevent overflow
+        realtimeBuffer[bufferOffset + i] = std::max(-1.0f, std::min(1.0f, realtimeBuffer[bufferOffset + i]));
+    }
+}
+
+size_t Recorder::getRealtimeBufferSize() const {
+    std::lock_guard<std::mutex> lock(realtimeBufferMutex);
+    return realtimeBuffer.size();
 }
 
 unsigned int Recorder::getEffectiveSampleRate() const {

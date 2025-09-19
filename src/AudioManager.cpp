@@ -57,8 +57,8 @@ bool AudioManager::playSample(int sampleIndex) {
                 const sf::Int16* samples = buffer->getSamples();
                 std::size_t sampleCount = buffer->getSampleCount();
                 
-                // Add the sample data to the recorder
-                internalRecorder->addSamples(samples, sampleCount);
+                // Add the sample data with timing information
+                internalRecorder->addSampleAtTime(samples, sampleCount);
                 std::cout << "Captured " << sampleCount << " samples to internal recorder" << std::endl;
             }
         }

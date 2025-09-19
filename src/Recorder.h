@@ -5,6 +5,7 @@
 #include <fstream>
 #include <memory>
 #include <mutex>
+#include <chrono>
 
 class Recorder : public sf::SoundRecorder {
 private:
@@ -18,6 +19,11 @@ private:
     // Recording parameters
     unsigned int recordingSampleRate; // Store sample rate for internal recording
     unsigned int recordingChannelCount; // Store channel count
+    
+    // Real-time recording buffer for internal recording
+    std::vector<float> realtimeBuffer; // Mixed audio buffer
+    std::chrono::steady_clock::time_point recordingStartTime;
+    mutable std::mutex realtimeBufferMutex;
     
     // Noise reduction settings
     bool noiseGateEnabled;
@@ -73,6 +79,7 @@ public:
     // Audio processing
     void addSamples(const sf::Int16* sampleData, size_t sampleCount);
     void addSamples(const std::vector<sf::Int16>& newSamples);
+    void addSampleAtTime(const sf::Int16* sampleData, size_t sampleCount); // Time-aware addition for internal recording
     
     // Get current audio data
     const std::vector<sf::Int16>& getSamples() const { return samples; }
@@ -90,6 +97,11 @@ private:
     // Helper methods to get effective recording parameters
     unsigned int getEffectiveSampleRate() const;
     unsigned int getEffectiveChannelCount() const;
+    
+    // Real-time buffer management for internal recording
+    void finalizeRealtimeBuffer(); // Convert real-time buffer to samples
+    void mixSampleIntoBuffer(const sf::Int16* sampleData, size_t sampleCount, size_t bufferOffset);
+    size_t getRealtimeBufferSize() const; // Get current buffer size in samples
     
     // Audio processing functions
     sf::Int16 applyNoiseGate(sf::Int16 sample);
