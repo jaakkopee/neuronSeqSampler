@@ -10,13 +10,14 @@
 #include <iomanip>
 #include <sstream>
 
-GUI::GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, Visualizer* visualizerPtr, Recorder* recorderPtr, AudioManager* audioMgr)
+GUI::GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, Visualizer* visualizerPtr, Recorder* recorderPtr, AudioManager* audioMgr, float* activationIntervalPtr)
     : gui(tguiGui)
     , window(renderWindow)
     , network(neuronNetwork)
     , visualizer(visualizerPtr)
     , recorder(recorderPtr)
     , audioManager(audioMgr)
+    , activationInterval(activationIntervalPtr)
 {
 }
 
@@ -79,9 +80,33 @@ void GUI::createControlPanel() {
     statusLabel->getRenderer()->setTextColor(tgui::Color::White);
     controlPanel->add(statusLabel, "StatusLabel");
     
-    // Create scrollable panel for sliders - adjusted for smaller control panel
-    slidersPanel = tgui::ScrollablePanel::create({"50%", "85%"});
-    slidersPanel->setPosition("10%", "10%");
+    // Activation Interval Control
+    activationIntervalLabel = tgui::Label::create("Update Rate: 100ms");
+    activationIntervalLabel->setPosition("5%", "12%");
+    activationIntervalLabel->setTextSize(10);
+    activationIntervalLabel->getRenderer()->setTextColor(tgui::Color::White);
+    controlPanel->add(activationIntervalLabel, "ActivationIntervalLabel");
+    
+    activationIntervalSlider = tgui::Slider::create();
+    activationIntervalSlider->setPosition("5%", "16%");
+    activationIntervalSlider->setSize("90%", "3%");
+    activationIntervalSlider->setMinimum(1.0f);    // 1ms minimum (very fast)
+    activationIntervalSlider->setMaximum(1000.0f); // 1000ms maximum (1 second)
+    activationIntervalSlider->setStep(1.0f);       // 1ms increments
+    activationIntervalSlider->setValue(activationInterval ? *activationInterval : 100.0f);
+    
+    // Connect slider to callback
+    activationIntervalSlider->onValueChange([this](float value) {
+        if (activationInterval) {
+            *activationInterval = value;
+            activationIntervalLabel->setText("Update Rate: " + std::to_string(static_cast<int>(value)) + "ms");
+        }
+    });
+    controlPanel->add(activationIntervalSlider, "ActivationIntervalSlider");
+    
+    // Create scrollable panel for sliders - adjusted position for new control
+    slidersPanel = tgui::ScrollablePanel::create({"50%", "75%"}); // Reduced height
+    slidersPanel->setPosition("10%", "22%"); // Moved down
     slidersPanel->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40, 200));
     controlPanel->add(slidersPanel, "SlidersPanel");
 }

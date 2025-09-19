@@ -29,6 +29,7 @@ private:
     Visualizer* visualizer;
     Recorder* recorder;
     AudioManager* audioManager;
+    float* activationInterval; // Pointer to the main app's activation interval
     
     // GUI panels
     tgui::Panel::Ptr controlPanel;
@@ -39,6 +40,8 @@ private:
     // Control elements
     std::vector<tgui::Slider::Ptr> connectionSliders;
     std::vector<tgui::Label::Ptr> connectionLabels;
+    tgui::Slider::Ptr activationIntervalSlider;
+    tgui::Label::Ptr activationIntervalLabel;
     
     // Layout
     float controlPanelTopOffset = 0.0f;
@@ -73,9 +76,8 @@ private:
     void onSliderChanged(size_t connectionIndex, float value);
 
 public:
-    public:
     GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, 
-        Visualizer* visualizerPtr, Recorder* recorderPtr, AudioManager* audioMgr);
+        Visualizer* visualizerPtr, Recorder* recorderPtr, AudioManager* audioMgr, float* activationIntervalPtr);
     
     void initialize();
     void update();

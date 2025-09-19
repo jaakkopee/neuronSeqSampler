@@ -41,7 +41,7 @@ public:
         , network()
         , visualizer(&window, &network)
 #ifdef USE_TGUI
-        , guiManager(&gui, &window, &network, &visualizer, &recorder, &audioManager)
+        , guiManager(&gui, &window, &network, &visualizer, &recorder, &audioManager, &activationInterval)
 #endif
         , activationInterval(100.0f) // milliseconds
     {
