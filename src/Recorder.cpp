@@ -105,8 +105,10 @@ bool Recorder::startInternalRecording(const std::string& filename) {
     
     // Clear and prepare the real-time buffer
     {
-        std::lock_guard<std::mutex> lock(realtimeBufferMutex);
+        std::lock_guard<std::mutex> bufferLock(realtimeBufferMutex);
+        std::lock_guard<std::mutex> activeLock(activeSamplesMutex);
         realtimeBuffer.clear();
+        activeSamples.clear(); // Clear any previous active sample tracking
     }
     
     std::cout << "Started internal recording to: " << outputFilename << std::endl;
@@ -159,8 +161,13 @@ bool Recorder::saveToFile(const std::string& filename) {
 }
 
 void Recorder::clearBuffer() {
-    std::lock_guard<std::mutex> lock(samplesMutex);
+    std::lock_guard<std::mutex> samplesLock(samplesMutex);
+    std::lock_guard<std::mutex> bufferLock(realtimeBufferMutex);
+    std::lock_guard<std::mutex> activeLock(activeSamplesMutex);
+    
     samples.clear();
+    realtimeBuffer.clear();
+    activeSamples.clear();
 }
 
 void Recorder::setSampleRate(unsigned int sampleRate) {
@@ -222,10 +229,11 @@ void Recorder::addSamples(const std::vector<sf::Int16>& newSamples) {
     samples.insert(samples.end(), newSamples.begin(), newSamples.end());
 }
 
-void Recorder::addSampleAtTime(const sf::Int16* sampleData, size_t sampleCount) {
+void Recorder::addSampleAtTime(const sf::Int16* sampleData, size_t sampleCount, int sampleIndex) {
     if (!sampleData || sampleCount == 0 || !isInternalRecording) return;
     
-    std::lock_guard<std::mutex> lock(realtimeBufferMutex);
+    std::lock_guard<std::mutex> bufferLock(realtimeBufferMutex);
+    std::lock_guard<std::mutex> activeLock(activeSamplesMutex);
     
     // Calculate current time position in samples since recording started
     auto now = std::chrono::steady_clock::now();
@@ -234,16 +242,33 @@ void Recorder::addSampleAtTime(const sf::Int16* sampleData, size_t sampleCount) 
     // Convert elapsed time to sample position
     size_t bufferPosition = (elapsedMs * recordingSampleRate * recordingChannelCount) / 1000;
     
+    // Stop any currently active instance of this sample index
+    stopActiveSample(sampleIndex, bufferPosition);
+    
     // Ensure buffer is large enough
     size_t requiredSize = bufferPosition + sampleCount;
     if (realtimeBuffer.size() < requiredSize) {
         realtimeBuffer.resize(requiredSize, 0.0f); // Fill with silence
     }
     
+    // Convert sample data to normalized float for tracking
+    std::vector<float> normalizedData(sampleCount);
+    for (size_t i = 0; i < sampleCount; ++i) {
+        normalizedData[i] = static_cast<float>(sampleData[i]) / 32767.0f;
+    }
+    
+    // Track this sample as active
+    ActiveSample activeSample;
+    activeSample.sampleIndex = sampleIndex;
+    activeSample.startPosition = bufferPosition;
+    activeSample.sampleLength = sampleCount;
+    activeSample.sampleData = normalizedData;
+    activeSamples.push_back(activeSample);
+    
     // Mix the new sample data into the buffer at the correct time position
     mixSampleIntoBuffer(sampleData, sampleCount, bufferPosition);
     
-    std::cout << "Mixed " << sampleCount << " samples at position " << bufferPosition 
+    std::cout << "Mixed sample " << sampleIndex << " (" << sampleCount << " samples) at position " << bufferPosition 
               << " (elapsed: " << elapsedMs << "ms)" << std::endl;
 }
 
@@ -435,4 +460,52 @@ void Recorder::processSample(sf::Int16& sample) {
     
     // Then apply high-pass filter  
     // sample = applyHighPassFilter(sample);
+}
+
+void Recorder::stopSampleAtTime(int sampleIndex) {
+    if (!isInternalRecording) return;
+    
+    std::lock_guard<std::mutex> bufferLock(realtimeBufferMutex);
+    std::lock_guard<std::mutex> activeLock(activeSamplesMutex);
+    
+    // Calculate current time position
+    auto now = std::chrono::steady_clock::now();
+    auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(now - recordingStartTime).count();
+    size_t currentPosition = (elapsedMs * recordingSampleRate * recordingChannelCount) / 1000;
+    
+    stopActiveSample(sampleIndex, currentPosition);
+}
+
+void Recorder::stopActiveSample(int sampleIndex, size_t currentPosition) {
+    // Find and stop any active instance of this sample
+    for (auto it = activeSamples.begin(); it != activeSamples.end(); ++it) {
+        if (it->sampleIndex == sampleIndex) {
+            size_t sampleEndPosition = it->startPosition + it->sampleLength;
+            
+            // If the sample is still playing (hasn't reached its natural end)
+            if (currentPosition < sampleEndPosition) {
+                // Calculate how much to remove
+                size_t cutoffPosition = currentPosition;
+                size_t samplesToRemove = sampleEndPosition - cutoffPosition;
+                
+                // Subtract the remaining part of the sample from the buffer
+                for (size_t i = 0; i < samplesToRemove && (cutoffPosition + i) < realtimeBuffer.size(); ++i) {
+                    size_t sampleDataIndex = cutoffPosition - it->startPosition + i;
+                    if (sampleDataIndex < it->sampleData.size()) {
+                        // Subtract the sample data that would have been playing
+                        realtimeBuffer[cutoffPosition + i] -= it->sampleData[sampleDataIndex];
+                        // Clamp to prevent underflow
+                        realtimeBuffer[cutoffPosition + i] = std::max(-1.0f, std::min(1.0f, realtimeBuffer[cutoffPosition + i]));
+                    }
+                }
+                
+                std::cout << "Stopped sample " << sampleIndex << " at position " << currentPosition 
+                          << " (removed " << samplesToRemove << " samples)" << std::endl;
+            }
+            
+            // Remove from active samples list
+            activeSamples.erase(it);
+            break; // Only stop one instance per call
+        }
+    }
 }

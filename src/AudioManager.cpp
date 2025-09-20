@@ -43,6 +43,12 @@ void AudioManager::loadDefaultSamples() {
 bool AudioManager::playSample(int sampleIndex) {
     auto it = sounds.find(sampleIndex);
     if (it != sounds.end()) {
+        // If internal recording is active, stop the sample in the recording first
+        if (recordingOutput && internalRecorder) {
+            std::lock_guard<std::mutex> lock(recordingMutex);
+            internalRecorder->stopSampleAtTime(sampleIndex);
+        }
+        
         // Stop the sound if it's already playing to allow overlapping
         it->second->stop();
         it->second->play();
@@ -57,8 +63,8 @@ bool AudioManager::playSample(int sampleIndex) {
                 const sf::Int16* samples = buffer->getSamples();
                 std::size_t sampleCount = buffer->getSampleCount();
                 
-                // Add the sample data with timing information
-                internalRecorder->addSampleAtTime(samples, sampleCount);
+                // Add the sample data with timing information and sample index
+                internalRecorder->addSampleAtTime(samples, sampleCount, sampleIndex);
                 std::cout << "Captured " << sampleCount << " samples to internal recorder" << std::endl;
             }
         }

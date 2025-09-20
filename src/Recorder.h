@@ -25,6 +25,16 @@ private:
     std::chrono::steady_clock::time_point recordingStartTime;
     mutable std::mutex realtimeBufferMutex;
     
+    // Active sample tracking for proper stopping behavior
+    struct ActiveSample {
+        int sampleIndex;
+        size_t startPosition;
+        size_t sampleLength;
+        std::vector<float> sampleData; // Normalized sample data for subtraction
+    };
+    std::vector<ActiveSample> activeSamples;
+    mutable std::mutex activeSamplesMutex;
+    
     // Noise reduction settings
     bool noiseGateEnabled;
     float noiseGateThreshold;
@@ -79,7 +89,8 @@ public:
     // Audio processing
     void addSamples(const sf::Int16* sampleData, size_t sampleCount);
     void addSamples(const std::vector<sf::Int16>& newSamples);
-    void addSampleAtTime(const sf::Int16* sampleData, size_t sampleCount); // Time-aware addition for internal recording
+    void addSampleAtTime(const sf::Int16* sampleData, size_t sampleCount, int sampleIndex); // Time-aware addition for internal recording
+    void stopSampleAtTime(int sampleIndex); // Stop a specific sample in the recording
     
     // Get current audio data
     const std::vector<sf::Int16>& getSamples() const { return samples; }
@@ -101,6 +112,7 @@ private:
     // Real-time buffer management for internal recording
     void finalizeRealtimeBuffer(); // Convert real-time buffer to samples
     void mixSampleIntoBuffer(const sf::Int16* sampleData, size_t sampleCount, size_t bufferOffset);
+    void stopActiveSample(int sampleIndex, size_t currentPosition); // Stop active sample and remove from buffer
     size_t getRealtimeBufferSize() const; // Get current buffer size in samples
     
     // Audio processing functions
