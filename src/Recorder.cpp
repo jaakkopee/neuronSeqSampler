@@ -232,8 +232,7 @@ void Recorder::addSamples(const std::vector<sf::Int16>& newSamples) {
 void Recorder::addSampleAtTime(const sf::Int16* sampleData, size_t sampleCount, int sampleIndex) {
     if (!sampleData || sampleCount == 0 || !isInternalRecording) return;
     
-    std::lock_guard<std::mutex> bufferLock(realtimeBufferMutex);
-    std::lock_guard<std::mutex> activeLock(activeSamplesMutex);
+    std::lock_guard<std::mutex> lock(realtimeBufferMutex);
     
     // Calculate current time position in samples since recording started
     auto now = std::chrono::steady_clock::now();
@@ -242,28 +241,11 @@ void Recorder::addSampleAtTime(const sf::Int16* sampleData, size_t sampleCount, 
     // Convert elapsed time to sample position
     size_t bufferPosition = (elapsedMs * recordingSampleRate * recordingChannelCount) / 1000;
     
-    // Stop any currently active instance of this sample index
-    stopActiveSample(sampleIndex, bufferPosition);
-    
     // Ensure buffer is large enough
     size_t requiredSize = bufferPosition + sampleCount;
     if (realtimeBuffer.size() < requiredSize) {
         realtimeBuffer.resize(requiredSize, 0.0f); // Fill with silence
     }
-    
-    // Convert sample data to normalized float for tracking
-    std::vector<float> normalizedData(sampleCount);
-    for (size_t i = 0; i < sampleCount; ++i) {
-        normalizedData[i] = static_cast<float>(sampleData[i]) / 32767.0f;
-    }
-    
-    // Track this sample as active
-    ActiveSample activeSample;
-    activeSample.sampleIndex = sampleIndex;
-    activeSample.startPosition = bufferPosition;
-    activeSample.sampleLength = sampleCount;
-    activeSample.sampleData = normalizedData;
-    activeSamples.push_back(activeSample);
     
     // Mix the new sample data into the buffer at the correct time position
     mixSampleIntoBuffer(sampleData, sampleCount, bufferPosition);
@@ -478,34 +460,74 @@ void Recorder::stopSampleAtTime(int sampleIndex) {
 
 void Recorder::stopActiveSample(int sampleIndex, size_t currentPosition) {
     // Find and stop any active instance of this sample
-    for (auto it = activeSamples.begin(); it != activeSamples.end(); ++it) {
-        if (it->sampleIndex == sampleIndex) {
-            size_t sampleEndPosition = it->startPosition + it->sampleLength;
+    for (auto& activeSample : activeSamples) {
+        if (activeSample.sampleIndex == sampleIndex && activeSample.active) {
+            size_t sampleEndPosition = activeSample.startPosition + activeSample.sampleLength;
             
-            // If the sample is still playing (hasn't reached its natural end)
+            // Only clear the future portion if the sample extends beyond current position
             if (currentPosition < sampleEndPosition) {
-                // Calculate how much to remove
-                size_t cutoffPosition = currentPosition;
-                size_t samplesToRemove = sampleEndPosition - cutoffPosition;
-                
-                // Subtract the remaining part of the sample from the buffer
-                for (size_t i = 0; i < samplesToRemove && (cutoffPosition + i) < realtimeBuffer.size(); ++i) {
-                    size_t sampleDataIndex = cutoffPosition - it->startPosition + i;
-                    if (sampleDataIndex < it->sampleData.size()) {
-                        // Subtract the sample data that would have been playing
-                        realtimeBuffer[cutoffPosition + i] -= it->sampleData[sampleDataIndex];
-                        // Clamp to prevent underflow
-                        realtimeBuffer[cutoffPosition + i] = std::max(-1.0f, std::min(1.0f, realtimeBuffer[cutoffPosition + i]));
-                    }
+                // Clear the buffer from current position to the end of this sample
+                for (size_t i = currentPosition; i < sampleEndPosition && i < realtimeBuffer.size(); ++i) {
+                    // Set to silence (we can't easily subtract just this sample's contribution)
+                    // This is a simplification - in a real implementation we'd need more sophisticated mixing
+                    realtimeBuffer[i] = 0.0f;
                 }
-                
                 std::cout << "Stopped sample " << sampleIndex << " at position " << currentPosition 
-                          << " (removed " << samplesToRemove << " samples)" << std::endl;
+                          << " (cleared " << (sampleEndPosition - currentPosition) << " samples)" << std::endl;
             }
             
-            // Remove from active samples list
-            activeSamples.erase(it);
+            activeSample.active = false;
             break; // Only stop one instance per call
+        }
+    }
+    
+    // Clean up inactive samples that are no longer needed
+    activeSamples.erase(
+        std::remove_if(activeSamples.begin(), activeSamples.end(),
+            [currentPosition](const ActiveSample& sample) {
+                return !sample.active && (currentPosition > sample.startPosition + sample.sampleLength);
+            }),
+        activeSamples.end()
+    );
+}
+
+void Recorder::rebuildRealtimeBuffer(size_t currentPosition) {
+    // Calculate the required buffer size based on all active samples
+    size_t maxRequiredSize = currentPosition;
+    for (const auto& activeSample : activeSamples) {
+        if (activeSample.active) {
+            size_t sampleEndPosition = activeSample.startPosition + activeSample.sampleLength;
+            maxRequiredSize = std::max(maxRequiredSize, sampleEndPosition);
+        }
+    }
+    
+    // Resize buffer if needed and clear it
+    if (realtimeBuffer.size() < maxRequiredSize) {
+        realtimeBuffer.resize(maxRequiredSize, 0.0f);
+    } else {
+        // Clear the buffer (fill with silence)
+        std::fill(realtimeBuffer.begin(), realtimeBuffer.end(), 0.0f);
+    }
+    
+    // Rebuild the buffer from all active samples
+    for (const auto& activeSample : activeSamples) {
+        if (activeSample.active) {
+            // Mix the entire active sample into the buffer
+            size_t sampleEndPosition = activeSample.startPosition + activeSample.sampleLength;
+            
+            // Make sure we don't exceed buffer bounds
+            size_t samplesToMix = std::min(activeSample.sampleLength, 
+                                         realtimeBuffer.size() - activeSample.startPosition);
+            
+            // Mix this sample into the buffer
+            for (size_t i = 0; i < samplesToMix && i < activeSample.sampleData.size(); ++i) {
+                size_t bufferIndex = activeSample.startPosition + i;
+                if (bufferIndex < realtimeBuffer.size()) {
+                    realtimeBuffer[bufferIndex] += activeSample.sampleData[i];
+                    // Clamp to prevent overflow
+                    realtimeBuffer[bufferIndex] = std::max(-1.0f, std::min(1.0f, realtimeBuffer[bufferIndex]));
+                }
+            }
         }
     }
 }

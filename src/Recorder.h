@@ -30,7 +30,8 @@ private:
         int sampleIndex;
         size_t startPosition;
         size_t sampleLength;
-        std::vector<float> sampleData; // Normalized sample data for subtraction
+        std::vector<float> sampleData; // Normalized sample data
+        bool active; // Whether this sample should continue playing
     };
     std::vector<ActiveSample> activeSamples;
     mutable std::mutex activeSamplesMutex;
@@ -113,6 +114,7 @@ private:
     void finalizeRealtimeBuffer(); // Convert real-time buffer to samples
     void mixSampleIntoBuffer(const sf::Int16* sampleData, size_t sampleCount, size_t bufferOffset);
     void stopActiveSample(int sampleIndex, size_t currentPosition); // Stop active sample and remove from buffer
+    void rebuildRealtimeBuffer(size_t currentPosition); // Rebuild buffer from active samples
     size_t getRealtimeBufferSize() const; // Get current buffer size in samples
     
     // Audio processing functions
