@@ -606,7 +606,7 @@ iotop
 
 ## License
 
-[Include your license information here]
+Free copylefted. Use an modify as you wish.
 
 ## Acknowledgments
 
