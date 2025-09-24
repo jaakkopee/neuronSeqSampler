@@ -32,6 +32,7 @@ public:
     void setAudioManager(AudioManager* manager);
     float activate(float inputValue);
     void playSample();
+    void playSample(float offsetSeconds); // Play sample starting from the beginning with optional time offset
     
     // Getters
     float getActivation() const { return activation; }

@@ -27,6 +27,7 @@ public:
     bool loadSampleFromPath(int sampleIndex, const std::string& fullPath);
     void loadDefaultSamples();
     bool playSample(int sampleIndex);
+    bool playSample(int sampleIndex, float offsetSeconds); // Play sample from beginning with time offset
     
     void setVolume(float volume);  // 0.0 to 100.0
     void stopAllSounds();

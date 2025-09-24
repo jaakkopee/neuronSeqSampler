@@ -1,6 +1,7 @@
 #include "AudioManager.h"
 #include "Recorder.h"
 #include <iostream>
+#include <SFML/System/Time.hpp>
 
 AudioManager::AudioManager(const std::string& samplesDir, bool loadDefaults) 
     : samplesDirectory(samplesDir), internalRecorder(nullptr), recordingOutput(false)
@@ -41,16 +42,28 @@ void AudioManager::loadDefaultSamples() {
 }
 
 bool AudioManager::playSample(int sampleIndex) {
+    return playSample(sampleIndex, 0.0f); // Default to no offset
+}
+
+bool AudioManager::playSample(int sampleIndex, float offsetSeconds) {
     auto it = sounds.find(sampleIndex);
     if (it != sounds.end()) {
-        // Stop the sound if it's already playing to allow overlapping
+        // Stop any previous instance of this specific sample (neuron offset behavior)
         it->second->stop();
+        
+        // Always start from the beginning of the sample (offset 0.0)
+        it->second->setPlayingOffset(sf::Time::Zero);
+        
         it->second->play();
-        std::cout << "Playing sample " << sampleIndex << std::endl;
+        std::cout << "Playing sample " << sampleIndex << " from beginning (stopped previous instance)" << std::endl;
         
         // If internal recording is active, capture the sample data
         if (recordingOutput && internalRecorder) {
             std::lock_guard<std::mutex> lock(recordingMutex);
+            
+            // Stop any previous instance of this sample in the recording
+            internalRecorder->stopSampleAtTime(sampleIndex);
+            
             auto bufferIt = soundBuffers.find(sampleIndex);
             if (bufferIt != soundBuffers.end()) {
                 const sf::SoundBuffer* buffer = bufferIt->second.get();
@@ -59,7 +72,8 @@ bool AudioManager::playSample(int sampleIndex) {
                 
                 // Add the sample data with timing information and sample index
                 internalRecorder->addSampleAtTime(samples, sampleCount, sampleIndex);
-                std::cout << "Captured " << sampleCount << " samples to internal recorder" << std::endl;
+                std::cout << "Stopped previous and added new sample " << sampleIndex 
+                          << " (" << sampleCount << " samples) to internal recorder" << std::endl;
             }
         }
         

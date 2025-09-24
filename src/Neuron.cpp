@@ -51,6 +51,13 @@ void Neuron::playSample() {
     }
 }
 
+void Neuron::playSample(float offsetSeconds) {
+    if (audioManager) {
+        // Always start from the beginning (0.0), but allow for time-based offset
+        audioManager->playSample(sampleIndex, 0.0f);
+    }
+}
+
 float Neuron::applyActivationFunction(float value) {
     switch (activationFunc) {
         case ActivationFunction::Sigmoid:
