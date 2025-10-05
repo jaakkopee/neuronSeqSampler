@@ -69,7 +69,7 @@ public:
         guiManager.setGUIArea(400.0f, 0.0f, 624.0f, 800.0f);
 #endif
         
-        std::cout << "\nAll changes to code by GitHub Copilot chat agent mode. The prompts were either feature additions or bug fixes for most cases.\n" << std::endl;
+        std::cout << "\nAll changes to code by GitHub Copilot. The prompts were either feature additions or bug fixes for most cases.\n" << std::endl;
         
         std::cout << "Neuron Sequence Sampler initialized with empty network." << std::endl;
         std::cout << "Use the 'Network' menu to add neurons and connections." << std::endl;
