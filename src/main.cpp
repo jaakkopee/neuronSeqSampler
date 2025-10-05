@@ -58,6 +58,7 @@ public:
         // Start with an empty network - users can add neurons via the menu
         
         // Set up visualizer canvas area (left side of window)
+        // the visualiser will draw the neurons and connections
         visualizer.setCanvasArea(50.0f, 50.0f, 700.0f, 700.0f);
         visualizer.setNeuronRadius(20.0f);
         visualizer.setNeuronColors(sf::Color::Cyan, sf::Color::Red);
@@ -66,7 +67,8 @@ public:
 #ifdef USE_TGUI
         // Initialize GUI (right side of window)
         guiManager.initialize();
-        guiManager.setGUIArea(400.0f, 0.0f, 624.0f, 800.0f);
+        // Set GUI area to the right side of the window with dimensions 324x800
+        guiManager.setGUIArea(700.0f, 0.0f, 1024.0f, 800.0f);
 #endif
         
         std::cout << "\nAll changes to code by GitHub Copilot. The prompts were either feature additions or bug fixes for most cases.\n" << std::endl;
