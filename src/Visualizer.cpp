@@ -155,10 +155,13 @@ void Visualizer::handleMouseClick(int mouseX, int mouseY) {
         // Placeholder for panning and zooming logic
         // This could involve adjusting canvasOffset and canvasSize based on mouse movement
         if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
-            // Example: Pan by moving the canvas offset
-            // This is a simplified example; actual implementation would track mouse movement delta
-            canvasOffset.x += 10.0f; // Pan right
-            canvasOffset.y += 10.0f; // Pan down
+            // Example: simple panning by dragging
+            static sf::Vector2i lastMousePos(mouseX, mouseY);
+            sf::Vector2i currentMousePos(mouseX, mouseY);
+            sf::Vector2i delta = currentMousePos - lastMousePos;
+            lastMousePos = currentMousePos;
+
+            canvasOffset += sf::Vector2f(delta) * 0.1f; // Adjust panning speed as needed
             calculateNeuronPositions();
         }
         // Zooming could be handled with mouse wheel events in the main event loop
