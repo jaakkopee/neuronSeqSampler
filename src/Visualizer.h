@@ -49,4 +49,6 @@ public:
         connectionColor = normal;
         highlightConnectionColor = highlight;
     }
+    void handleMouseClick(int mouseX, int mouseY); // For panning and zooming
+    void handleMouseScroll(int delta); // For zooming
 };

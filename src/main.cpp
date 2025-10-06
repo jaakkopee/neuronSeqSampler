@@ -108,10 +108,15 @@ public:
             // Handle mouse clicks on neurons (for manual activation)
             if (event.type == sf::Event::MouseButtonPressed) {
                 if (event.mouseButton.button == sf::Mouse::Left) {
-                    handleNeuronClick(event.mouseButton.x, event.mouseButton.y);
+                    handleMouseClick(event.mouseButton.x, event.mouseButton.y);
                 }
             }
-            
+
+            // Handle mouse scroll for zooming
+            if (event.type == sf::Event::MouseWheelScrolled) {
+                handleMouseScroll(event.mouseWheelScroll.delta);
+            }
+
             // Handle keyboard input
             if (event.type == sf::Event::KeyPressed) {
                 if (event.key.code == sf::Keyboard::Space) {
@@ -154,7 +159,7 @@ public:
             }
         }
     }
-    
+    /*
     void handleNeuronClick(int mouseX, int mouseY) {
         // Click detection in the visualization area
         if (mouseX >= 50 && mouseX <= 750 && mouseY >= 50 && mouseY <= 750) {
@@ -167,7 +172,18 @@ public:
             }
         }
     }
-    
+    */
+
+    void handleMouseScroll(int delta) {
+        //zoom with mouse scroll
+        visualizer.handleMouseScroll(delta);
+    }
+
+    void handleMouseClick(int mouseX, int mouseY) {
+        //pan and zoom with mouse
+        visualizer.handleMouseClick(mouseX, mouseY);
+    }
+
     void update() {
         // Automatic network activation at intervals
         if (clock.getElapsedTime().asMilliseconds() >= activationInterval) {
