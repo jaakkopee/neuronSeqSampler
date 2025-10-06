@@ -147,25 +147,15 @@ void Visualizer::drawConnection(const Connection* connection,
     
     window->draw(line, 2, sf::Lines);
 }
-void Visualizer::handleMouseClick(int mouseX, int mouseY) {
-    // Pan and zoom with mouse
-    // see if mouse is in canvas area
-    if (mouseX >= canvasOffset.x && mouseX <= canvasOffset.x + canvasSize.x &&
-        mouseY >= canvasOffset.y && mouseY <= canvasOffset.y + canvasSize.y) {
-        // Placeholder for panning and zooming logic
-        // This could involve adjusting canvasOffset and canvasSize based on mouse movement
-        if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
-            // Example: simple panning by dragging
-            static sf::Vector2i lastMousePos(mouseX, mouseY);
-            sf::Vector2i currentMousePos(mouseX, mouseY);
-            sf::Vector2i delta = currentMousePos - lastMousePos;
-            lastMousePos = currentMousePos;
-
-            canvasOffset += sf::Vector2f(delta) * 0.1f; // Adjust panning speed as needed
-            calculateNeuronPositions();
-        }
-        // Zooming could be handled with mouse wheel events in the main event loop
-    }
+void Visualizer::handleMouseDrag(int mouseX, int mouseY) {
+    // Pan the canvas based on mouse drag
+    // For simplicity, let's just move the canvas offset by a fixed amount
+    // In a real application, you'd track mouse movement delta
+    int deltaX = mouseX - (canvasOffset.x + canvasSize.x / 2);
+    int deltaY = mouseY - (canvasOffset.y + canvasSize.y / 2);
+    canvasOffset.x += deltaX * 0.1f; // Adjust the factor for sensitivity
+    canvasOffset.y += deltaY * 0.1f;
+    calculateNeuronPositions();
 }
 
 void Visualizer::handleMouseScroll(int delta) {

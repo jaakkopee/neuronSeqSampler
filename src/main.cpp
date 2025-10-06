@@ -108,7 +108,7 @@ public:
             // Handle mouse clicks on neurons (for manual activation)
             if (event.type == sf::Event::MouseButtonPressed) {
                 if (event.mouseButton.button == sf::Mouse::Left) {
-                    handleMouseClick(event.mouseButton.x, event.mouseButton.y);
+                    handleMouseDrag(event.mouseButton.x, event.mouseButton.y);
                 }
             }
 
@@ -179,9 +179,9 @@ public:
         visualizer.handleMouseScroll(delta);
     }
 
-    void handleMouseClick(int mouseX, int mouseY) {
+    void handleMouseDrag(int mouseX, int mouseY) {
         //pan and zoom with mouse
-        visualizer.handleMouseClick(mouseX, mouseY);
+        visualizer.handleMouseDrag(mouseX, mouseY);
     }
 
     void update() {
