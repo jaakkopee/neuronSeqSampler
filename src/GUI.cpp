@@ -67,9 +67,9 @@ void GUI::createMenuBar() {
 
 void GUI::createControlPanel() {
     // Create main control panel
-    controlPanel = tgui::Panel::create({"5%", "96%"}); // Reduced height for menu bar
-    controlPanel->setPosition("96%", "4%"); // Moved down for menu bar
-    controlPanel->setSize({"5%", "96%"});
+    controlPanel = tgui::Panel::create({"20%", "96%"}); // Increased width for better slider fit
+    controlPanel->setPosition("80%", "4%"); // Adjusted position for wider panel
+    controlPanel->setSize({"20%", "96%"});
     controlPanel->getRenderer()->setBackgroundColor(tgui::Color(50, 50, 50, 180));
     gui->add(controlPanel, "ControlPanel");
     
@@ -105,8 +105,8 @@ void GUI::createControlPanel() {
     controlPanel->add(activationIntervalSlider, "ActivationIntervalSlider");
     
     // Create scrollable panel for sliders - adjusted position for new control
-    slidersPanel = tgui::ScrollablePanel::create({"50%", "75%"}); // Reduced height
-    slidersPanel->setPosition("10%", "22%"); // Moved down
+    slidersPanel = tgui::ScrollablePanel::create({"95%", "75%"}); // Full width usage
+    slidersPanel->setPosition("2.5%", "22%"); // Centered position
     slidersPanel->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40, 200));
     controlPanel->add(slidersPanel, "SlidersPanel");
 }
@@ -132,10 +132,10 @@ void GUI::createConnectionSliders() {
         slidersPanel->add(label);
         connectionLabels.push_back(label);
         
-        // Create slider - made longer
+        // Create slider - optimized for wider panel
         auto slider = tgui::Slider::create();
-        slider->setPosition(30, yPos);
-        slider->setSize(240, 16);
+        slider->setPosition(40, yPos);
+        slider->setSize(200, 16);
         slider->setMinimum(-1.2f);
         slider->setMaximum(1.2f);
         slider->setStep(0.01f);  // 240 steps: 2.4 range / 0.01 step = 240 steps
@@ -151,7 +151,7 @@ void GUI::createConnectionSliders() {
         
         // Value label
         auto valueLabel = tgui::Label::create(std::to_string(conn->getWeight()));
-        valueLabel->setPosition(115, yPos);
+        valueLabel->setPosition(250, yPos);
         valueLabel->setTextSize(9);
         valueLabel->getRenderer()->setTextColor(tgui::Color::Yellow);
         slidersPanel->add(valueLabel);
@@ -203,8 +203,9 @@ void GUI::render() {
 
 void GUI::setGUIArea(float x, float y, float width, float height) {
     if (controlPanel) {
-        controlPanel->setPosition(x, y);
-        controlPanel->setSize(width, height);
+        // Use percentage positioning for better scaling
+        controlPanel->setPosition("80%", "4%");
+        controlPanel->setSize("20%", "96%");
     }
 }
 
