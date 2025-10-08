@@ -37,6 +37,8 @@ __pycache__/
 # media files
 *.wav
 *.mp3
+!neuronseq_ouput_funky.mp3
+!neuronseq_output_rad.mp3
 
 # executables
 test_sfml_audio
