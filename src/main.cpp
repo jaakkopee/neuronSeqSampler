@@ -30,9 +30,10 @@ private:
     
     sf::Clock clock;
     float activationInterval;
+    bool testingMode;
 
 public:
-    NeuronSeqSampler() 
+    NeuronSeqSampler(bool enableTestingMode = false) 
         : window(sf::VideoMode(1024, 800), "Neuron Sequence Sampler")
 #ifdef USE_TGUI
         , gui(window)
@@ -44,8 +45,12 @@ public:
         , guiManager(&gui, &window, &network, &visualizer, &recorder, &audioManager, &activationInterval)
 #endif
         , activationInterval(100.0f) // milliseconds
+        , testingMode(enableTestingMode)
     {
         initialize();
+        if (testingMode) {
+            setupTestingNetwork();
+        }
     }
     
     void initialize() {
@@ -83,6 +88,56 @@ public:
         std::cout << "  - R key: Toggle audio recording" << std::endl;
         std::cout << "  - GUI sliders: Adjust connection weights" << std::endl;
         std::cout << "  - Menu: Add/remove neurons and connections" << std::endl;
+    }
+    
+    void setupTestingNetwork() {
+        std::cout << "Setting up testing network with 3 fully connected neurons..." << std::endl;
+        
+        // Load samples for testing
+        bool kickLoaded = audioManager.loadSampleFromPath(1, "samples/kick/kick (ghost).wav");
+        bool clapLoaded = audioManager.loadSampleFromPath(2, "samples/clap/clap (ghost).wav");
+        bool bassLoaded = audioManager.loadSampleFromPath(3, "samples/808/ROBBERY 808 @prodopus.wav");
+        
+        if (!kickLoaded) {
+            std::cout << "Warning: Could not load kick sample" << std::endl;
+        }
+        if (!clapLoaded) {
+            std::cout << "Warning: Could not load clap sample" << std::endl;
+        }
+        if (!bassLoaded) {
+            std::cout << "Warning: Could not load 808 sample" << std::endl;
+        }
+        
+        // Create three neurons
+        Neuron* kickNeuron = network.addNeuron(1, 0.0f, 0.8f, 0.95f); // Sample 1, threshold 0.8, decay 0.95
+        Neuron* clapNeuron = network.addNeuron(2, 0.0f, 0.8f, 0.95f); // Sample 2
+        Neuron* bassNeuron = network.addNeuron(3, 0.0f, 0.8f, 0.95f); // Sample 3
+        
+        if (kickNeuron && clapNeuron && bassNeuron) {
+            // Create fully connected network (each neuron connected to every other)
+            network.connect(kickNeuron, clapNeuron, 0.6f);
+            network.connect(kickNeuron, bassNeuron, 0.7f);
+            network.connect(clapNeuron, kickNeuron, 0.5f);
+            network.connect(clapNeuron, bassNeuron, 0.8f);
+            network.connect(bassNeuron, kickNeuron, 0.4f);
+            network.connect(bassNeuron, clapNeuron, 0.6f);
+            
+            std::cout << "Testing network created successfully!" << std::endl;
+            std::cout << "- Kick neuron (sample 1): " << (kickLoaded ? "✓" : "✗") << std::endl;
+            std::cout << "- Clap neuron (sample 2): " << (clapLoaded ? "✓" : "✗") << std::endl;
+            std::cout << "- 808 neuron (sample 3): " << (bassLoaded ? "✓" : "✗") << std::endl;
+            std::cout << "- 6 connections created (fully connected)" << std::endl;
+            
+#ifdef USE_TGUI
+            // Refresh GUI to show the new network
+            guiManager.refreshConnectionSliders();
+#endif
+            // Refresh visualizer layout
+            visualizer.refreshLayout();
+            
+        } else {
+            std::cout << "Error: Failed to create neurons for testing network" << std::endl;
+        }
     }
     
     void run() {
@@ -212,11 +267,21 @@ public:
     }
 };
 
-int main() {
+int main(int argc, char* argv[]) {
     try {
         std::cout << "Starting Neuron Sequence Sampler..." << std::endl;
         
-        NeuronSeqSampler app;
+        // Parse command line arguments
+        bool testingMode = false;
+        for (int i = 1; i < argc; ++i) {
+            if (std::string(argv[i]) == "--testing") {
+                testingMode = true;
+                std::cout << "Testing mode enabled" << std::endl;
+                break;
+            }
+        }
+        
+        NeuronSeqSampler app(testingMode);
         app.run();
         
     } catch (const std::exception& e) {

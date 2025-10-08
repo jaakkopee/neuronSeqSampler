@@ -1,8 +1,33 @@
 # NeuronSeqSampler
 
-A real-time neural network-based audio sampler that uses artificial neurons to trigger audio samples through threshold-based activation. Features an interactive GUI for network control, real-time audio recording, and dynamic parameter adjustment.
+A real-time neural network-based audio sampler that uses artificial neurons to trigger audio samp**Perfect for:**
+- 🚀 **Quick Demos**: Instant working network without manual setup
+- 🔬 **Feature Testing**: Test new features with consistent network state  
+- 🎵 **Audio Testing**: Verify sample loading and playback systems
+- 📚 **Learning**: Understand network behavior with known configuration
 
-**Recent Updates**: Enhanced with mouse drag panning, scroll wheel zooming, and fullscreen-optimized interface for improved network visualization and navigation.
+### Command Line Options
+
+```bash
+./NeuronSeqSampler [OPTIONS]
+```
+
+**Available Options:**
+- `--testing` : Launch with pre-configured 3-neuron network (kick, clap, 808)
+- No arguments : Start with empty network for manual configuration
+
+**Examples:**
+```bash
+# Start with empty network
+./NeuronSeqSampler
+
+# Start in testing mode  
+./NeuronSeqSampler --testing
+```
+
+## Sample Library Setupough threshold-based activation. Features an interactive GUI for network control, real-time audio recording, and dynamic parameter adjustment.
+
+**Recent Updates**: Enhanced with mouse drag panning, scroll wheel zooming, fullscreen-optimized interface, and `--testing` mode for instant pre-configured network setup.
 
 ## Features
 
@@ -83,12 +108,43 @@ cd ..
 
 #### 5. Run the Application
 ```bash
-# Main application
+# Main application (empty network)
 ./build/NeuronSeqSampler
+
+# Testing mode (pre-configured network)
+./build/NeuronSeqSampler --testing
 
 # Or using the build script
 ./build.sh
 ```
+
+### Testing Mode
+
+For quick testing and demonstration, use the `--testing` command line argument to launch with a pre-configured neural network:
+
+```bash
+./NeuronSeqSampler --testing
+```
+
+**Testing Mode Features:**
+- **Pre-loaded Network**: 3 neurons with kick, clap, and 808 samples
+- **Fully Connected**: 6 bi-directional connections for complex interactions
+- **Optimized Parameters**: Pre-set thresholds and decay rates for immediate playability
+- **GUI Ready**: All connection sliders and controls automatically configured
+- **Sample Validation**: Reports successful loading of each audio sample
+
+**Testing Network Configuration:**
+- **Kick Neuron**: `samples/kick/kick (ghost).wav` (threshold: 0.8, decay: 0.95)
+- **Clap Neuron**: `samples/clap/clap (ghost).wav` (threshold: 0.8, decay: 0.95)  
+- **808 Neuron**: `samples/808/ROBBERY 808 @prodopus.wav` (threshold: 0.8, decay: 0.95)
+- **Connection Weights**: Ranging from 0.4 to 0.8 for varied interaction strength
+- **Network Type**: Fully connected (each neuron connects to every other neuron)
+
+**Perfect for:**
+- 🚀 **Quick Demos**: Instant working network without manual setup
+- 🔬 **Feature Testing**: Test new features with consistent network state  
+- 🎵 **Audio Testing**: Verify sample loading and playback systems
+- 📚 **Learning**: Understand network behavior with known configuration
 
 ## Sample Library Setup
 
