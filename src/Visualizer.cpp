@@ -187,34 +187,79 @@ void Visualizer::drawNeuron(const Neuron* neuron, const sf::Vector2f& position) 
 void Visualizer::drawConnection(const Connection* connection, 
                                const sf::Vector2f& sourcePos, 
                                const sf::Vector2f& targetPos) {
-    sf::Vertex line[] = {
-        sf::Vertex(sourcePos),
-        sf::Vertex(targetPos)
-    };
+    // Calculate vibration based on source and target neuron activations
+    const Neuron* sourceNeuron = connection->getSource();
+    const Neuron* targetNeuron = connection->getTarget();
+    float sourceActivation = sourceNeuron ? std::abs(sourceNeuron->getActivation()) : 0.0f;
+    float targetActivation = targetNeuron ? std::abs(targetNeuron->getActivation()) : 0.0f;
+    float totalActivation = sourceActivation + targetActivation;
     
     // Color based on connection weight
     float weight = connection->getWeight();
-    sf::Color color = connectionColor;
+    sf::Color baseColor = connectionColor;
     
     if (std::abs(weight) > 0.1f) {
-        // Make the line more visible for significant weights
         float intensity = std::min(1.0f, std::abs(weight));
-        color.a = static_cast<sf::Uint8>(100 + 155 * intensity);
+        baseColor.a = static_cast<sf::Uint8>(100 + 155 * intensity);
         
-        // Use different colors for positive/negative weights
         if (weight > 0) {
-            color = sf::Color(255, 255, 255, color.a); // White for positive
+            baseColor = sf::Color(255, 255, 255, baseColor.a); // White for positive
         } else {
-            color = sf::Color(255, 100, 100, color.a); // Red for negative
+            baseColor = sf::Color(255, 100, 100, baseColor.a); // Red for negative
         }
     } else {
-        color.a = 50; // Very faint for near-zero weights
+        baseColor.a = 50; // Very faint for near-zero weights
     }
     
-    line[0].color = color;
-    line[1].color = color;
+    // Enhance color based on neuronal activity
+    float activityBoost = std::min(1.0f, totalActivation);
+    sf::Color activityColor = baseColor;
     
-    window->draw(line, 2, sf::Lines);
+    if (activityBoost > 0.1f) {
+        activityColor.r = static_cast<sf::Uint8>(std::min(255, static_cast<int>(baseColor.r + activityBoost * 100)));
+        activityColor.g = static_cast<sf::Uint8>(std::min(255, static_cast<int>(baseColor.g + activityBoost * 50)));
+        activityColor.b = static_cast<sf::Uint8>(std::min(255, static_cast<int>(baseColor.b + activityBoost * 150)));
+        activityColor.a = static_cast<sf::Uint8>(std::min(255, static_cast<int>(baseColor.a + activityBoost * 100)));
+    }
+    
+    // Draw thick line with enhanced segmented vibration effect
+    const int thickness = 3;
+    const int segments = 20; // Segment the line for better vibration
+    sf::Vector2f direction = targetPos - sourcePos;
+    sf::Vector2f perpendicular(-direction.y, direction.x);
+    float lineLength = std::sqrt(perpendicular.x * perpendicular.x + perpendicular.y * perpendicular.y);
+    if (lineLength > 0) {
+        perpendicular.x /= lineLength;
+        perpendicular.y /= lineLength;
+    }
+    
+    float vibrationIntensity = totalActivation * 3.0f; // Increased intensity
+    
+    for (int thickOffset = -thickness/2; thickOffset <= thickness/2; ++thickOffset) {
+        sf::Vector2f thicknessOffset = perpendicular * static_cast<float>(thickOffset) * 0.7f;
+        std::vector<sf::Vertex> vibratingLine;
+        
+        for (int i = 0; i <= segments; ++i) {
+            float t = static_cast<float>(i) / static_cast<float>(segments);
+            sf::Vector2f basePoint = sourcePos + (targetPos - sourcePos) * t;
+            
+            // Create complex vibration pattern along the line
+            float vibrationX = std::sin(t * 25.0f + totalActivation * 12.0f) * vibrationIntensity;
+            float vibrationY = std::cos(t * 20.0f + totalActivation * 10.0f + static_cast<float>(thickOffset) * 2.0f) * vibrationIntensity;
+            
+            // Add some randomness based on position along line
+            float positionVariation = std::sin(t * 40.0f + totalActivation * 8.0f) * vibrationIntensity * 0.5f;
+            vibrationX += positionVariation;
+            
+            sf::Vector2f vibratingPoint = basePoint + thicknessOffset + sf::Vector2f(vibrationX, vibrationY);
+            vibratingLine.push_back(sf::Vertex(vibratingPoint, activityColor));
+        }
+        
+        // Draw the segmented vibrating line
+        if (vibratingLine.size() > 1) {
+            window->draw(&vibratingLine[0], vibratingLine.size(), sf::LineStrip);
+        }
+    }
 }
 void Visualizer::handleMouseDrag(int mouseX, int mouseY) {
     // Pan the canvas based on mouse drag
@@ -281,43 +326,79 @@ void Visualizer::drawCurvedConnection(const Connection* connection,
         perpendicular = -perpendicular; // Flip to opposite side
     }
     
-    sf::Vector2f controlPoint = midPoint + perpendicular * curveOffset;
+    // Calculate vibration based on source and target neuron activations
+    const Neuron* sourceNeuron = connection->getSource();
+    const Neuron* targetNeuron = connection->getTarget();
+    float sourceActivation = sourceNeuron ? std::abs(sourceNeuron->getActivation()) : 0.0f;
+    float targetActivation = targetNeuron ? std::abs(targetNeuron->getActivation()) : 0.0f;
+    float totalActivation = sourceActivation + targetActivation;
     
-    // Generate curved line using Bezier curve
-    const int segments = 20;
-    std::vector<sf::Vertex> curveVertices;
+    // Base curve offset with vibration
+    float vibrationIntensity = totalActivation * 10.0f; // Adjust multiplier for vibration strength
+    float vibrationOffset = std::sin(totalActivation * 20.0f) * vibrationIntensity; // Sine wave vibration
+    sf::Vector2f controlPoint = midPoint + perpendicular * (curveOffset + vibrationOffset);
     
-    for (int i = 0; i <= segments; ++i) {
-        float t = static_cast<float>(i) / static_cast<float>(segments);
-        sf::Vector2f point = calculateBezierPoint(sourcePos, controlPoint, targetPos, t);
-        curveVertices.push_back(sf::Vertex(point));
+    // Generate thicker curved line using multiple parallel curves
+    const int segments = 30; // More segments for smoother curves
+    const int thickness = 3; // Number of parallel lines for thickness
+    std::vector<std::vector<sf::Vertex>> thickCurveLines;
+    
+    for (int lineOffset = -thickness/2; lineOffset <= thickness/2; ++lineOffset) {
+        std::vector<sf::Vertex> curveVertices;
+        sf::Vector2f offsetVector = perpendicular * static_cast<float>(lineOffset) * 0.5f;
+        
+        for (int i = 0; i <= segments; ++i) {
+            float t = static_cast<float>(i) / static_cast<float>(segments);
+            sf::Vector2f basePoint = calculateBezierPoint(sourcePos, controlPoint, targetPos, t);
+            
+            // Add small random vibration to each point
+            float vibrationX = std::sin(t * 30.0f + totalActivation * 10.0f) * vibrationIntensity * 0.3f;
+            float vibrationY = std::cos(t * 25.0f + totalActivation * 8.0f) * vibrationIntensity * 0.3f;
+            
+            sf::Vector2f point = basePoint + offsetVector + sf::Vector2f(vibrationX, vibrationY);
+            curveVertices.push_back(sf::Vertex(point));
+        }
+        thickCurveLines.push_back(curveVertices);
     }
     
-    // Color based on connection weight
+    // Color based on connection weight and neuronal activity
     float weight = connection->getWeight();
-    sf::Color color = connectionColor;
+    sf::Color baseColor = connectionColor;
     
     if (std::abs(weight) > 0.1f) {
         float intensity = std::min(1.0f, std::abs(weight));
-        color.a = static_cast<sf::Uint8>(100 + 155 * intensity);
+        baseColor.a = static_cast<sf::Uint8>(100 + 155 * intensity);
         
         if (weight > 0) {
-            color = sf::Color(255, 255, 255, color.a); // White for positive
+            baseColor = sf::Color(255, 255, 255, baseColor.a); // White for positive
         } else {
-            color = sf::Color(255, 100, 100, color.a); // Red for negative
+            baseColor = sf::Color(255, 100, 100, baseColor.a); // Red for negative
         }
     } else {
-        color.a = 50; // Very faint for near-zero weights
+        baseColor.a = 50; // Very faint for near-zero weights
     }
     
-    // Apply color to all vertices
-    for (auto& vertex : curveVertices) {
-        vertex.color = color;
+    // Enhance color based on neuronal activity
+    float activityBoost = std::min(1.0f, totalActivation);
+    sf::Color activityColor = baseColor;
+    
+    if (activityBoost > 0.1f) {
+        // Add brightness and saturation based on activity
+        activityColor.r = static_cast<sf::Uint8>(std::min(255, static_cast<int>(baseColor.r + activityBoost * 100)));
+        activityColor.g = static_cast<sf::Uint8>(std::min(255, static_cast<int>(baseColor.g + activityBoost * 50)));
+        activityColor.b = static_cast<sf::Uint8>(std::min(255, static_cast<int>(baseColor.b + activityBoost * 150)));
+        activityColor.a = static_cast<sf::Uint8>(std::min(255, static_cast<int>(baseColor.a + activityBoost * 100)));
     }
     
-    // Draw the curve as a line strip
-    if (curveVertices.size() > 1) {
-        window->draw(&curveVertices[0], curveVertices.size(), sf::LineStrip);
+    // Draw all thick curve lines
+    for (auto& curveVertices : thickCurveLines) {
+        if (curveVertices.size() > 1) {
+            // Apply color to all vertices in this line
+            for (auto& vertex : curveVertices) {
+                vertex.color = activityColor;
+            }
+            window->draw(&curveVertices[0], curveVertices.size(), sf::LineStrip);
+        }
     }
 }
 
