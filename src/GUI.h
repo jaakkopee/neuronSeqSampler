@@ -42,6 +42,8 @@ private:
     std::vector<tgui::Label::Ptr> connectionLabels;
     tgui::Slider::Ptr activationIntervalSlider;
     tgui::Label::Ptr activationIntervalLabel;
+    tgui::ComboBox::Ptr viewModeComboBox;
+    tgui::Label::Ptr viewModeLabel;
     
     // Layout
     float controlPanelTopOffset = 0.0f;

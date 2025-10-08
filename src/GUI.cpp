@@ -104,9 +104,35 @@ void GUI::createControlPanel() {
     });
     controlPanel->add(activationIntervalSlider, "ActivationIntervalSlider");
     
+    // View Mode Control
+    viewModeLabel = tgui::Label::create("View Mode:");
+    viewModeLabel->setPosition("5%", "21%");
+    viewModeLabel->setTextSize(10);
+    viewModeLabel->getRenderer()->setTextColor(tgui::Color::White);
+    controlPanel->add(viewModeLabel, "ViewModeLabel");
+    
+    viewModeComboBox = tgui::ComboBox::create();
+    viewModeComboBox->setPosition("5%", "24%");
+    viewModeComboBox->setSize("90%", "4%");
+    viewModeComboBox->addItem("Grid Layout");
+    viewModeComboBox->addItem("Circular Layout");
+    viewModeComboBox->setSelectedItem("Grid Layout");
+    
+    // Connect combobox to callback
+    viewModeComboBox->onItemSelect([this](const tgui::String& item) {
+        if (visualizer) {
+            if (item == "Grid Layout") {
+                visualizer->setViewMode(ViewMode::Grid);
+            } else if (item == "Circular Layout") {
+                visualizer->setViewMode(ViewMode::Circular);
+            }
+        }
+    });
+    controlPanel->add(viewModeComboBox, "ViewModeComboBox");
+    
     // Create scrollable panel for sliders - adjusted position for new control
-    slidersPanel = tgui::ScrollablePanel::create({"95%", "75%"}); // Full width usage
-    slidersPanel->setPosition("2.5%", "22%"); // Centered position
+    slidersPanel = tgui::ScrollablePanel::create({"95%", "68%"}); // Reduced height to accommodate view mode control
+    slidersPanel->setPosition("2.5%", "30%"); // Moved down to accommodate view mode control
     slidersPanel->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40, 200));
     controlPanel->add(slidersPanel, "SlidersPanel");
 }

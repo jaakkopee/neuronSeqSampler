@@ -14,6 +14,7 @@ Visualizer::Visualizer(sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetw
     , highlightConnectionColor(sf::Color::Yellow)
     , canvasOffset(50.0f, 50.0f)
     , canvasSize(500.0f, 400.0f)
+    , currentViewMode(ViewMode::Grid)
 {
     calculateNeuronPositions();
 }
@@ -36,6 +37,22 @@ void Visualizer::calculateNeuronPositions() {
     
     if (neuronCount == 0) return;
     
+    switch (currentViewMode) {
+        case ViewMode::Grid:
+            calculateGridPositions();
+            break;
+        case ViewMode::Circular:
+            calculateCircularPositions();
+            break;
+    }
+}
+
+void Visualizer::calculateGridPositions() {
+    if (!network) return;
+    
+    size_t neuronCount = network->getNeuronCount();
+    if (neuronCount == 0) return;
+    
     // Arrange neurons in a grid pattern
     int cols = static_cast<int>(std::ceil(std::sqrt(neuronCount)));
     int rows = static_cast<int>(std::ceil(static_cast<float>(neuronCount) / cols));
@@ -54,16 +71,43 @@ void Visualizer::calculateNeuronPositions() {
     }
 }
 
+void Visualizer::calculateCircularPositions() {
+    if (!network) return;
+    
+    size_t neuronCount = network->getNeuronCount();
+    if (neuronCount == 0) return;
+    
+    // Calculate center and radius for circular layout
+    float centerX = canvasOffset.x + canvasSize.x / 2.0f;
+    float centerY = canvasOffset.y + canvasSize.y / 2.0f;
+    float radius = std::min(canvasSize.x, canvasSize.y) * 0.35f; // Leave some margin
+    
+    for (size_t i = 0; i < neuronCount; ++i) {
+        // Distribute neurons evenly around the circle
+        float angle = (2.0f * static_cast<float>(M_PI) * static_cast<float>(i)) / static_cast<float>(neuronCount);
+        
+        // Convert to Cartesian coordinates
+        float x = centerX + radius * std::cos(angle);
+        float y = centerY + radius * std::sin(angle);
+        
+        neuronPositions.push_back(sf::Vector2f(x, y));
+    }
+}
+
 void Visualizer::render() {
     if (!network) return;
     
     // Draw connections first (so they appear behind neurons)
     const auto& connections = network->getConnections();
+    const auto& neurons = network->getNeurons();
+    std::vector<bool> connectionDrawn(connections.size(), false);
+    
     for (size_t i = 0; i < connections.size(); ++i) {
+        if (connectionDrawn[i]) continue;
+        
         const Connection* conn = connections[i].get();
         
         // Find source and target neuron positions
-        const auto& neurons = network->getNeurons();
         int sourceIndex = -1, targetIndex = -1;
         
         for (size_t j = 0; j < neurons.size(); ++j) {
@@ -78,12 +122,37 @@ void Visualizer::render() {
         if (sourceIndex >= 0 && targetIndex >= 0 && 
             sourceIndex < neuronPositions.size() && 
             targetIndex < neuronPositions.size()) {
-            drawConnection(conn, neuronPositions[sourceIndex], neuronPositions[targetIndex]);
+            
+            // Check for bi-directional connection
+            bool hasBidirectional = false;
+            size_t reverseConnIndex = 0;
+            
+            for (size_t k = i + 1; k < connections.size(); ++k) {
+                const Connection* otherConn = connections[k].get();
+                if (otherConn->getSource() == conn->getTarget() && 
+                    otherConn->getTarget() == conn->getSource()) {
+                    hasBidirectional = true;
+                    reverseConnIndex = k;
+                    connectionDrawn[k] = true; // Mark reverse connection as drawn
+                    break;
+                }
+            }
+            
+            if (hasBidirectional) {
+                // Draw curved connections for bi-directional links
+                drawCurvedConnection(conn, neuronPositions[sourceIndex], neuronPositions[targetIndex], false);
+                const Connection* reverseConn = connections[reverseConnIndex].get();
+                drawCurvedConnection(reverseConn, neuronPositions[targetIndex], neuronPositions[sourceIndex], true);
+            } else {
+                // Draw straight connection
+                drawConnection(conn, neuronPositions[sourceIndex], neuronPositions[targetIndex]);
+            }
+            
+            connectionDrawn[i] = true;
         }
     }
     
-    // Draw neurons
-    const auto& neurons = network->getNeurons();
+    // Draw neurons (reuse neurons variable from above)
     for (size_t i = 0; i < neurons.size() && i < neuronPositions.size(); ++i) {
         drawNeuron(neurons[i].get(), neuronPositions[i]);
     }
@@ -170,4 +239,95 @@ void Visualizer::handleMouseScroll(int delta) {
         canvasSize.y *= 1.1f;
     }
     calculateNeuronPositions();
+}
+
+void Visualizer::setViewMode(ViewMode mode) {
+    if (currentViewMode != mode) {
+        currentViewMode = mode;
+        calculateNeuronPositions();
+    }
+}
+
+void Visualizer::drawCurvedConnection(const Connection* connection,
+                                     const sf::Vector2f& sourcePos,
+                                     const sf::Vector2f& targetPos,
+                                     bool isReverse) {
+    // Calculate control point for Bezier curve
+    sf::Vector2f midPoint = (sourcePos + targetPos) / 2.0f;
+    
+    // Always use the same reference direction to ensure curves are on opposite sides
+    // Use the direction from the lower-indexed position to higher-indexed position
+    sf::Vector2f referenceDirection;
+    if (sourcePos.x < targetPos.x || (sourcePos.x == targetPos.x && sourcePos.y < targetPos.y)) {
+        referenceDirection = targetPos - sourcePos;
+    } else {
+        referenceDirection = sourcePos - targetPos;
+    }
+    
+    sf::Vector2f perpendicular(-referenceDirection.y, referenceDirection.x); // Perpendicular vector
+    
+    // Normalize perpendicular vector
+    float length = std::sqrt(perpendicular.x * perpendicular.x + perpendicular.y * perpendicular.y);
+    if (length > 0) {
+        perpendicular.x /= length;
+        perpendicular.y /= length;
+    }
+    
+    // Offset control point perpendicular to the connection line
+    float curveOffset = 30.0f; // Adjust for curve intensity
+    
+    // Use opposite sides for forward and reverse connections
+    if (isReverse) {
+        perpendicular = -perpendicular; // Flip to opposite side
+    }
+    
+    sf::Vector2f controlPoint = midPoint + perpendicular * curveOffset;
+    
+    // Generate curved line using Bezier curve
+    const int segments = 20;
+    std::vector<sf::Vertex> curveVertices;
+    
+    for (int i = 0; i <= segments; ++i) {
+        float t = static_cast<float>(i) / static_cast<float>(segments);
+        sf::Vector2f point = calculateBezierPoint(sourcePos, controlPoint, targetPos, t);
+        curveVertices.push_back(sf::Vertex(point));
+    }
+    
+    // Color based on connection weight
+    float weight = connection->getWeight();
+    sf::Color color = connectionColor;
+    
+    if (std::abs(weight) > 0.1f) {
+        float intensity = std::min(1.0f, std::abs(weight));
+        color.a = static_cast<sf::Uint8>(100 + 155 * intensity);
+        
+        if (weight > 0) {
+            color = sf::Color(255, 255, 255, color.a); // White for positive
+        } else {
+            color = sf::Color(255, 100, 100, color.a); // Red for negative
+        }
+    } else {
+        color.a = 50; // Very faint for near-zero weights
+    }
+    
+    // Apply color to all vertices
+    for (auto& vertex : curveVertices) {
+        vertex.color = color;
+    }
+    
+    // Draw the curve as a line strip
+    if (curveVertices.size() > 1) {
+        window->draw(&curveVertices[0], curveVertices.size(), sf::LineStrip);
+    }
+}
+
+sf::Vector2f Visualizer::calculateBezierPoint(const sf::Vector2f& p0, const sf::Vector2f& p1, 
+                                              const sf::Vector2f& p2, float t) {
+    // Quadratic Bezier curve: B(t) = (1-t)²P0 + 2(1-t)tP1 + t²P2
+    float u = 1.0f - t;
+    float tt = t * t;
+    float uu = u * u;
+    
+    sf::Vector2f result = uu * p0 + 2.0f * u * t * p1 + tt * p2;
+    return result;
 }
