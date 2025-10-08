@@ -37,3 +37,8 @@ __pycache__/
 # media files
 *.wav
 *.mp3
+
+# executables
+test_sfml_audio
+recorder_demo
+debug_recorder
