@@ -2,6 +2,8 @@
 
 A real-time neural network-based audio sampler that uses artificial neurons to trigger audio samples through threshold-based activation. Features an interactive GUI for network control, real-time audio recording, and dynamic parameter adjustment.
 
+**Recent Updates**: Enhanced with mouse drag panning, scroll wheel zooming, and fullscreen-optimized interface for improved network visualization and navigation.
+
 ## Features
 
 ### Core System
@@ -15,6 +17,7 @@ A real-time neural network-based audio sampler that uses artificial neurons to t
 ### Advanced Features
 - **Activation Interval Control**: 1ms-1000ms range for ultra-precise timing control
 - **Dynamic Network Modification**: Add/remove neurons and connections during runtime
+- **Interactive Network Navigation**: Mouse drag panning and scroll wheel zooming
 - **Threshold Visualization**: Real-time visual feedback of neuron states
 - **Audio Export**: Record internal neural network output to WAV files
 - **Multiple Sample Categories**: 808s, claps, kicks, hats, FX, percussion, and more
@@ -27,6 +30,7 @@ A real-time neural network-based audio sampler that uses artificial neurons to t
 - **SFML 2.5+** (Graphics and Audio modules)
 - **TGUI 0.9+** (Optional but recommended for GUI)
 - **Linux audio system** (ALSA/PulseAudio)
+- **macos** tested, SFML had to be reverted to version 2.6 from 3.x.x
 
 ### Installation
 
@@ -119,13 +123,16 @@ samples/
 
 ### Main Interface Layout
 
-#### Left Panel: Neural Network Visualization
-- **Real-time neuron display**: Shows current activation levels
-- **Connection visualization**: Lines between connected neurons
-- **Threshold indicators**: Visual feedback of firing states
-- **Interactive clicking**: Manual neuron triggering via mouse
+**Interface Design**: Optimized for fullscreen 1920x1080 display with responsive layout scaling
 
-#### Right Panel: Control Interface
+#### Left Panel: Neural Network Visualization (80% width)
+- **Real-time neuron display**: Shows current activation levels with dynamic scaling
+- **Connection visualization**: Lines between connected neurons with weight indication
+- **Threshold indicators**: Visual feedback of firing states
+- **Interactive navigation**: Mouse drag to pan, scroll wheel to zoom
+- **Manual activation**: Click neurons to trigger them directly
+
+#### Right Panel: Control Interface (20% width)
 - **Status display**: Network information and current state
 - **Activation interval slider**: Timing control (1ms-1000ms)
 - **Connection weight sliders**: Adjust neural network connections
@@ -164,10 +171,30 @@ samples/
 - **Effect**: Determines connection strength between neurons
 - **Live adjustment**: Immediate effect on network behavior
 
-#### Manual Triggering
+#### Input Controls and Navigation
+
+##### Manual Activation
 - **Spacebar**: Triggers random neuron activation
 - **Mouse clicks**: Click neurons in visualization to manually activate
+- **Number keys (1-9)**: Activate specific neurons when available
 - **Combined control**: Manual triggers work alongside automatic network
+
+##### View Navigation
+- **Mouse drag**: Hold and drag to pan the network view
+- **Scroll wheel**: Zoom in/out centered on mouse cursor
+- **C key**: Reset view to default position and zoom level
+- **Zoom range**: 0.1x to 5.0x magnification for detailed inspection
+
+##### Audio Recording
+- **R key**: Toggle audio recording (internal network output)
+- **Shift+R**: Toggle external microphone recording
+
+#### Navigation Tips
+- **Large Networks**: Use zoom and pan to navigate complex neural networks
+- **Precise Editing**: Zoom in (up to 5x) for accurate connection visualization  
+- **Overview Mode**: Zoom out (down to 0.1x) to see entire network structure
+- **Quick Reset**: Press C to return to default view when lost
+- **Smooth Navigation**: Mouse drag provides fluid panning experience
 
 ### Recording Features
 
@@ -327,8 +354,9 @@ python3 nSSampler.py
 The application supports dual audio recording modes with JACK audio server compatibility:
 
 ### Recording Controls
-- **Keyboard**: Press `R` to start/stop recording
-- **GUI**: Use the "Recording" menu to start/stop with custom filenames
+- **R key**: Toggle internal recording (neural network output)
+- **Shift+R key**: Toggle external recording (microphone input)  
+- **GUI Menu**: Use "Recording" menu for custom filenames and manual control
 
 ### Noise Reduction Features
 The recorder includes built-in gentle noise reduction:
@@ -399,6 +427,7 @@ If recordings contain no audio (silent files), this is usually caused by JACK au
 #### CPU Optimization
 - **Activation Interval**: Increase to 100-200ms for lower CPU usage
 - **Connection Count**: Fewer connections = better performance
+- **View Rendering**: High zoom levels (>3x) may increase GPU usage
 - **Sample Quality**: Use 44.1kHz samples for best balance
 - **TGUI**: Optional dependency - can run without GUI for headless operation
 
