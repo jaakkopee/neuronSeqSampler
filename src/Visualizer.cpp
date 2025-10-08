@@ -222,9 +222,7 @@ void Visualizer::drawConnection(const Connection* connection,
         activityColor.a = static_cast<sf::Uint8>(std::min(255, static_cast<int>(baseColor.a + activityBoost * 100)));
     }
     
-    // Draw thick line with enhanced segmented vibration effect
-    const int thickness = 3;
-    const int segments = 20; // Segment the line for better vibration
+    // Draw single thick line with vibration effect
     sf::Vector2f direction = targetPos - sourcePos;
     sf::Vector2f perpendicular(-direction.y, direction.x);
     float lineLength = std::sqrt(perpendicular.x * perpendicular.x + perpendicular.y * perpendicular.y);
@@ -233,33 +231,29 @@ void Visualizer::drawConnection(const Connection* connection,
         perpendicular.y /= lineLength;
     }
     
-    float vibrationIntensity = totalActivation * 3.0f; // Increased intensity
+    float vibrationIntensity = totalActivation * 4.5f; // Amplitude for straight lines
     
-    for (int thickOffset = -thickness/2; thickOffset <= thickness/2; ++thickOffset) {
-        sf::Vector2f thicknessOffset = perpendicular * static_cast<float>(thickOffset) * 0.7f;
-        std::vector<sf::Vertex> vibratingLine;
-        
-        for (int i = 0; i <= segments; ++i) {
-            float t = static_cast<float>(i) / static_cast<float>(segments);
-            sf::Vector2f basePoint = sourcePos + (targetPos - sourcePos) * t;
-            
-            // Create complex vibration pattern along the line
-            float vibrationX = std::sin(t * 25.0f + totalActivation * 12.0f) * vibrationIntensity;
-            float vibrationY = std::cos(t * 20.0f + totalActivation * 10.0f + static_cast<float>(thickOffset) * 2.0f) * vibrationIntensity;
-            
-            // Add some randomness based on position along line
-            float positionVariation = std::sin(t * 40.0f + totalActivation * 8.0f) * vibrationIntensity * 0.5f;
-            vibrationX += positionVariation;
-            
-            sf::Vector2f vibratingPoint = basePoint + thicknessOffset + sf::Vector2f(vibrationX, vibrationY);
-            vibratingLine.push_back(sf::Vertex(vibratingPoint, activityColor));
-        }
-        
-        // Draw the segmented vibrating line
-        if (vibratingLine.size() > 1) {
-            window->draw(&vibratingLine[0], vibratingLine.size(), sf::LineStrip);
-        }
-    }
+    // Apply vibration to endpoints
+    float vibrationX = std::sin(totalActivation * 12.0f) * vibrationIntensity;
+    float vibrationY = std::cos(totalActivation * 10.0f) * vibrationIntensity;
+    sf::Vector2f vibration(vibrationX, vibrationY);
+    
+    sf::Vector2f vibratingSourcePos = sourcePos + vibration;
+    sf::Vector2f vibratingTargetPos = targetPos + vibration;
+    
+    // Create thick line using rectangle shape
+    sf::RectangleShape line;
+    sf::Vector2f lineVector = vibratingTargetPos - vibratingSourcePos;
+    float length = std::sqrt(lineVector.x * lineVector.x + lineVector.y * lineVector.y);
+    float angle = std::atan2(lineVector.y, lineVector.x) * 180.0f / M_PI;
+    
+    line.setSize(sf::Vector2f(length, 3.0f));
+    line.setPosition(vibratingSourcePos);
+    line.setOrigin(0, 1.5f);
+    line.setRotation(angle);
+    line.setFillColor(activityColor);
+    
+    window->draw(line);
 }
 void Visualizer::handleMouseDrag(int mouseX, int mouseY) {
     // Pan the canvas based on mouse drag
@@ -333,9 +327,9 @@ void Visualizer::drawCurvedConnection(const Connection* connection,
     float targetActivation = targetNeuron ? std::abs(targetNeuron->getActivation()) : 0.0f;
     float totalActivation = sourceActivation + targetActivation;
     
-    // Base curve offset with vibration
-    float vibrationIntensity = totalActivation * 10.0f; // Adjust multiplier for vibration strength
-    float vibrationOffset = std::sin(totalActivation * 20.0f) * vibrationIntensity; // Sine wave vibration
+    // Base curve offset with smaller amplitude vibration
+    float vibrationIntensity = totalActivation * 2.0f; // Reduced from 10.0f for smaller amplitude
+    float vibrationOffset = std::sin(totalActivation * 12.0f) * vibrationIntensity; // Synchronized rhythm
     sf::Vector2f controlPoint = midPoint + perpendicular * (curveOffset + vibrationOffset);
     
     // Generate thicker curved line using multiple parallel curves
@@ -351,9 +345,9 @@ void Visualizer::drawCurvedConnection(const Connection* connection,
             float t = static_cast<float>(i) / static_cast<float>(segments);
             sf::Vector2f basePoint = calculateBezierPoint(sourcePos, controlPoint, targetPos, t);
             
-            // Add small random vibration to each point
-            float vibrationX = std::sin(t * 30.0f + totalActivation * 10.0f) * vibrationIntensity * 0.3f;
-            float vibrationY = std::cos(t * 25.0f + totalActivation * 8.0f) * vibrationIntensity * 0.3f;
+            // Add subtle vibration to each point - smaller amplitude, synchronized rhythm
+            float vibrationX = std::sin(t * 25.0f + totalActivation * 12.0f) * vibrationIntensity * 0.15f; // Reduced from 0.3f
+            float vibrationY = std::cos(t * 20.0f + totalActivation * 10.0f) * vibrationIntensity * 0.15f; // Reduced from 0.3f
             
             sf::Vector2f point = basePoint + offsetVector + sf::Vector2f(vibrationX, vibrationY);
             curveVertices.push_back(sf::Vertex(point));
