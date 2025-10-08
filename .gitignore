@@ -33,3 +33,7 @@ NeuronSeqSampler
 __pycache__/
 *.pyc
 *.pyo
+
+# media files
+*.wav
+*.mp3
