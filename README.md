@@ -633,6 +633,27 @@ iotop
 - Check performance with various network configurations
 - Validate GUI responsiveness across different platforms
 
+## Research Background and Inspiration
+
+NeuronSeqSampler draws its theoretical foundation from the pioneering work of **Dr. Pauli Laine**, a Finnish doctor in musicology whose research explores the intersection of neural networks and music generation.
+
+### Academic Foundation
+Dr. Laine's doctoral thesis, "[Pattern Generation with Neural Networks](https://helda.helsinki.fi/items/5d15033c-05b7-40f9-a606-c39c52039124)" at the University of Helsinki, investigates computational approaches to musical pattern generation using artificial neural networks. His research provides the scientific basis for many of the algorithms implemented in NeuronSeqSampler.
+
+### Biological Inspiration
+The core concept behind NeuronSeqSampler is rooted in **Central Pattern Generators (CPGs)** - specialized neural circuits found in biological systems that produce rhythmic, repetitive outputs without requiring continuous external input. These biological networks are responsible for generating patterns in activities such as breathing, walking, and other rhythmic behaviors.
+
+### Technical Implementation
+The NeuronSeqSampler algorithm implements a novel approach to musical sequence generation by leveraging the dynamics of **spiking neural networks**:
+
+- **Leaky Integrate-and-Fire (LIF) Neurons**: The foundation of our neural network architecture
+- **Real-time Sequence Generation**: Interactive composition and performance capabilities  
+- **Clock Quantization**: Ensures rhythmic consistency and musical timing
+- **Threshold-based Activation**: Mimics biological neuron firing patterns
+- **Dynamic Network Topology**: User-configurable connections and weights
+
+This research-backed approach enables NeuronSeqSampler to generate emergent musical patterns that feel both organic and structured, bridging the gap between computational music generation and biological neural processes.
+
 ## License
 
 Free copylefted. Use and modify as you wish.
@@ -647,16 +668,3 @@ Free copylefted. Use and modify as you wish.
 ---
 
 *For technical questions or feature requests, please open an issue on the project repository.*
-- Enable and set volume:
-  ```bash
-  amixer sset Master 80%
-  amixer -c 0 sset Speaker 80% unmute
-  ```
-- Run complete audio optimization:
-  ```bash
-  ./optimize_mic.sh
-  ```
-
-**Error messages:**
-- "Audio recording is not available": No microphone detected
-- "Dummy/Monitor device detected": JACK is blocking access - stop JACK first
