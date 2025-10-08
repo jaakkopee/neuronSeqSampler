@@ -638,7 +638,8 @@ iotop
 NeuronSeqSampler draws its theoretical foundation from the pioneering work of **Dr. Pauli Laine**, a Finnish doctor in musicology whose research explores the intersection of neural networks and music generation.
 
 ### Academic Foundation
-Dr. Laine's doctoral thesis, "[Pattern Generation with Neural Networks](https://helda.helsinki.fi/items/5d15033c-05b7-40f9-a606-c39c52039124)" at the University of Helsinki, investigates computational approaches to musical pattern generation using artificial neural networks. His research provides the scientific basis for many of the algorithms implemented in NeuronSeqSampler.
+Dr. Laine's doctoral thesis, "[A Method for Generating Musical Motion Patterns](
+http://hdl.handle.net/10138/19434)" at the University of Helsinki, investigates computational approaches to musical pattern generation using artificial neural networks. His research provides the scientific basis for many of the algorithms implemented in NeuronSeqSampler.
 
 ### Biological Inspiration
 The core concept behind NeuronSeqSampler is rooted in **Central Pattern Generators (CPGs)** - specialized neural circuits found in biological systems that produce rhythmic, repetitive outputs without requiring continuous external input. These biological networks are responsible for generating patterns in activities such as breathing, walking, and other rhythmic behaviors.
