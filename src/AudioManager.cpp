@@ -178,3 +178,35 @@ void AudioManager::setFilterCallback(std::function<std::vector<float>(const std:
         std::cout << "🎛️  Filter mode DISABLED - samples play directly" << std::endl;
     }
 }
+
+void AudioManager::setFilterMode(bool enabled) {
+    if (enabled) {
+        // Example: Set a default filter callback
+        setFilterCallback([](const std::vector<float>& input) -> std::vector<float> {
+            // Pass-through filter (no processing)
+            return input;
+        });
+    } else {
+        // Disable filter callback
+        setFilterCallback(nullptr);
+    }
+}
+
+void AudioManager::setAdaptiveFilterMode(bool enabled) {
+    if (enabled) {
+        // Example: Set an adaptive filter callback
+        setFilterCallback([](const std::vector<float>& input) -> std::vector<float> {
+            std::vector<float> output;
+            output.reserve(input.size());
+            for (size_t i = 0; i < input.size(); ++i) {
+                // Example adaptive filter logic: simple moving average
+                float filteredSample = input[i] * 0.8f + (i > 0 ? input[i - 1] * 0.2f : 0.0f);
+                output.push_back(filteredSample);
+            }
+            return output;
+        });
+    } else {
+        // Disable adaptive filter callback
+        setFilterCallback(nullptr);
+    }
+}

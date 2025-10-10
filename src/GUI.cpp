@@ -1588,6 +1588,36 @@ void GUI::createConnectionMatrixPanel() {
     });
     connectionMatrixPanel->add(randomizeButton);
     
+    // Adjust Filter Mode toggle button size to fit text
+    auto filterModeToggle = tgui::Button::create("Filter Mode: OFF");
+    filterModeToggle->setPosition(5, matrixTitleLabel->getPosition().y + 20);
+    filterModeToggle->setSize(90, 25); // Increased size to fit text
+    filterModeToggle->setTextSize(10); // Reduced text size
+    filterModeToggle->getRenderer()->setBackgroundColor(tgui::Color(70, 70, 70));
+    filterModeToggle->getRenderer()->setTextColor(tgui::Color::White);
+    filterModeToggle->onPress([this, filterModeToggle]() {
+        static bool filterModeEnabled = false;
+        filterModeEnabled = !filterModeEnabled;
+        filterModeToggle->setText(filterModeEnabled ? "Filter Mode: ON" : "Filter Mode: OFF");
+        audioManager->setFilterMode(filterModeEnabled);
+    });
+    connectionMatrixPanel->add(filterModeToggle);
+
+    // Adjust Adaptive Mode toggle button size to fit text
+    auto adaptiveModeToggle = tgui::Button::create("Adaptive Mode: OFF");
+    adaptiveModeToggle->setPosition(105, matrixTitleLabel->getPosition().y + 20);
+    adaptiveModeToggle->setSize(90, 25); // Increased size to fit text
+    adaptiveModeToggle->setTextSize(10); // Reduced text size
+    adaptiveModeToggle->getRenderer()->setBackgroundColor(tgui::Color(70, 70, 70));
+    adaptiveModeToggle->getRenderer()->setTextColor(tgui::Color::White);
+    adaptiveModeToggle->onPress([this, adaptiveModeToggle]() {
+        static bool adaptiveModeEnabled = false;
+        adaptiveModeEnabled = !adaptiveModeEnabled;
+        adaptiveModeToggle->setText(adaptiveModeEnabled ? "Adaptive Mode: ON" : "Adaptive Mode: OFF");
+        audioManager->setAdaptiveFilterMode(adaptiveModeEnabled);
+    });
+    connectionMatrixPanel->add(adaptiveModeToggle);
+    
     // Filter band labels (vertical) - Exponential frequency distribution
     const std::vector<std::string> filterNames = {
         "Ultra (1Hz)", "VLow (3Hz)", "Low (11Hz)", "Sub (38Hz)",
@@ -1724,7 +1754,7 @@ void GUI::createConnectionMatrixPanel() {
                     toggleButton->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
                     toggleButton->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
                     // Reset gain slider to default value and hide it
-                    matrixGainSliders[f][n]->setValue(30.0f); // Reset to default 30% (0.3 * 100)
+                    matrixGainSliders[f][n]->setValue(30.0f); // Reset to default 30% (0.3 *  100)
                     matrixGainSliders[f][n]->setVisible(false);
                 } else {
                     // Connect with default gain

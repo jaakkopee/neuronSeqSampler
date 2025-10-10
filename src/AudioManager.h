@@ -41,6 +41,8 @@ public:
     // Sample data access for filtering
     std::vector<float> getSampleData(int sampleIndex) const; // Get sample as float data
     void setFilterCallback(std::function<std::vector<float>(const std::vector<float>&)> callback); // Set filter processing callback
+    void setFilterMode(bool enabled); // Enable or disable filter mode
+    void setAdaptiveFilterMode(bool enabled); // Enable or disable adaptive filter mode
     bool isFilterModeEnabled() const { return filterCallback != nullptr; }
     
     // Internal recording methods
