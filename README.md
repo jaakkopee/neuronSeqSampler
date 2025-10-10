@@ -11,8 +11,11 @@ NeuronSeqSampler is an experimental audio application that uses interconnected a
 ## What Makes It Special
 
 - **Neural Network Audio**: Audio samples are triggered by artificial neurons with realistic activation thresholds and decay
+- **Per-Neuron Activation Functions**: Each neuron can use Linear, Sigmoid, ReLU, or Tanh activation functions independently
+- **Self-Modulating Neurons**: Neurons can oscillate and evolve automatically with configurable self-activation rates
 - **Interactive Visualization**: Real-time rendering of neural network state with curved connections and dynamic colors
-- **Live Patching**: Modify network connections and parameters while the system is running
+- **Weight-Based Animation**: Connections dance and vibrate only when they have meaningful weights
+- **Live Patching**: Modify network connections, activation functions, and parameters while the system is running
 - **Dual Recording**: Record both external audio input and internal neural network output
 - **Testing Mode**: Instant setup with pre-configured drum patterns for immediate experimentation
 
@@ -59,11 +62,20 @@ make
 
 ### GUI Controls
 
+**Main Interface:**
 - **Mouse**: Click neurons to activate, drag to pan view, scroll to zoom
 - **Spacebar**: Random network activation
 - **R Key**: Toggle audio recording
 - **Number Keys (1-9)**: Activate specific neurons
 - **Menu System**: Add/remove neurons and connections
+
+**Left Panel - Neuron Controls:**
+- **Activation Sliders**: Control self-modulation rate (-0.1 to 0.6) for each neuron
+- **Function Dropdowns**: Select activation function (Linear, Sigmoid, ReLU, Tanh) per neuron
+
+**Right Panel - Connection Controls:**
+- **Weight Sliders**: Adjust connection strength (-1.2 to 1.2) between neurons
+- **Real-time Feedback**: Connections dance only when weights are non-zero
 
 ### Sample Organization
 
@@ -81,13 +93,23 @@ samples/
 
 NeuronSeqSampler simulates biological neural networks for music creation:
 
-1. **Neurons** represent individual audio samples with activation thresholds
-2. **Connections** link neurons with adjustable weights (strength of influence)
-3. **Activation** occurs when a neuron receives enough input to exceed its threshold
-4. **Cascade Effects** create complex rhythmic patterns as neurons trigger each other
-5. **Decay** causes neuron activation to fade over time, creating natural rhythmic spacing
+1. **Neurons** represent individual audio samples with activation thresholds and decay rates
+2. **Activation Functions** shape how neurons respond: Linear (direct), Sigmoid (smooth curves), ReLU (hard thresholding), or Tanh (bipolar response)
+3. **Self-Modulation** allows neurons to oscillate independently, creating rhythmic patterns without external input
+4. **Connections** link neurons with adjustable weights (strength of influence)
+5. **Activation** occurs when a neuron receives enough input to exceed its threshold
+6. **Cascade Effects** create complex rhythmic patterns as neurons trigger each other
+7. **Decay** causes neuron activation to fade over time, creating natural rhythmic spacing
+8. **Weight-Based Dynamics** ensure only meaningful connections contribute to the visual and auditory complexity
 
-This creates emergent musical behavior where simple rules generate complex, evolving patterns.
+### Advanced Neural Behaviors
+
+- **Self-Oscillating Neurons**: Positive self-modulation rates create autonomous rhythm generators
+- **Self-Dampening Neurons**: Negative self-modulation rates create naturally decaying patterns  
+- **Function-Specific Responses**: Different activation functions create unique musical characteristics
+- **Dynamic Networks**: Real-time parameter adjustment allows live performance and composition
+
+This creates emergent musical behavior where simple biological principles generate complex, evolving patterns.
 
 ## Installation Details
 
@@ -151,6 +173,49 @@ cd ..
 - **Visual Optimization**: Adjustable zoom and rendering quality
 - **Memory Management**: Efficient sample loading and audio buffer management
 
+## Advanced Features
+
+### Per-Neuron Activation Functions
+
+Each neuron can independently use different mathematical functions to process activation:
+
+- **📈 Linear**: `f(x) = x` - Direct, proportional response (default)
+- **🌊 Sigmoid**: `f(x) = 1/(1 + e^(-x))` - Smooth saturation curves (0-1 range)
+- **⚡ ReLU**: `f(x) = max(0, x)` - Hard thresholding, binary-like behavior
+- **🌀 Tanh**: `f(x) = tanh(x)` - Bipolar response with smooth transitions (-1 to 1)
+
+**Musical Applications:**
+- **Drum Patterns**: ReLU neurons for sharp, percussive triggers
+- **Ambient Textures**: Sigmoid neurons for smooth, flowing progressions
+- **Rhythmic Bases**: Linear neurons for predictable, mathematical patterns
+- **Dynamic Expression**: Tanh neurons for expressive, bipolar responses
+
+### Self-Modulating Neural Networks
+
+**Autonomous Oscillation:** Neurons can modify their own activation over time:
+- **Positive Rates (0.01-0.6)**: Create self-exciting oscillators and rhythm generators
+- **Negative Rates (-0.1-0.0)**: Create self-dampening, naturally decaying patterns
+- **Zero Rate**: Standard neuron behavior, no self-modification
+
+**Real-time Control:** Adjust self-modulation rates while the network is running to:
+- Start/stop rhythmic patterns
+- Create evolving musical sequences
+- Generate autonomous musical compositions
+- Build complex polyrhythmic structures
+
+### Intelligent Visual Feedback
+
+**Weight-Based Animation:** Connections only dance when they carry meaningful signal:
+- **Zero Weights**: Static, faint display
+- **Non-zero Weights**: Dynamic animation intensity based on neural activity
+- **Real-time Response**: Visual feedback matches network topology changes
+
+**Connection Types:**
+- **Curved Lines**: Bi-directional connections with Bézier curves
+- **Straight Lines**: Uni-directional connections with clean geometry
+- **Color Coding**: Weight polarity (white=positive, red=negative)
+- **Thickness Variation**: Visual representation of connection strength
+
 ## Technical Architecture
 
 ### Core Components
@@ -165,14 +230,18 @@ cd ..
 
 Each neuron maintains:
 - **Activation Level**: Current charge/energy state
-- **Threshold**: Activation trigger point
-- **Decay Rate**: How quickly activation fades
+- **Threshold**: Activation trigger point  
+- **Decay Rate**: How quickly activation fades after firing
+- **Self-Modulation Rate**: Per-iteration activation increase/decrease (-0.1 to 0.6)
+- **Activation Function**: Mathematical transformation (Linear, Sigmoid, ReLU, Tanh)
 - **Sample Index**: Which audio file to play when activated
+- **Activation History**: Rolling buffer for visualization and analysis
 
 Connections define:
 - **Source/Target**: Which neurons are linked
-- **Weight**: Strength of influence (0.0-1.0)
+- **Weight**: Strength of influence (-1.2 to 1.2, positive/negative)
 - **Direction**: Uni or bi-directional flow
+- **Visual State**: Dynamic animation based on weight and activity
 
 ## Troubleshooting
 
