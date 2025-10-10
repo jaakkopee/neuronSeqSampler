@@ -42,6 +42,7 @@ private:
     std::vector<tgui::Label::Ptr> connectionLabels;
     std::vector<tgui::Slider::Ptr> neuronSliders;
     std::vector<tgui::Label::Ptr> neuronLabels;
+    std::vector<tgui::ComboBox::Ptr> activationFunctionCombos;
     tgui::Slider::Ptr activationIntervalSlider;
     tgui::Label::Ptr activationIntervalLabel;
     tgui::ComboBox::Ptr viewModeComboBox;
@@ -80,6 +81,7 @@ private:
     // Event handlers
     void onSliderChanged(size_t connectionIndex, float value);
     void onNeuronSliderChanged(size_t neuronIndex, float value);
+    void onActivationFunctionChanged(size_t neuronIndex, const std::string& functionName);
 
 public:
     GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, 

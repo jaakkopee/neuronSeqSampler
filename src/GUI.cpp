@@ -193,6 +193,7 @@ void GUI::createNeuronSliders() {
     
     neuronSliders.clear();
     neuronLabels.clear();
+    activationFunctionCombos.clear();
     slidersPanel->removeAllWidgets();
     
     const auto& neurons = network->getNeurons();
@@ -234,9 +235,51 @@ void GUI::createNeuronSliders() {
         slidersPanel->add(valueLabel);
         
         yPos += 22.0f;
+        
+        // Create activation function dropdown below the slider
+        auto funcCombo = tgui::ComboBox::create();
+        funcCombo->setPosition(40, yPos);
+        funcCombo->setSize(120, 16);
+        funcCombo->addItem("Linear");
+        funcCombo->addItem("Sigmoid");
+        funcCombo->addItem("ReLU");
+        funcCombo->addItem("Tanh");
+        
+        // Set current selection based on neuron's activation function
+        switch (neuron->getActivationFunction()) {
+            case ActivationFunction::Linear:
+                funcCombo->setSelectedItem("Linear");
+                break;
+            case ActivationFunction::Sigmoid:
+                funcCombo->setSelectedItem("Sigmoid");
+                break;
+            case ActivationFunction::ReLU:
+                funcCombo->setSelectedItem("ReLU");
+                break;
+            case ActivationFunction::Tanh:
+                funcCombo->setSelectedItem("Tanh");
+                break;
+        }
+        
+        // Connect to callback
+        funcCombo->onItemSelect([this, i](const tgui::String& item) {
+            this->onActivationFunctionChanged(i, item.toStdString());
+        });
+        
+        slidersPanel->add(funcCombo);
+        activationFunctionCombos.push_back(funcCombo);
+        
+        // Function label
+        auto funcLabel = tgui::Label::create("Func:");
+        funcLabel->setPosition(5, yPos);
+        funcLabel->setTextSize(9);
+        funcLabel->getRenderer()->setTextColor(tgui::Color::Green);
+        slidersPanel->add(funcLabel);
+        
+        yPos += 22.0f; // Extra spacing after each neuron's controls
     }
     
-    std::cout << "Created " << neuronSliders.size() << " neuron sliders" << std::endl;
+    std::cout << "Created " << neuronSliders.size() << " neuron sliders and " << activationFunctionCombos.size() << " activation function dropdowns" << std::endl;
 }
 
 void GUI::onNeuronSliderChanged(size_t neuronIndex, float value) {
@@ -250,16 +293,40 @@ void GUI::onNeuronSliderChanged(size_t neuronIndex, float value) {
         // Update the value label - find the associated value label
         if (neuronIndex < neuronLabels.size()) {
             // The value label is positioned after the neuron slider widgets
+            // Each neuron now takes 44 pixels (22 for slider + 22 for dropdown)
+            float expectedY = 5.0f + neuronIndex * 44.0f;
             auto widgets = slidersPanel->getWidgets();
             for (auto& widget : widgets) {
                 auto label = std::dynamic_pointer_cast<tgui::Label>(widget);
                 if (label && label->getPosition().x == 170 && 
-                    std::abs(label->getPosition().y - (5.0f + neuronIndex * 22.0f)) < 1.0f) {
+                    std::abs(label->getPosition().y - expectedY) < 1.0f) {
                     label->setText(std::to_string(value));
                     break;
                 }
             }
         }
+    }
+}
+
+void GUI::onActivationFunctionChanged(size_t neuronIndex, const std::string& functionName) {
+    if (!network || neuronIndex >= network->getNeuronCount()) return;
+    
+    Neuron* neuron = network->getNeuron(neuronIndex);
+    if (neuron) {
+        ActivationFunction func = ActivationFunction::Linear; // default
+        
+        if (functionName == "Sigmoid") {
+            func = ActivationFunction::Sigmoid;
+        } else if (functionName == "ReLU") {
+            func = ActivationFunction::ReLU;
+        } else if (functionName == "Tanh") {
+            func = ActivationFunction::Tanh;
+        } else if (functionName == "Linear") {
+            func = ActivationFunction::Linear;
+        }
+        
+        neuron->setActivationFunction(func);
+        std::cout << "Updated neuron " << neuronIndex << " activation function to " << functionName << std::endl;
     }
 }
 

@@ -42,6 +42,7 @@ public:
     float getThreshold() const { return threshold; }
     float getDecayRate() const { return decayRate; }
     float getActivationIncreasePerIteration() const { return activationIncreasePerIteration; }
+    ActivationFunction getActivationFunction() const { return activationFunc; }
     bool getHasFired() const { return hasFired; }
     int getSampleIndex() const { return sampleIndex; }
     const std::vector<float>& getActivationHistory() const { return activationHistory; }
@@ -51,6 +52,7 @@ public:
     void setThreshold(float value) { threshold = value; }
     void setDecayRate(float value) { decayRate = value; }
     void setActivationIncreasePerIteration(float value) { activationIncreasePerIteration = value; }
+    void setActivationFunction(ActivationFunction func) { activationFunc = func; }
     void resetFiredFlag() { hasFired = false; }
 
 private:
