@@ -113,6 +113,7 @@ public:
     void setAdaptiveMode(bool enabled) { adaptiveMode = enabled; }
     void randomizeWeights(float minWeight = -0.5f, float maxWeight = 0.5f);
     void clearWeights();
+    void resizeMatrix(size_t newNumNeurons);
     
     // Getters
     size_t getNumFilters() const { return numFilters; }
@@ -178,6 +179,7 @@ public:
     void setConnectionWeight(size_t filterIndex, size_t neuronIndex, float weight);
     void enableAdaptiveConnections(bool enable);
     void randomizeConnections();
+    void updateNetworkSize(); // Update connection matrix size to match network
     
     // Analysis access
     const RhythmDetector* getRhythmDetector() const { return rhythmDetector.get(); }

@@ -40,6 +40,12 @@ Neuron* NeuronNetwork::addNeuron(int sampleIndex, float initialActivation,
     
     Neuron* rawPtr = neuron.get();
     neurons.push_back(std::move(neuron));
+    
+    // Update rhythm interpreter connection matrix size
+    if (rhythmInterpreter) {
+        rhythmInterpreter->updateNetworkSize();
+    }
+    
     return rawPtr;
 }
 
@@ -94,6 +100,11 @@ bool NeuronNetwork::removeNeuron(size_t index) {
     
     // Remove the neuron itself
     neurons.erase(neurons.begin() + index);
+    
+    // Update rhythm interpreter connection matrix size
+    if (rhythmInterpreter) {
+        rhythmInterpreter->updateNetworkSize();
+    }
     
     return true;
 }

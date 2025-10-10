@@ -419,10 +419,8 @@ void GUI::refreshConnectionMatrix() {
         // Neuron count changed, need to recreate
         createConnectionMatrixPanel();
     } else {
-        // Just update existing controls without recreation - skip if updating
-        if (!isUpdatingMatrix) {
-            updateConnectionMatrix();
-        }
+        // Network structure unchanged, force one matrix update
+        forceMatrixUpdate();
     }
 }
 
@@ -500,6 +498,7 @@ void GUI::removeNeuron() {
                 // Refresh GUI and visualizer
                 refreshNeuronSliders();
                 refreshConnectionSliders();
+                refreshConnectionMatrix();
                 updateStatusDisplay();
                 
                 // Update visualizer layout since neuron positions may have changed
@@ -914,6 +913,7 @@ void GUI::showAddNeuronDialog() {
                 // Refresh GUI completely
                 refreshNeuronSliders();
                 refreshConnectionSliders();
+                refreshConnectionMatrix();
                 updateStatusDisplay();
                 
                 // Update visualizer layout for new neuron
@@ -1551,8 +1551,8 @@ void GUI::createConnectionMatrixPanel() {
     gui->add(connectionMatrixPanel, "ConnectionMatrixPanel");
     
     // Title label
-    std::string title = numNeurons == 0 ? "🎛️ Rhythm Interpreter connection matrix (8×0) - Add neurons first" : 
-                                         "🎛️ Rhythm Interpreter connection matrix (8×" + std::to_string(numNeurons) + ")";
+    std::string title = numNeurons == 0 ? "🎛️ Filter Feedback (8×0) - Add neurons first" : 
+                                         "🎛️ Filter Feedback (8×" + std::to_string(numNeurons) + ")";
     matrixTitleLabel = tgui::Label::create(title);
     matrixTitleLabel->setPosition(5, 5);
     matrixTitleLabel->setTextSize(14);
@@ -1569,7 +1569,7 @@ void GUI::createConnectionMatrixPanel() {
         if (network && network->getRhythmInterpreter()) {
             network->getRhythmInterpreter()->getConnectionMatrix()->clearWeights();
             // Force manual matrix update for Clear All
-            refreshConnectionMatrix();
+            forceMatrixUpdate();
         }
     });
     connectionMatrixPanel->add(clearAllButton);
@@ -1583,7 +1583,7 @@ void GUI::createConnectionMatrixPanel() {
         if (network && network->getRhythmInterpreter()) {
             network->getRhythmInterpreter()->randomizeConnections();
             // Force manual matrix update for Random
-            refreshConnectionMatrix();
+            forceMatrixUpdate();
         }
     });
     connectionMatrixPanel->add(randomizeButton);
@@ -1696,11 +1696,13 @@ void GUI::createConnectionMatrixPanel() {
                 bool wasConnected = std::abs(weight) > 0.001f;
                 
                 if (wasConnected) {
-                    // Disconnect
+                    // Deactivate: Return to virgin state (clear connection and reset gain)
                     currentMatrix->setWeight(f, n, 0.0f);
                     toggleButton->setText("○");
                     toggleButton->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
                     toggleButton->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
+                    // Reset gain slider to default value and hide it
+                    matrixGainSliders[f][n]->setValue(30.0f); // Reset to default 30% (0.3 * 100)
                     matrixGainSliders[f][n]->setVisible(false);
                 } else {
                     // Connect with default gain
@@ -1752,11 +1754,12 @@ void GUI::createConnectionMatrixPanel() {
 }
 
 void GUI::updateConnectionMatrix() {
-    // COMPLETELY DISABLE automatic matrix updates to fix multiple toggle issue
-    // Matrix will only be updated manually when needed (Clear All, Random, etc.)
-    return;
-    
     if (!connectionMatrixPanel || !network || !network->getRhythmInterpreter()) {
+        return;
+    }
+    
+    // Skip automatic updates unless explicitly allowed (to fix multiple toggle issue)
+    if (!allowMatrixUpdates) {
         return;
     }
     
@@ -1774,7 +1777,7 @@ void GUI::updateConnectionMatrix() {
     
     // Update title
     if (matrixTitleLabel) {
-        matrixTitleLabel->setText("🎛️ Rhythm Interpreter connection matrix (8×" + std::to_string(numNeurons) + ")");
+        matrixTitleLabel->setText("🎛️ Filter Feedback (8×" + std::to_string(numNeurons) + ")");
     }
     
     // Update button states and slider values
@@ -1817,6 +1820,12 @@ void GUI::toggleMatrixVisibility() {
     matrixVisible = !matrixVisible;
     connectionMatrixPanel->setVisible(matrixVisible);
     
-    std::cout << "🎛️ Rhythm Interpreter connection matrix " << (matrixVisible ? "shown" : "hidden") 
+    std::cout << "🎛️ Filter Feedback " << (matrixVisible ? "shown" : "hidden") 
               << " (press M to toggle)" << std::endl;
+}
+
+void GUI::forceMatrixUpdate() {
+    allowMatrixUpdates = true;
+    updateConnectionMatrix();
+    allowMatrixUpdates = false;
 }

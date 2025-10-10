@@ -69,6 +69,7 @@ private:
     bool isUpdatingMatrix = false; // Flag to prevent recursive updates
     int matrixUpdateCounter = 0; // Counter to reduce update frequency
     int toggleBlockCounter = 0; // Counter to block updates after toggle interactions
+    bool allowMatrixUpdates = false; // Flag to control when matrix updates are allowed
     
     // Layout
     float controlPanelTopOffset = 0.0f;
@@ -125,6 +126,7 @@ public:
     void refreshNeuronSliders();
     void refreshConnectionMatrix();
     void setSliderValue(size_t connectionIndex, float value);
+    void forceMatrixUpdate(); // Allow one-time matrix update
     
     // Matrix visibility control
     void toggleMatrixVisibility();

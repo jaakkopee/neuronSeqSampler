@@ -304,6 +304,15 @@ void ConnectionMatrix::clearWeights() {
     }
 }
 
+void ConnectionMatrix::resizeMatrix(size_t newNumNeurons) {
+    numNeurons = newNumNeurons;
+    
+    // Resize all rows to accommodate new number of neurons
+    for (auto& row : weights) {
+        row.resize(numNeurons, 0.0f); // New connections start with 0 weight
+    }
+}
+
 // ============================================================================
 // RhythmInterpreter Implementation
 // ============================================================================
@@ -422,6 +431,16 @@ void RhythmInterpreter::enableAdaptiveConnections(bool enable) {
 void RhythmInterpreter::randomizeConnections() {
     if (connectionMatrix) {
         connectionMatrix->randomizeWeights();
+    }
+}
+
+void RhythmInterpreter::updateNetworkSize() {
+    if (connectionMatrix && neuronNetwork) {
+        size_t currentNeurons = neuronNetwork->getNeurons().size();
+        if (currentNeurons != connectionMatrix->getNumNeurons()) {
+            connectionMatrix->resizeMatrix(currentNeurons);
+            neuronInputs.resize(currentNeurons);
+        }
     }
 }
 
