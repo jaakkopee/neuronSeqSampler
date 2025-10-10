@@ -231,15 +231,21 @@ void Visualizer::drawConnection(const Connection* connection,
         perpendicular.y /= lineLength;
     }
     
-    float vibrationIntensity = totalActivation * 4.5f; // Amplitude for straight lines
+    // Only apply vibration if connection has non-zero weight
+    sf::Vector2f vibratingSourcePos = sourcePos;
+    sf::Vector2f vibratingTargetPos = targetPos;
     
-    // Apply vibration to endpoints
-    float vibrationX = std::sin(totalActivation * 12.0f) * vibrationIntensity;
-    float vibrationY = std::cos(totalActivation * 10.0f) * vibrationIntensity;
-    sf::Vector2f vibration(vibrationX, vibrationY);
-    
-    sf::Vector2f vibratingSourcePos = sourcePos + vibration;
-    sf::Vector2f vibratingTargetPos = targetPos + vibration;
+    if (std::abs(weight) > 0.001f) { // Small threshold to avoid floating point precision issues
+        float vibrationIntensity = totalActivation * 4.5f; // Amplitude for straight lines
+        
+        // Apply vibration to endpoints
+        float vibrationX = std::sin(totalActivation * 12.0f) * vibrationIntensity;
+        float vibrationY = std::cos(totalActivation * 10.0f) * vibrationIntensity;
+        sf::Vector2f vibration(vibrationX, vibrationY);
+        
+        vibratingSourcePos = sourcePos + vibration;
+        vibratingTargetPos = targetPos + vibration;
+    }
     
     // Create thick line using rectangle shape
     sf::RectangleShape line;
@@ -327,9 +333,15 @@ void Visualizer::drawCurvedConnection(const Connection* connection,
     float targetActivation = targetNeuron ? std::abs(targetNeuron->getActivation()) : 0.0f;
     float totalActivation = sourceActivation + targetActivation;
     
-    // Base curve offset with smaller amplitude vibration
-    float vibrationIntensity = totalActivation * 2.0f; // Reduced from 10.0f for smaller amplitude
-    float vibrationOffset = std::sin(totalActivation * 12.0f) * vibrationIntensity; // Synchronized rhythm
+    // Get connection weight to determine if vibration should be applied
+    float weight = connection->getWeight();
+    
+    // Base curve offset with optional vibration (only if weight is non-zero)
+    float vibrationOffset = 0.0f;
+    if (std::abs(weight) > 0.001f) { // Small threshold to avoid floating point precision issues
+        float vibrationIntensity = totalActivation * 2.0f; // Reduced from 10.0f for smaller amplitude
+        vibrationOffset = std::sin(totalActivation * 12.0f) * vibrationIntensity; // Synchronized rhythm
+    }
     sf::Vector2f controlPoint = midPoint + perpendicular * (curveOffset + vibrationOffset);
     
     // Generate thicker curved line using multiple parallel curves
@@ -345,18 +357,22 @@ void Visualizer::drawCurvedConnection(const Connection* connection,
             float t = static_cast<float>(i) / static_cast<float>(segments);
             sf::Vector2f basePoint = calculateBezierPoint(sourcePos, controlPoint, targetPos, t);
             
-            // Add subtle vibration to each point - smaller amplitude, synchronized rhythm
-            float vibrationX = std::sin(t * 25.0f + totalActivation * 12.0f) * vibrationIntensity * 0.15f; // Reduced from 0.3f
-            float vibrationY = std::cos(t * 20.0f + totalActivation * 10.0f) * vibrationIntensity * 0.15f; // Reduced from 0.3f
+            // Add subtle vibration to each point only if weight is non-zero
+            sf::Vector2f vibrationVector(0.0f, 0.0f);
+            if (std::abs(weight) > 0.001f) {
+                float vibrationIntensity = totalActivation * 2.0f;
+                float vibrationX = std::sin(t * 25.0f + totalActivation * 12.0f) * vibrationIntensity * 0.15f; // Reduced from 0.3f
+                float vibrationY = std::cos(t * 20.0f + totalActivation * 10.0f) * vibrationIntensity * 0.15f; // Reduced from 0.3f
+                vibrationVector = sf::Vector2f(vibrationX, vibrationY);
+            }
             
-            sf::Vector2f point = basePoint + offsetVector + sf::Vector2f(vibrationX, vibrationY);
+            sf::Vector2f point = basePoint + offsetVector + vibrationVector;
             curveVertices.push_back(sf::Vertex(point));
         }
         thickCurveLines.push_back(curveVertices);
     }
     
-    // Color based on connection weight and neuronal activity
-    float weight = connection->getWeight();
+    // Color based on connection weight and neuronal activity (weight already retrieved above)
     sf::Color baseColor = connectionColor;
     
     if (std::abs(weight) > 0.1f) {
