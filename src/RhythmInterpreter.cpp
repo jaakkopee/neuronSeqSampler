@@ -367,7 +367,7 @@ RhythmInterpreter::RhythmInterpreter(NeuronNetwork* network, AudioManager* audio
     filterGains.resize(filterBank.size(), 1.0f); // Initialize all filter gains to 1.0
     filterSoloEnabled.resize(filterBank.size(), false); // Initialize all solo states to false
     anyFilterSoloed = false; // No filters soloed initially
-    audioOutputEnabled = false; // Audio output disabled by default
+    audioOutputEnabled = true; // Audio output ENABLED by default for debugging
     processedAudioBuffer.resize(bufferSize); // Initialize processed audio buffer
     if (neuronNetwork) {
         neuronInputs.resize(neuronNetwork->getNeurons().size());
@@ -455,6 +455,24 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         if (debugCounter % 100 == 0 && !audioData.empty()) {
             std::cout << "🔄 Pass-through mode: " << audioData.size() << " samples" << std::endl;
         }
+    }
+    
+    // Debugging: Log audio processing details every 1000 frames to reduce spam
+    if (debugCounter % 1000 == 0) {
+        std::cout << "🎛️  Global Gain: " << globalGain << ", Filter Gains: [";
+        for (size_t i = 0; i < std::min(filterGains.size(), size_t(3)); ++i) {
+            std::cout << filterGains[i];
+            if (i < std::min(filterGains.size(), size_t(3)) - 1) std::cout << ", ";
+        }
+        if (filterGains.size() > 3) std::cout << "...";
+        std::cout << "]" << std::endl;
+        
+        float maxOutput = 0.0f;
+        for (float sample : processedAudioBuffer) {
+            maxOutput = std::max(maxOutput, std::abs(sample));
+        }
+        std::cout << "🎛️  Processed Audio Buffer Size: " << processedAudioBuffer.size() 
+                  << ", Max Level: " << maxOutput << std::endl;
     }
 }
 
