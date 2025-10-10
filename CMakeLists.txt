@@ -8,10 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Find required packages
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SFML REQUIRED sfml-graphics sfml-audio sfml-system sfml-window)
-
-# Try to find TGUI, but make it optional for now
-find_path(TGUI_INCLUDE_DIR TGUI/TGUI.hpp)
-find_library(TGUI_LIBRARY tgui)
+pkg_check_modules(TGUI REQUIRED tgui)
 
 # Create source directory if it doesn't exist
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/src)
@@ -20,11 +17,15 @@ file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/assets/fonts)
 # Include directories
 include_directories(src)
 include_directories(${SFML_INCLUDE_DIRS})
+include_directories(${TGUI_INCLUDE_DIRS})
+
+# Link directories
+link_directories("/home/jaakko/Asiakirjat/Koodii/TGUI-1.11/lib")
+link_directories(${TGUI_LIBRARY_DIRS})
 
 # Check if TGUI is available
-if(TGUI_INCLUDE_DIR AND TGUI_LIBRARY)
-    message(STATUS "Found TGUI: ${TGUI_LIBRARY}")
-    include_directories(${TGUI_INCLUDE_DIR})
+if(TGUI_FOUND)
+    message(STATUS "TGUI found via pkg-config")
     set(USE_TGUI 1)
     add_definitions(-DUSE_TGUI)
 else()
@@ -63,6 +64,13 @@ endif()
 # Create executable
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
+# Link libraries
+if(USE_TGUI)
+    target_link_libraries(${PROJECT_NAME} ${TGUI_LIBRARIES})
+endif()
+
+target_link_libraries(${PROJECT_NAME} ${SFML_LIBRARIES})
+
 # Create recorder demo executable
 add_executable(recorder_demo recorder_demo.cpp src/Recorder.cpp)
 
@@ -83,10 +91,6 @@ target_link_libraries(${PROJECT_NAME} ${SFML_LIBRARIES})
 target_link_libraries(recorder_demo ${SFML_LIBRARIES})
 target_link_libraries(debug_recorder ${SFML_LIBRARIES})
 target_link_libraries(test_sfml_audio ${SFML_LIBRARIES})
-
-if(USE_TGUI)
-    target_link_libraries(${PROJECT_NAME} ${TGUI_LIBRARY})
-endif()
 
 # Copy assets to build directory
 file(COPY ${CMAKE_SOURCE_DIR}/samples DESTINATION ${CMAKE_BINARY_DIR})

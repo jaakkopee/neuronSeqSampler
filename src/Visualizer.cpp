@@ -236,12 +236,29 @@ void Visualizer::drawConnection(const Connection* connection,
     sf::Vector2f vibratingTargetPos = targetPos;
     
     if (std::abs(weight) > 0.001f) { // Small threshold to avoid floating point precision issues
-        float vibrationIntensity = totalActivation * 4.5f; // Amplitude for straight lines
+        // Get current time for sine wave calculations
+        float currentTime = animationClock.getElapsedTime().asSeconds();
         
-        // Apply vibration to endpoints
-        float vibrationX = std::sin(totalActivation * 12.0f) * vibrationIntensity;
-        float vibrationY = std::cos(totalActivation * 10.0f) * vibrationIntensity;
-        sf::Vector2f vibration(vibrationX, vibrationY);
+        // Dance modulation frequencies: 1, 2, 4, 8, 16 Hz
+        std::vector<float> frequencies = {1.0f, 2.0f, 4.0f, 8.0f, 16.0f};
+        
+        // Calculate composite sine wave modulation
+        float modulation = 0.0f;
+        for (float freq : frequencies) {
+            float amplitude = totalActivation * (1.0f / freq) * 2.0f; // Higher frequencies get lower amplitude
+            modulation += amplitude * std::sin(2.0f * M_PI * freq * currentTime);
+        }
+        
+        // Apply modulation in perpendicular direction to connection line
+        sf::Vector2f direction = targetPos - sourcePos;
+        sf::Vector2f perpDir(-direction.y, direction.x);
+        float dirLength = std::sqrt(perpDir.x * perpDir.x + perpDir.y * perpDir.y);
+        if (dirLength > 0) {
+            perpDir.x /= dirLength;
+            perpDir.y /= dirLength;
+        }
+        
+        sf::Vector2f vibration = perpDir * modulation;
         
         vibratingSourcePos = sourcePos + vibration;
         vibratingTargetPos = targetPos + vibration;
@@ -339,8 +356,17 @@ void Visualizer::drawCurvedConnection(const Connection* connection,
     // Base curve offset with optional vibration (only if weight is non-zero)
     float vibrationOffset = 0.0f;
     if (std::abs(weight) > 0.001f) { // Small threshold to avoid floating point precision issues
-        float vibrationIntensity = totalActivation * 2.0f; // Reduced from 10.0f for smaller amplitude
-        vibrationOffset = std::sin(totalActivation * 12.0f) * vibrationIntensity; // Synchronized rhythm
+        // Get current time for sine wave calculations
+        float currentTime = animationClock.getElapsedTime().asSeconds();
+        
+        // Dance modulation frequencies: 1, 2, 4, 8, 16 Hz
+        std::vector<float> frequencies = {1.0f, 2.0f, 4.0f, 8.0f, 16.0f};
+        
+        // Calculate composite sine wave modulation for curve offset
+        for (float freq : frequencies) {
+            float amplitude = totalActivation * (1.0f / freq) * 1.5f; // Scaled for curves
+            vibrationOffset += amplitude * std::sin(2.0f * M_PI * freq * currentTime);
+        }
     }
     sf::Vector2f controlPoint = midPoint + perpendicular * (curveOffset + vibrationOffset);
     
@@ -360,9 +386,18 @@ void Visualizer::drawCurvedConnection(const Connection* connection,
             // Add subtle vibration to each point only if weight is non-zero
             sf::Vector2f vibrationVector(0.0f, 0.0f);
             if (std::abs(weight) > 0.001f) {
-                float vibrationIntensity = totalActivation * 2.0f;
-                float vibrationX = std::sin(t * 25.0f + totalActivation * 12.0f) * vibrationIntensity * 0.15f; // Reduced from 0.3f
-                float vibrationY = std::cos(t * 20.0f + totalActivation * 10.0f) * vibrationIntensity * 0.15f; // Reduced from 0.3f
+                // Get current time for sine wave calculations
+                float currentTime = animationClock.getElapsedTime().asSeconds();
+                
+                // Dance modulation frequencies: 1, 2, 4, 8, 16 Hz
+                std::vector<float> frequencies = {1.0f, 2.0f, 4.0f, 8.0f, 16.0f};
+                
+                float vibrationX = 0.0f, vibrationY = 0.0f;
+                for (float freq : frequencies) {
+                    float amplitude = totalActivation * (1.0f / freq) * 0.1f; // Very subtle for per-vertex
+                    vibrationX += amplitude * std::sin(2.0f * M_PI * freq * currentTime + t * 5.0f);
+                    vibrationY += amplitude * std::cos(2.0f * M_PI * freq * currentTime + t * 3.0f);
+                }
                 vibrationVector = sf::Vector2f(vibrationX, vibrationY);
             }
             

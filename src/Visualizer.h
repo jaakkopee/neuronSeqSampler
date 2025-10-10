@@ -25,6 +25,9 @@ private:
     sf::Color connectionColor;
     sf::Color highlightConnectionColor;
     
+    // Animation timing
+    sf::Clock animationClock;
+    
     // Layout settings
     sf::Vector2f canvasOffset;
     sf::Vector2f canvasSize;

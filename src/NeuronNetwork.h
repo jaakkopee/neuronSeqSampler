@@ -40,6 +40,7 @@ public:
     // Rhythm interpreter methods
     void initializeRhythmInterpreter();
     void processAudioForRhythm(const std::vector<float>& audioData);
+    std::vector<float> getProcessedAudioOutput() const; // Get filtered audio output
     RhythmInterpreter* getRhythmInterpreter() const { return rhythmInterpreter; }
     
     // Getters

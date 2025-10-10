@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 #include <mutex>
+#include <functional>
 
 class Recorder; // Forward declaration
 
@@ -18,6 +19,9 @@ private:
     Recorder* internalRecorder;
     bool recordingOutput;
     mutable std::mutex recordingMutex;
+    
+    // Filter callback for routing samples through filter bank
+    std::function<std::vector<float>(const std::vector<float>&)> filterCallback;
 
 public:
     AudioManager(const std::string& samplesDir = "samples/girliepop/", bool loadDefaults = false);
@@ -33,6 +37,11 @@ public:
     void stopAllSounds();
     
     bool isSampleLoaded(int sampleIndex) const;
+    
+    // Sample data access for filtering
+    std::vector<float> getSampleData(int sampleIndex) const; // Get sample as float data
+    void setFilterCallback(std::function<std::vector<float>(const std::vector<float>&)> callback); // Set filter processing callback
+    bool isFilterModeEnabled() const { return filterCallback != nullptr; }
     
     // Internal recording methods
     void setInternalRecorder(Recorder* recorder);

@@ -30,21 +30,37 @@ const std::vector<float> RhythmInterpreter::DEFAULT_BANDWIDTHS = {
     2500.0f   // Very wide for air (2500 Hz around 8000 Hz)
 };
 
+const std::vector<float> RhythmInterpreter::DEFAULT_RESONANCES = {
+    2.0f,     // Moderate resonance for ultra-low
+    2.5f,     // Slightly higher for very low
+    3.0f,     // Medium resonance for low
+    4.0f,     // Higher resonance for sub bass (punch)
+    5.0f,     // High resonance for bass (tight)
+    3.5f,     // Medium-high for mids (clarity)
+    2.5f,     // Lower for presence (smooth)
+    1.5f      // Low resonance for air (gentle)
+};
+
 // ============================================================================
 // AdaptiveFilter Implementation
 // ============================================================================
 
-AdaptiveFilter::AdaptiveFilter(float freq, float bw, float adaptRate)
-    : centerFrequency(freq), bandwidth(bw), adaptationRate(adaptRate),
+AdaptiveFilter::AdaptiveFilter(float freq, float bw, float adaptRate, float res)
+    : centerFrequency(freq), bandwidth(bw), adaptationRate(adaptRate), resonance(res),
       currentEnergy(0.0f), adaptiveGain(1.0f) {
     
     // Initialize simple bandpass filter coefficients
     coefficients.resize(5); // Biquad filter
     delayLine.resize(4, 0.0f); // z^-1 and z^-2 delays for input and output
     
-    // Calculate biquad coefficients for bandpass filter
+    updateFilterCoefficients();
+}
+
+void AdaptiveFilter::updateFilterCoefficients() {
+    // Calculate biquad coefficients for bandpass filter with resonance
     float omega = 2.0f * M_PI * centerFrequency / 44100.0f; // Assume 44.1kHz
-    float alpha = sin(omega) * sinh(log(2.0f) / 2.0f * bandwidth * omega / sin(omega));
+    float Q = resonance; // Use resonance as Q factor
+    float alpha = sin(omega) / (2.0f * Q);
     
     float b0 = alpha;
     float b1 = 0.0f;
@@ -91,6 +107,21 @@ void AdaptiveFilter::adaptToRhythm(float rhythmStrength) {
     
     // Keep gain in reasonable bounds
     adaptiveGain = std::clamp(adaptiveGain, 0.1f, 2.0f);
+}
+
+void AdaptiveFilter::setCenterFrequency(float freq) {
+    centerFrequency = freq;
+    updateFilterCoefficients();
+}
+
+void AdaptiveFilter::setBandwidth(float bw) {
+    bandwidth = bw;
+    updateFilterCoefficients();
+}
+
+void AdaptiveFilter::setResonance(float res) {
+    resonance = std::clamp(res, 0.1f, 100.0f); // Clamp to reasonable Q range
+    updateFilterCoefficients();
 }
 
 // ============================================================================
@@ -334,6 +365,10 @@ RhythmInterpreter::RhythmInterpreter(NeuronNetwork* network, AudioManager* audio
     audioBuffer.resize(bufferSize);
     filterOutputs.resize(filterBank.size());
     filterGains.resize(filterBank.size(), 1.0f); // Initialize all filter gains to 1.0
+    filterSoloEnabled.resize(filterBank.size(), false); // Initialize all solo states to false
+    anyFilterSoloed = false; // No filters soloed initially
+    audioOutputEnabled = false; // Audio output disabled by default
+    processedAudioBuffer.resize(bufferSize); // Initialize processed audio buffer
     if (neuronNetwork) {
         neuronInputs.resize(neuronNetwork->getNeurons().size());
     }
@@ -346,7 +381,8 @@ void RhythmInterpreter::initializeFilterBank() {
         auto filter = std::make_unique<AdaptiveFilter>(
             DEFAULT_FREQUENCIES[i], 
             DEFAULT_BANDWIDTHS[i],
-            0.1f // Default adaptation rate
+            0.1f, // Default adaptation rate
+            DEFAULT_RESONANCES[i] // Default resonance
         );
         filterBank.push_back(std::move(filter));
     }
@@ -355,22 +391,70 @@ void RhythmInterpreter::initializeFilterBank() {
 void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     if (!enabled || !neuronNetwork) return;
     
+    // Debug: Check if we're receiving audio data
+    static int debugCounter = 0;
+    if (++debugCounter % 100 == 0 && !audioData.empty()) {
+        float maxSample = 0.0f;
+        for (float sample : audioData) {
+            maxSample = std::max(maxSample, std::abs(sample));
+        }
+        std::cout << "📢 Audio input: " << audioData.size() << " samples, max: " << maxSample << std::endl;
+    }
+    
     // Process audio through rhythm detector
     rhythmDetector->processAudioChunk(audioData);
     
-    // Process audio through filterbank
+    // Process audio through filterbank and generate output
     std::fill(filterOutputs.begin(), filterOutputs.end(), 0.0f);
+    processedAudioBuffer.clear();
+    processedAudioBuffer.resize(audioData.size(), 0.0f);
     
+    // Temporary buffers to store per-filter processed audio
+    std::vector<std::vector<float>> filterAudioOutputs(filterBank.size());
+    for (size_t i = 0; i < filterBank.size(); ++i) {
+        filterAudioOutputs[i].resize(audioData.size());
+    }
+    
+    // Process each filter
     for (size_t i = 0; i < filterBank.size() && i < filterOutputs.size(); ++i) {
         float sum = 0.0f;
-        for (float sample : audioData) {
-            sum += filterBank[i]->process(sample);
+        for (size_t j = 0; j < audioData.size(); ++j) {
+            float filteredSample = filterBank[i]->process(audioData[j]);
+            filterAudioOutputs[i][j] = filteredSample * globalGain * filterGains[i];
+            sum += filteredSample;
         }
         filterOutputs[i] = (sum / audioData.size()) * globalGain * filterGains[i];
         
         // Adapt filter based on rhythm strength
         float rhythmStrength = rhythmDetector->getBeatStrength();
         filterBank[i]->adaptToRhythm(rhythmStrength);
+    }
+    
+    // Generate processed audio output based on solo state
+    if (anyFilterSoloed) {
+        // Only output soloed filters
+        for (size_t i = 0; i < filterBank.size() && i < filterSoloEnabled.size(); ++i) {
+            if (filterSoloEnabled[i]) {
+                for (size_t j = 0; j < audioData.size(); ++j) {
+                    processedAudioBuffer[j] += filterAudioOutputs[i][j];
+                }
+            }
+        }
+        
+        // Debug: Output when filters are soloed
+        if (debugCounter % 100 == 0) {
+            int soloCount = 0;
+            for (bool solo : filterSoloEnabled) if (solo) soloCount++;
+            std::cout << "🎛️  Filter solo active: " << soloCount << " bands soloed" << std::endl;
+        }
+    } else {
+        // Output original audio (pass-through when no filters are soloed)
+        processedAudioBuffer = audioData;
+        
+        // Debug: Output for pass-through
+        if (debugCounter % 100 == 0 && !audioData.empty()) {
+            std::cout << "🔄 Pass-through mode: " << audioData.size() << " samples" << std::endl;
+        }
     }
 }
 
@@ -468,4 +552,66 @@ float RhythmInterpreter::getFilterGain(size_t filterIndex) const {
         return filterGains[filterIndex];
     }
     return 1.0f; // Default gain
+}
+
+void RhythmInterpreter::setFilterResonance(size_t filterIndex, float resonance) {
+    if (filterIndex < filterBank.size()) {
+        filterBank[filterIndex]->setResonance(resonance);
+    }
+}
+
+float RhythmInterpreter::getFilterResonance(size_t filterIndex) const {
+    if (filterIndex < filterBank.size()) {
+        return filterBank[filterIndex]->getResonance();
+    }
+    return 1.0f; // Default resonance
+}
+
+void RhythmInterpreter::setFilterSolo(size_t filterIndex, bool solo) {
+    if (filterIndex < filterSoloEnabled.size()) {
+        filterSoloEnabled[filterIndex] = solo;
+        
+        // Update anyFilterSoloed flag
+        anyFilterSoloed = false;
+        for (bool soloed : filterSoloEnabled) {
+            if (soloed) {
+                anyFilterSoloed = true;
+                break;
+            }
+        }
+    }
+}
+
+bool RhythmInterpreter::getFilterSolo(size_t filterIndex) const {
+    if (filterIndex < filterSoloEnabled.size()) {
+        return filterSoloEnabled[filterIndex];
+    }
+    return false;
+}
+
+void RhythmInterpreter::clearAllSolos() {
+    std::fill(filterSoloEnabled.begin(), filterSoloEnabled.end(), false);
+    anyFilterSoloed = false;
+}
+
+std::vector<float> RhythmInterpreter::getSoloedFilterOutput() const {
+    std::vector<float> output(filterOutputs.size(), 0.0f);
+    
+    if (!anyFilterSoloed) {
+        // No filters soloed, return all filter outputs
+        return filterOutputs;
+    }
+    
+    // Return only soloed filter outputs
+    for (size_t i = 0; i < filterOutputs.size() && i < filterSoloEnabled.size(); ++i) {
+        if (filterSoloEnabled[i]) {
+            output[i] = filterOutputs[i];
+        }
+    }
+    
+    return output;
+}
+
+std::vector<float> RhythmInterpreter::getProcessedAudioOutput() const {
+    return processedAudioBuffer;
 }

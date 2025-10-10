@@ -51,11 +51,39 @@ bool AudioManager::playSample(int sampleIndex, float offsetSeconds) {
         // Stop any previous instance of this specific sample (neuron offset behavior)
         it->second->stop();
         
-        // Always start from the beginning of the sample (offset 0.0)
-        it->second->setPlayingOffset(sf::Time::Zero);
-        
-        it->second->play();
-        std::cout << "Playing sample " << sampleIndex << " from beginning (stopped previous instance)" << std::endl;
+        // Check if filter mode is enabled
+        if (filterCallback) {
+            // Route through filter bank
+            std::vector<float> sampleData = getSampleData(sampleIndex);
+            if (!sampleData.empty()) {
+                std::vector<float> filteredData = filterCallback(sampleData);
+                
+                // Create a new sound buffer with filtered data
+                if (!filteredData.empty()) {
+                    // Convert back to Int16
+                    std::vector<sf::Int16> int16Data;
+                    int16Data.reserve(filteredData.size());
+                    for (float sample : filteredData) {
+                        float clampedSample = std::max(-1.0f, std::min(1.0f, sample));
+                        int16Data.push_back(static_cast<sf::Int16>(clampedSample * 32767.0f));
+                    }
+                    
+                    // Create temporary buffer and play filtered audio
+                    sf::SoundBuffer filteredBuffer;
+                    if (filteredBuffer.loadFromSamples(&int16Data[0], int16Data.size(), 1, 44100)) {
+                        it->second->setBuffer(filteredBuffer);
+                        it->second->setPlayingOffset(sf::Time::Zero);
+                        it->second->play();
+                        std::cout << "🎛️  Playing sample " << sampleIndex << " through filter bank (" << filteredData.size() << " samples)" << std::endl;
+                    }
+                }
+            }
+        } else {
+            // Direct playback (original behavior)
+            it->second->setPlayingOffset(sf::Time::Zero);
+            it->second->play();
+            std::cout << "Playing sample " << sampleIndex << " from beginning (stopped previous instance)" << std::endl;
+        }
         
         // If internal recording is active, capture the sample data
         if (recordingOutput && internalRecorder) {
@@ -123,4 +151,30 @@ void AudioManager::stopInternalRecording() {
 bool AudioManager::isRecordingOutput() const {
     std::lock_guard<std::mutex> lock(recordingMutex);
     return recordingOutput;
+}
+
+std::vector<float> AudioManager::getSampleData(int sampleIndex) const {
+    std::vector<float> data;
+    auto bufferIt = soundBuffers.find(sampleIndex);
+    if (bufferIt != soundBuffers.end()) {
+        const sf::SoundBuffer* buffer = bufferIt->second.get();
+        const sf::Int16* samples = buffer->getSamples();
+        std::size_t sampleCount = buffer->getSampleCount();
+        
+        // Convert Int16 samples to float
+        data.reserve(sampleCount);
+        for (std::size_t i = 0; i < sampleCount; ++i) {
+            data.push_back(static_cast<float>(samples[i]) / 32767.0f);
+        }
+    }
+    return data;
+}
+
+void AudioManager::setFilterCallback(std::function<std::vector<float>(const std::vector<float>&)> callback) {
+    filterCallback = callback;
+    if (callback) {
+        std::cout << "🎛️  Filter mode ENABLED - samples will route through filter bank" << std::endl;
+    } else {
+        std::cout << "🎛️  Filter mode DISABLED - samples play directly" << std::endl;
+    }
 }

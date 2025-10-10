@@ -17,13 +17,16 @@ private:
     float centerFrequency;
     float bandwidth;
     float adaptationRate;
+    float resonance; // Q factor for filter resonance (higher = more resonant)
     std::vector<float> coefficients;
     std::vector<float> delayLine;
     float currentEnergy;
     float adaptiveGain;
+    
+    void updateFilterCoefficients(); // Update coefficients when parameters change
 
 public:
-    AdaptiveFilter(float freq, float bw, float adaptRate = 0.1f);
+    AdaptiveFilter(float freq, float bw, float adaptRate = 0.1f, float res = 1.0f);
     
     float process(float input);
     void adaptToRhythm(float rhythmStrength);
@@ -31,12 +34,14 @@ public:
     // Getters
     float getCenterFrequency() const { return centerFrequency; }
     float getBandwidth() const { return bandwidth; }
+    float getResonance() const { return resonance; }
     float getCurrentEnergy() const { return currentEnergy; }
     float getAdaptiveGain() const { return adaptiveGain; }
     
     // Setters for real-time control
-    void setCenterFrequency(float freq) { centerFrequency = freq; }
-    void setBandwidth(float bw) { bandwidth = bw; }
+    void setCenterFrequency(float freq);
+    void setBandwidth(float bw);
+    void setResonance(float res);
     void setAdaptationRate(float rate) { adaptationRate = rate; }
 };
 
@@ -140,6 +145,7 @@ private:
     std::vector<float> audioBuffer;
     std::vector<float> filterOutputs;
     std::vector<float> neuronInputs;
+    std::vector<float> processedAudioBuffer; // Buffer for processed audio output
     
     // Configuration
     size_t sampleRate;
@@ -147,10 +153,14 @@ private:
     bool enabled;
     float globalGain;
     std::vector<float> filterGains; // User-controlled gain for each filter band
+    std::vector<bool> filterSoloEnabled; // Solo/listen state for each filter band
+    bool anyFilterSoloed; // True if any filter is currently soloed
+    bool audioOutputEnabled; // Enable filtered audio output
     
     // Frequency bands for filterbank (in Hz)
     static const std::vector<float> DEFAULT_FREQUENCIES;
     static const std::vector<float> DEFAULT_BANDWIDTHS;
+    static const std::vector<float> DEFAULT_RESONANCES;
     
     void initializeFilterBank();
     void processAudioBuffer();
@@ -189,6 +199,19 @@ public:
     // Filter gain control
     void setFilterGain(size_t filterIndex, float gain);
     float getFilterGain(size_t filterIndex) const;
+    
+    // Filter solo/listen control
+    void setFilterSolo(size_t filterIndex, bool solo);
+    bool getFilterSolo(size_t filterIndex) const;
+    void clearAllSolos(); // Turn off all solo states
+    std::vector<float> getSoloedFilterOutput() const; // Get mixed output of only soloed filters
+    std::vector<float> getProcessedAudioOutput() const; // Get the processed audio suitable for playback
+    void setAudioOutputEnabled(bool enabled) { audioOutputEnabled = enabled; }
+    bool isAudioOutputEnabled() const { return audioOutputEnabled; }
+    
+    // Filter resonance control
+    void setFilterResonance(size_t filterIndex, float resonance);
+    float getFilterResonance(size_t filterIndex) const;
     
     // Getters
     bool isEnabled() const { return enabled; }

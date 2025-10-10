@@ -128,7 +128,9 @@ void NeuronNetwork::clearNetwork() {
 void NeuronNetwork::initializeRhythmInterpreter() {
     if (audioManager && !rhythmInterpreter) {
         rhythmInterpreter = new RhythmInterpreter(this, audioManager);
-        // Set up some default connections for testing
+        std::cout << "🎵 RhythmInterpreter initialized with filter bank" << std::endl;
+        
+        // Set up some default connections for testing if there are neurons
         if (!neurons.empty()) {
             // Connect each filter to neurons in a round-robin fashion
             size_t numFilters = rhythmInterpreter->getNumFilters();
@@ -139,6 +141,7 @@ void NeuronNetwork::initializeRhythmInterpreter() {
                     rhythmInterpreter->setConnectionWeight(f, n, weight);
                 }
             }
+            std::cout << "🔗 Filter-neuron connections established" << std::endl;
         }
     }
 }
@@ -167,4 +170,11 @@ void NeuronNetwork::processAudioForRhythm(const std::vector<float>& audioData) {
                       << ", Inputs: " << neuronInputs.size() << std::endl;
         }
     }
+}
+
+std::vector<float> NeuronNetwork::getProcessedAudioOutput() const {
+    if (rhythmInterpreter) {
+        return rhythmInterpreter->getProcessedAudioOutput();
+    }
+    return std::vector<float>(); // Return empty vector if no rhythm interpreter
 }

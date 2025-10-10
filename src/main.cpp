@@ -12,6 +12,7 @@
 #ifdef USE_TGUI
 #include "GUI.h"
 #endif
+#include "RhythmInterpreter.h" // Ensure this is included after its dependencies
 
 class NeuronSeqSampler {
 private:
@@ -31,6 +32,9 @@ private:
     sf::Clock clock;
     float activationInterval;
     bool testingMode;
+    
+    // Filter mode state
+    bool audioStreamingEnabled;
 
 public:
     NeuronSeqSampler(bool enableTestingMode = false) 
@@ -46,6 +50,7 @@ public:
 #endif
         , activationInterval(100.0f) // milliseconds
         , testingMode(enableTestingMode)
+        , audioStreamingEnabled(false)
     {
         initialize();
         if (testingMode) {
@@ -85,7 +90,10 @@ public:
         std::cout << "  - Mouse: Click to activate neurons" << std::endl;
         std::cout << "  - Number keys: Activate specific neurons (when available)" << std::endl;
         std::cout << "  - Spacebar: Manual network activation" << std::endl;
-        std::cout << "  - R key: Toggle audio recording" << std::endl;
+        std::cout << "  - F key: Toggle filter mode (routes samples through filter bank) �️" << std::endl;
+        std::cout << "  - L buttons: Solo individual filter bands 🎚️" << std::endl;
+        std::cout << "  - Number keys: Play samples (1-9)" << std::endl;
+        std::cout << "\n🔴 IMPORTANT: Press 'F' to enable filter mode, then use number keys to play samples!" << std::endl;
         std::cout << "  - GUI sliders: Adjust connection weights" << std::endl;
         std::cout << "  - Menu: Add/remove neurons and connections" << std::endl;
     }
@@ -224,6 +232,24 @@ public:
                     // Toggle connection matrix visibility with 'M' key
                     guiManager.toggleMatrixVisibility();
                 }
+                else if (event.key.code == sf::Keyboard::F) {
+                    // Toggle filtered audio output with 'F' key
+                    audioStreamingEnabled = !audioStreamingEnabled;
+                    if (audioStreamingEnabled && network.getRhythmInterpreter()) {
+                        // Set up filter callback to route samples through filter bank
+                        auto rhythmInterpreter = network.getRhythmInterpreter();
+                        audioManager.setFilterCallback([rhythmInterpreter](const std::vector<float>& audioData) -> std::vector<float> {
+                            // Process audio through rhythm interpreter and get filtered output
+                            rhythmInterpreter->processAudioFrame(audioData);
+                            return rhythmInterpreter->getProcessedAudioOutput();
+                        });
+                        std::cout << "Filtered audio output ENABLED - samples route through filter bank" << std::endl;
+                    } else {
+                        // Disable filter callback for direct playback
+                        audioManager.setFilterCallback(nullptr);
+                        std::cout << "Filtered audio output DISABLED - direct sample playback" << std::endl;
+                    }
+                }
             }
         }
     }
@@ -253,10 +279,14 @@ public:
     }
 
     void update() {
-        // Process audio through rhythm interpreter (if available and recording)
-        if (recorder.isCurrentlyRecording() && network.getRhythmInterpreter()) {
-            auto audioData = recorder.getRealtimeAudioBuffer(512);
-            network.processAudioForRhythm(audioData);
+        // Status monitoring
+        static int statusCounter = 0;
+        bool hasRhythmInterpreter = network.getRhythmInterpreter() != nullptr;
+        bool isFilterModeEnabled = audioManager.isFilterModeEnabled();
+        
+        if (++statusCounter % 300 == 0) { // Every ~10 seconds at 60fps
+            std::cout << "📊 Status - RhythmInterpreter: " << (hasRhythmInterpreter ? "READY" : "NOT READY")
+                      << ", FilterMode: " << (isFilterModeEnabled ? "ON" : "OFF") << std::endl;
         }
         
         // Automatic network activation at intervals
@@ -264,14 +294,12 @@ public:
             network.activate();
             clock.restart();
         }
-        
+
 #ifdef USE_TGUI
         // Update GUI
         guiManager.update();
 #endif
-    }
-    
-    void render() {
+    }    void render() {
         window.clear(sf::Color::Black);
         
         // Render the neural network visualization

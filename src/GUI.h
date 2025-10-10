@@ -57,6 +57,9 @@ private:
     std::vector<tgui::Slider::Ptr> filterFreqSliders;
     std::vector<tgui::Slider::Ptr> filterBandwidthSliders;
     std::vector<tgui::Slider::Ptr> filterGainSliders;
+    std::vector<tgui::Slider::Ptr> filterResonanceSliders;
+    std::vector<tgui::Button::Ptr> filterListenButtons; // Solo/listen buttons for each filter band
+    // Frequency response visualization temporarily removed due to TGUI limitations
     
     // Connection matrix GUI (8 filters × N neurons)
     tgui::Panel::Ptr connectionMatrixPanel;
@@ -83,6 +86,7 @@ private:
     void updateStatusDisplay();
     void updateRhythmStatus();
     void updateConnectionMatrix();
+    // void drawFilterResponse(size_t filterIndex); // Temporarily disabled
     
     // Menu actions
     void addNeuron();
