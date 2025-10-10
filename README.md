@@ -27,6 +27,7 @@ sudo apt install build-essential cmake libsfml-dev libtgui-dev
 # Clone and build
 git clone <repository-url>
 cd neuronSeqSampler
+cmake .
 make
 
 # Launch with pre-configured network
