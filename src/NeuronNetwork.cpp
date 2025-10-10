@@ -17,9 +17,10 @@ void NeuronNetwork::setAudioManager(AudioManager* manager) {
 
 Neuron* NeuronNetwork::addNeuron(int sampleIndex, float initialActivation, 
                                  float threshold, float decayRate, 
+                                 float activationIncreasePerIteration,
                                  ActivationFunction func) {
     auto neuron = std::make_unique<Neuron>(sampleIndex, initialActivation, 
-                                          threshold, decayRate, func);
+                                          threshold, decayRate, activationIncreasePerIteration, func);
     if (audioManager) {
         neuron->setAudioManager(audioManager);
     }
@@ -40,7 +41,12 @@ void NeuronNetwork::activate() {
     // Reset all fired flags first
     resetFiredFlags();
     
-    // Activate all connections
+    // Update all neurons first (apply activation_increase_per_iteration)
+    for (auto& neuron : neurons) {
+        neuron->update();
+    }
+    
+    // Then activate all connections
     for (auto& connection : connections) {
         connection->activate();
     }

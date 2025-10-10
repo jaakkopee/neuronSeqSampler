@@ -109,9 +109,9 @@ public:
         }
         
         // Create three neurons
-        Neuron* kickNeuron = network.addNeuron(1, 0.0f, 1.0f, 0.5f); // Sample 1
-        Neuron* clapNeuron = network.addNeuron(2, 0.0f, 1.0f, 0.5f); // Sample 2
-        Neuron* bassNeuron = network.addNeuron(3, 0.0f, 1.0f, 0.5f); // Sample 3
+        Neuron* kickNeuron = network.addNeuron(1, 0.0f, 1.0f, 0.5f, 0.0f); // Sample 1
+        Neuron* clapNeuron = network.addNeuron(2, 0.0f, 1.0f, 0.5f, 0.0f); // Sample 2
+        Neuron* bassNeuron = network.addNeuron(3, 0.0f, 1.0f, 0.5f, 0.0f); // Sample 3
 
         if (kickNeuron && clapNeuron && bassNeuron) {
             // Create fully connected network (each neuron connected to every other)
@@ -130,6 +130,7 @@ public:
             
 #ifdef USE_TGUI
             // Refresh GUI to show the new network
+            guiManager.refreshNeuronSliders();
             guiManager.refreshConnectionSliders();
 #endif
             // Refresh visualizer layout

@@ -5,11 +5,12 @@
 #include <algorithm>
 
 Neuron::Neuron(int sampleIndex, float initialActivation, float threshold, 
-               float decayRate, ActivationFunction func)
+               float decayRate, float activationIncreasePerIteration, ActivationFunction func)
     : sampleIndex(sampleIndex)
     , activation(initialActivation)
     , threshold(threshold)
     , decayRate(decayRate)
+    , activationIncreasePerIteration(activationIncreasePerIteration)
     , activationFunc(func)
     , hasFired(false)
     , audioManager(nullptr)
@@ -23,6 +24,7 @@ void Neuron::setAudioManager(AudioManager* manager) {
 }
 
 float Neuron::activate(float inputValue) {
+    // Apply input value only (per-iteration increase is handled in update())
     activation += inputValue;
     
     if (activation > threshold) {
@@ -43,6 +45,27 @@ float Neuron::activate(float inputValue) {
     
     // Apply activation function and return
     return applyActivationFunction(activation);
+}
+
+void Neuron::update() {
+    // Apply per-iteration activation increase/decrease
+    activation += activationIncreasePerIteration;
+    
+    if (activation > threshold) {
+        playSample();
+        hasFired = true;
+        activation -= decayRate;
+    }
+    
+    if (activation < -threshold) {
+        activation += threshold;
+    }
+    
+    // Maintain activation history
+    if (activationHistory.size() >= maxHistoryLength) {
+        activationHistory.erase(activationHistory.begin());
+    }
+    activationHistory.push_back(activation);
 }
 
 void Neuron::playSample() {

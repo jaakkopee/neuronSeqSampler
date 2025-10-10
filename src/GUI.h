@@ -40,6 +40,8 @@ private:
     // Control elements
     std::vector<tgui::Slider::Ptr> connectionSliders;
     std::vector<tgui::Label::Ptr> connectionLabels;
+    std::vector<tgui::Slider::Ptr> neuronSliders;
+    std::vector<tgui::Label::Ptr> neuronLabels;
     tgui::Slider::Ptr activationIntervalSlider;
     tgui::Label::Ptr activationIntervalLabel;
     tgui::ComboBox::Ptr viewModeComboBox;
@@ -51,6 +53,7 @@ private:
     void createMenuBar();
     void createControlPanel();
     void createConnectionSliders();
+    void createNeuronSliders();
     void updateStatusDisplay();
     
     // Menu actions
@@ -76,6 +79,7 @@ private:
     
     // Event handlers
     void onSliderChanged(size_t connectionIndex, float value);
+    void onNeuronSliderChanged(size_t neuronIndex, float value);
 
 public:
     GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, 
@@ -90,5 +94,6 @@ public:
     
     // Control methods
     void refreshConnectionSliders();
+    void refreshNeuronSliders();
     void setSliderValue(size_t connectionIndex, float value);
 };

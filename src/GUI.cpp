@@ -24,6 +24,7 @@ GUI::GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neur
 void GUI::initialize() {
     createMenuBar();
     createControlPanel();
+    createNeuronSliders();
     createConnectionSliders();
     updateStatusDisplay();  // Initialize status display with current network state
 }
@@ -142,7 +143,6 @@ void GUI::createConnectionSliders() {
     
     connectionSliders.clear();
     connectionLabels.clear();
-    slidersPanel->removeAllWidgets();
     
     const auto& connections = network->getConnections();
     float yPos = 5.0f;
@@ -150,21 +150,21 @@ void GUI::createConnectionSliders() {
     for (size_t i = 0; i < connections.size(); ++i) {
         const Connection* conn = connections[i].get();
         
-        // Create label
+        // Create label - positioned in right column
         auto label = tgui::Label::create("C" + std::to_string(i + 1) + ":");
-        label->setPosition(5, yPos);
+        label->setPosition(215, yPos);  // Right column start
         label->setTextSize(10);
         label->getRenderer()->setTextColor(tgui::Color::White);
         slidersPanel->add(label);
         connectionLabels.push_back(label);
         
-        // Create slider - optimized for wider panel
+        // Create slider - positioned in right column
         auto slider = tgui::Slider::create();
-        slider->setPosition(40, yPos);
-        slider->setSize(200, 16);
+        slider->setPosition(250, yPos);  // Right column slider position
+        slider->setSize(120, 16);  // Smaller width to fit right column
         slider->setMinimum(-1.2f);
         slider->setMaximum(1.2f);
-        slider->setStep(0.01f);  // 240 steps: 2.4 range / 0.01 step = 240 steps
+        slider->setStep(0.01f);
         slider->setValue(conn->getWeight());
         
         // Connect slider to callback
@@ -175,17 +175,92 @@ void GUI::createConnectionSliders() {
         slidersPanel->add(slider);
         connectionSliders.push_back(slider);
         
-        // Value label
+        // Value label - positioned in right column
         auto valueLabel = tgui::Label::create(std::to_string(conn->getWeight()));
-        valueLabel->setPosition(250, yPos);
+        valueLabel->setPosition(380, yPos);  // Right column value position
         valueLabel->setTextSize(9);
         valueLabel->getRenderer()->setTextColor(tgui::Color::Yellow);
         slidersPanel->add(valueLabel);
         
-        yPos += 22.0f;  // Further reduced spacing
+        yPos += 22.0f;
     }
     
     std::cout << "Created " << connectionSliders.size() << " connection sliders" << std::endl;
+}
+
+void GUI::createNeuronSliders() {
+    if (!network) return;
+    
+    neuronSliders.clear();
+    neuronLabels.clear();
+    slidersPanel->removeAllWidgets();
+    
+    const auto& neurons = network->getNeurons();
+    float yPos = 5.0f;
+    
+    for (size_t i = 0; i < neurons.size(); ++i) {
+        const Neuron* neuron = neurons[i].get();
+        
+        // Create label
+        auto label = tgui::Label::create("N" + std::to_string(i + 1) + ":");
+        label->setPosition(5, yPos);
+        label->setTextSize(10);
+        label->getRenderer()->setTextColor(tgui::Color::Cyan);
+        slidersPanel->add(label);
+        neuronLabels.push_back(label);
+        
+        // Create slider for activation increase per iteration
+        auto slider = tgui::Slider::create();
+        slider->setPosition(40, yPos);
+        slider->setSize(120, 16);  // Slightly smaller to fit left column
+        slider->setMinimum(-0.1f);
+        slider->setMaximum(0.6f);
+        slider->setStep(0.01f);
+        slider->setValue(neuron->getActivationIncreasePerIteration());
+        
+        // Connect slider to callback
+        slider->onValueChange([this, i](float value) {
+            this->onNeuronSliderChanged(i, value);
+        });
+        
+        slidersPanel->add(slider);
+        neuronSliders.push_back(slider);
+        
+        // Value label
+        auto valueLabel = tgui::Label::create(std::to_string(neuron->getActivationIncreasePerIteration()));
+        valueLabel->setPosition(170, yPos);
+        valueLabel->setTextSize(9);
+        valueLabel->getRenderer()->setTextColor(tgui::Color::Cyan);
+        slidersPanel->add(valueLabel);
+        
+        yPos += 22.0f;
+    }
+    
+    std::cout << "Created " << neuronSliders.size() << " neuron sliders" << std::endl;
+}
+
+void GUI::onNeuronSliderChanged(size_t neuronIndex, float value) {
+    if (!network || neuronIndex >= network->getNeuronCount()) return;
+    
+    Neuron* neuron = network->getNeuron(neuronIndex);
+    if (neuron) {
+        neuron->setActivationIncreasePerIteration(value);
+        std::cout << "Updated neuron " << neuronIndex << " activation increase per iteration to " << value << std::endl;
+        
+        // Update the value label - find the associated value label
+        if (neuronIndex < neuronLabels.size()) {
+            // The value label is positioned after the neuron slider widgets
+            auto widgets = slidersPanel->getWidgets();
+            for (auto& widget : widgets) {
+                auto label = std::dynamic_pointer_cast<tgui::Label>(widget);
+                if (label && label->getPosition().x == 170 && 
+                    std::abs(label->getPosition().y - (5.0f + neuronIndex * 22.0f)) < 1.0f) {
+                    label->setText(std::to_string(value));
+                    break;
+                }
+            }
+        }
+    }
 }
 
 void GUI::onSliderChanged(size_t connectionIndex, float value) {
@@ -237,6 +312,10 @@ void GUI::setGUIArea(float x, float y, float width, float height) {
 
 void GUI::refreshConnectionSliders() {
     createConnectionSliders();
+}
+
+void GUI::refreshNeuronSliders() {
+    createNeuronSliders();
 }
 
 void GUI::setSliderValue(size_t connectionIndex, float value) {
@@ -311,6 +390,7 @@ void GUI::removeNeuron() {
                          << network->getConnectionCount() << " connections" << std::endl;
                 
                 // Refresh GUI and visualizer
+                refreshNeuronSliders();
                 refreshConnectionSliders();
                 updateStatusDisplay();
                 
@@ -428,6 +508,7 @@ void GUI::showConnectionDialog() {
                 std::cout << "Network now has " << network->getConnectionCount() << " connections" << std::endl;
                 
                 // Refresh GUI and visualizer
+                refreshNeuronSliders();
                 refreshConnectionSliders();
                 updateStatusDisplay();
                 
@@ -541,6 +622,7 @@ void GUI::showRemoveConnectionDialog() {
                          << network->getConnectionCount() << " connections" << std::endl;
                 
                 // Refresh GUI (connections don't need visualizer layout refresh)
+                refreshNeuronSliders();
                 refreshConnectionSliders();
                 updateStatusDisplay();
                 
@@ -590,6 +672,7 @@ void GUI::resetNetwork() {
                  << ", Connections: " << network->getConnectionCount() << std::endl;
         
         // Refresh GUI and visualizer
+        refreshNeuronSliders();
         refreshConnectionSliders();
         updateStatusDisplay();
         
@@ -714,13 +797,14 @@ void GUI::showAddNeuronDialog() {
                 }
                 
                 // Add neuron to network
-                auto neuron = network->addNeuron(sampleIndex, 0.0f, threshold, 1.0f, ActivationFunction::Linear);
+                auto neuron = network->addNeuron(sampleIndex, 0.0f, threshold, 1.0f, 0.0f, ActivationFunction::Linear);
                 
                 std::cout << "Added neuron with sample: " << fullPath << std::endl;
                 std::cout << "Sample index: " << sampleIndex << ", Threshold: " << threshold << std::endl;
                 std::cout << "Network now has " << network->getNeuronCount() << " neurons" << std::endl;
                 
                 // Refresh GUI completely
+                refreshNeuronSliders();
                 refreshConnectionSliders();
                 updateStatusDisplay();
                 
