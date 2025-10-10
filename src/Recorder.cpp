@@ -377,6 +377,30 @@ size_t Recorder::getRealtimeBufferSize() const {
     return realtimeBuffer.size();
 }
 
+std::vector<float> Recorder::getRealtimeAudioBuffer(size_t maxSamples) const {
+    std::lock_guard<std::mutex> lock(realtimeBufferMutex);
+    
+    std::vector<float> audioBuffer;
+    if (realtimeBuffer.empty()) {
+        // Return silent buffer if no data available
+        audioBuffer.resize(maxSamples, 0.0f);
+        return audioBuffer;
+    }
+    
+    // Get the most recent samples (up to maxSamples)
+    size_t availableSamples = realtimeBuffer.size();
+    size_t samplesToCopy = std::min(maxSamples, availableSamples);
+    
+    audioBuffer.resize(samplesToCopy);
+    
+    // Copy from the end of the buffer (most recent samples)
+    std::copy(realtimeBuffer.end() - samplesToCopy, 
+              realtimeBuffer.end(), 
+              audioBuffer.begin());
+    
+    return audioBuffer;
+}
+
 unsigned int Recorder::getEffectiveSampleRate() const {
     if (isInternalRecording) {
         // For internal recording, use our stored sample rate

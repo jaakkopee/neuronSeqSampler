@@ -95,6 +95,9 @@ public:
     
     // Get current audio data
     const std::vector<sf::Int16>& getSamples() const { return samples; }
+    
+    // Get current realtime audio buffer (for rhythm analysis)
+    std::vector<float> getRealtimeAudioBuffer(size_t maxSamples = 512) const;
 
 protected:
     // Inherited from sf::SoundRecorder

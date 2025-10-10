@@ -1,10 +1,18 @@
 #include "NeuronNetwork.h"
 #include "AudioManager.h"
+#include "RhythmInterpreter.h"
 #include <algorithm>
+#include <cmath>
+#include <iostream>
 
 NeuronNetwork::NeuronNetwork() 
-    : audioManager(nullptr)
+    : audioManager(nullptr), rhythmInterpreter(nullptr)
 {
+}
+
+NeuronNetwork::~NeuronNetwork() {
+    delete rhythmInterpreter;
+    rhythmInterpreter = nullptr;
 }
 
 void NeuronNetwork::setAudioManager(AudioManager* manager) {
@@ -12,6 +20,11 @@ void NeuronNetwork::setAudioManager(AudioManager* manager) {
     // Update all existing neurons
     for (auto& neuron : neurons) {
         neuron->setAudioManager(manager);
+    }
+    
+    // Initialize rhythm interpreter if audio manager is available
+    if (manager && !rhythmInterpreter) {
+        initializeRhythmInterpreter();
     }
 }
 
@@ -41,7 +54,12 @@ void NeuronNetwork::activate() {
     // Reset all fired flags first
     resetFiredFlags();
     
-    // Update all neurons first (apply activation_increase_per_iteration)
+    // Update rhythm interpreter first (processes audio and sends inputs to neurons)
+    if (rhythmInterpreter) {
+        rhythmInterpreter->update();
+    }
+    
+    // Update all neurons (apply activation_increase_per_iteration)
     for (auto& neuron : neurons) {
         neuron->update();
     }
@@ -92,4 +110,50 @@ bool NeuronNetwork::removeConnection(size_t index) {
 void NeuronNetwork::clearNetwork() {
     connections.clear();
     neurons.clear();
+    delete rhythmInterpreter; // Also clear rhythm interpreter
+    rhythmInterpreter = nullptr;
+}
+
+void NeuronNetwork::initializeRhythmInterpreter() {
+    if (audioManager && !rhythmInterpreter) {
+        rhythmInterpreter = new RhythmInterpreter(this, audioManager);
+        // Set up some default connections for testing
+        if (!neurons.empty()) {
+            // Connect each filter to neurons in a round-robin fashion
+            size_t numFilters = rhythmInterpreter->getNumFilters();
+            for (size_t f = 0; f < numFilters; ++f) {
+                for (size_t n = 0; n < neurons.size(); ++n) {
+                    // Create interesting patterns: different filters affect different neurons
+                    float weight = 0.1f * std::sin(f + n); // Create varied connection strengths
+                    rhythmInterpreter->setConnectionWeight(f, n, weight);
+                }
+            }
+        }
+    }
+}
+
+void NeuronNetwork::processAudioForRhythm(const std::vector<float>& audioData) {
+    if (rhythmInterpreter) {
+        rhythmInterpreter->processAudioFrame(audioData);
+        
+        // Apply rhythm interpreter outputs to neurons
+        auto neuronInputs = rhythmInterpreter->getCurrentNeuronInputs();
+        static int debugCounter = 0;
+        bool hasSignificantInput = false;
+        
+        for (size_t i = 0; i < std::min(neuronInputs.size(), neurons.size()); ++i) {
+            if (std::abs(neuronInputs[i]) > 0.001f) { // Only apply significant inputs
+                neurons[i]->addExternalInput(neuronInputs[i]);
+                hasSignificantInput = true;
+            }
+        }
+        
+        // Debug output every 100 frames (~2.3 seconds at 44.1kHz with 512 sample buffers)
+        if (++debugCounter % 100 == 0 && hasSignificantInput) {
+            float tempo = rhythmInterpreter->getCurrentTempo();
+            float rhythmStrength = rhythmInterpreter->getOverallRhythmStrength();
+            std::cout << "🎵 Rhythm: Tempo=" << tempo << " BPM, Strength=" << rhythmStrength 
+                      << ", Inputs: " << neuronInputs.size() << std::endl;
+        }
+    }
 }

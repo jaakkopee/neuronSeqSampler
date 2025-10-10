@@ -1,0 +1,27 @@
+#!/bin/bash
+
+echo "🎛️ FILTER GAIN CONTROLS TEST"
+echo "============================"
+echo ""
+echo "🎚️ New Feature: Individual Filter Gain Control"
+echo "  • Each frequency band now has its own gain slider (0.0x - 2.0x)"
+echo "  • Located below each frequency label in the connection matrix"
+echo "  • Real-time control of filter sensitivity"
+echo ""
+echo "🔍 What to Test:"
+echo "  1. Look for small horizontal sliders below frequency labels"
+echo "  2. Try adjusting different filter gains (drag sliders)"
+echo "  3. Notice how filter sensitivity changes affect audio analysis"
+echo "  4. Test extreme values: 0.0x (silence) to 2.0x (boost)"
+echo ""
+echo "🎵 Suggested Test Pattern:"
+echo "  • Set Ultra/VLow/Low to 0.5x (reduce subsonic)"
+echo "  • Set Sub/Bass to 1.5x (enhance kick drums)"
+echo "  • Set Mid to 1.8x (boost snare/vocal)"  
+echo "  • Set Pres/Air to 1.2x (enhance hi-hats)"
+echo ""
+echo "🚀 Launching NeuronSeqSampler..."
+echo "   Look for gain sliders below frequency labels!"
+echo ""
+
+timeout 8 ./NeuronSeqSampler --testing

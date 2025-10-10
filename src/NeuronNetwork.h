@@ -4,18 +4,20 @@
 #include "Neuron.h"
 #include "Connection.h"
 
-// Forward declaration
+// Forward declarations
 class AudioManager;
+class RhythmInterpreter;
 
 class NeuronNetwork {
 private:
     std::vector<std::unique_ptr<Neuron>> neurons;
     std::vector<std::unique_ptr<Connection>> connections;
     AudioManager* audioManager;
+    RhythmInterpreter* rhythmInterpreter; // Use raw pointer to avoid incomplete type issues
 
 public:
     NeuronNetwork();
-    ~NeuronNetwork() = default;
+    ~NeuronNetwork();
     
     void setAudioManager(AudioManager* manager);
     AudioManager* getAudioManager() const { return audioManager; }
@@ -34,6 +36,11 @@ public:
     
     void activate();
     void resetFiredFlags();
+    
+    // Rhythm interpreter methods
+    void initializeRhythmInterpreter();
+    void processAudioForRhythm(const std::vector<float>& audioData);
+    RhythmInterpreter* getRhythmInterpreter() const { return rhythmInterpreter; }
     
     // Getters
     const std::vector<std::unique_ptr<Neuron>>& getNeurons() const { return neurons; }

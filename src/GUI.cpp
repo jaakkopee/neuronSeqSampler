@@ -4,6 +4,7 @@
 #include "AudioManager.h"
 #include "Visualizer.h"
 #include "Recorder.h"
+#include "RhythmInterpreter.h"
 #include <iostream>
 #include <filesystem>
 #include <chrono>
@@ -26,6 +27,7 @@ void GUI::initialize() {
     createControlPanel();
     createNeuronSliders();
     createConnectionSliders();
+    createConnectionMatrixPanel();
     updateStatusDisplay();  // Initialize status display with current network state
 }
 
@@ -355,6 +357,18 @@ void GUI::onSliderChanged(size_t connectionIndex, float value) {
 
 void GUI::update() {
     updateStatusDisplay();
+    
+    // Only update connection matrix every 10 frames to reduce interference
+    // But skip entirely if recent toggle interactions occurred
+    if (toggleBlockCounter > 0) {
+        toggleBlockCounter--;
+    } else {
+        matrixUpdateCounter++;
+        if (matrixUpdateCounter >= 10) {
+            updateConnectionMatrix();
+            matrixUpdateCounter = 0;
+        }
+    }
 }
 
 void GUI::updateStatusDisplay() {
@@ -383,6 +397,33 @@ void GUI::refreshConnectionSliders() {
 
 void GUI::refreshNeuronSliders() {
     createNeuronSliders();
+}
+
+void GUI::refreshConnectionMatrix() {
+    // Prevent recursive calls and unnecessary refreshes
+    if (isUpdatingMatrix) {
+        return;
+    }
+    
+    // Only recreate the panel if it doesn't exist or if the number of neurons changed
+    if (!connectionMatrixPanel || !network || !network->getRhythmInterpreter()) {
+        createConnectionMatrixPanel();
+        return;
+    }
+    
+    // Check if neuron count changed, which requires panel recreation
+    size_t currentNeurons = network->getNeuronCount();
+    size_t expectedButtons = matrixToggleButtons.empty() ? 0 : matrixToggleButtons[0].size();
+    
+    if (currentNeurons != expectedButtons) {
+        // Neuron count changed, need to recreate
+        createConnectionMatrixPanel();
+    } else {
+        // Just update existing controls without recreation - skip if updating
+        if (!isUpdatingMatrix) {
+            updateConnectionMatrix();
+        }
+    }
 }
 
 void GUI::setSliderValue(size_t connectionIndex, float value) {
@@ -1477,4 +1518,305 @@ void GUI::showExternalRecordingDialog() {
     dialog->add(cancelButton);
     
     gui->add(dialog);
+}
+void GUI::createConnectionMatrixPanel() {
+    // Remove existing panel if it exists
+    if (connectionMatrixPanel) {
+        gui->remove(connectionMatrixPanel);
+        connectionMatrixPanel = nullptr;
+        matrixToggleButtons.clear();
+        matrixGainSliders.clear();
+        filterLabels.clear();
+        neuronColumnLabels.clear();
+    }
+    
+    if (!network || !network->getRhythmInterpreter()) {
+        return; // No rhythm interpreter available
+    }
+    
+    auto rhythmInterpreter = network->getRhythmInterpreter();
+    size_t numFilters = rhythmInterpreter->getNumFilters();
+    size_t numNeurons = network->getNeuronCount();
+    
+    // Create panel even if no neurons yet - it will show as empty but ready
+    
+    // Create main matrix panel
+    connectionMatrixPanel = tgui::Panel::create();
+    connectionMatrixPanel->setPosition("70%", "20%");
+    connectionMatrixPanel->setSize("28%", "75%");
+    connectionMatrixPanel->getRenderer()->setBackgroundColor(tgui::Color(20, 20, 20, 200));
+    connectionMatrixPanel->getRenderer()->setBorderColor(tgui::Color(60, 60, 60));
+    connectionMatrixPanel->getRenderer()->setBorders(1);
+    connectionMatrixPanel->setVisible(matrixVisible);
+    gui->add(connectionMatrixPanel, "ConnectionMatrixPanel");
+    
+    // Title label
+    std::string title = numNeurons == 0 ? "🎛️ Rhythm Interpreter connection matrix (8×0) - Add neurons first" : 
+                                         "🎛️ Rhythm Interpreter connection matrix (8×" + std::to_string(numNeurons) + ")";
+    matrixTitleLabel = tgui::Label::create(title);
+    matrixTitleLabel->setPosition(5, 5);
+    matrixTitleLabel->setTextSize(14);
+    matrixTitleLabel->getRenderer()->setTextColor(tgui::Color::White);
+    connectionMatrixPanel->add(matrixTitleLabel);
+    
+    // Add quick action buttons
+    auto clearAllButton = tgui::Button::create("Clear All");
+    clearAllButton->setPosition(5, matrixTitleLabel->getPosition().y + 20);
+    clearAllButton->setSize(70, 20);
+    clearAllButton->setTextSize(10);
+    clearAllButton->getRenderer()->setBackgroundColor(tgui::Color(80, 40, 40));
+    clearAllButton->onPress([=, this]() {
+        if (network && network->getRhythmInterpreter()) {
+            network->getRhythmInterpreter()->getConnectionMatrix()->clearWeights();
+            // Force manual matrix update for Clear All
+            refreshConnectionMatrix();
+        }
+    });
+    connectionMatrixPanel->add(clearAllButton);
+    
+    auto randomizeButton = tgui::Button::create("Random");
+    randomizeButton->setPosition(80, matrixTitleLabel->getPosition().y + 20);
+    randomizeButton->setSize(70, 20);
+    randomizeButton->setTextSize(10);
+    randomizeButton->getRenderer()->setBackgroundColor(tgui::Color(40, 80, 40));
+    randomizeButton->onPress([=, this]() {
+        if (network && network->getRhythmInterpreter()) {
+            network->getRhythmInterpreter()->randomizeConnections();
+            // Force manual matrix update for Random
+            refreshConnectionMatrix();
+        }
+    });
+    connectionMatrixPanel->add(randomizeButton);
+    
+    // Filter band labels (vertical) - Exponential frequency distribution
+    const std::vector<std::string> filterNames = {
+        "Ultra (1Hz)", "VLow (3Hz)", "Low (11Hz)", "Sub (38Hz)",
+        "Bass (128Hz)", "Mid (430Hz)", "Pres (1.4kHz)", "Air (8kHz)"
+    };
+    
+    const std::vector<std::string> filterTooltips = {
+        "Ultra-Low: Subsonic rhythmic patterns and very slow modulations",
+        "Very Low: Extremely slow rhythmic elements and bass patterns", 
+        "Low: Slow bass rhythms and deep percussion fundamentals",
+        "Sub Bass: Kick drum fundamentals and low-end power",
+        "Bass: Kick harmonics, bassline, and low snare content",
+        "Mids: Snare attack, vocals, and mid percussion",
+        "Presence: Hi-hat attack, upper percussion, and clarity", 
+        "Air: High-frequency content, cymbals, and spatial detail"
+    };
+    
+    filterLabels.clear();
+    filterGainSliders.clear();
+    for (size_t f = 0; f < numFilters; ++f) {
+        auto label = tgui::Label::create(filterNames[f]);
+        label->setPosition(5, 55 + f * 60); // Moved down to accommodate buttons
+        label->setTextSize(10);
+        label->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+        
+        // Tooltip available via hover (handled elsewhere)
+        
+        connectionMatrixPanel->add(label);
+        filterLabels.push_back(label);
+        
+        // Add filter gain slider next to each frequency label
+        auto gainSlider = tgui::Slider::create(0.0f, 2.0f);
+        gainSlider->setValue(rhythmInterpreter->getFilterGain(f));
+        gainSlider->setPosition(5, 70 + f * 60); // Just below the label
+        gainSlider->setSize(65, 15); // Small horizontal slider
+        gainSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
+        gainSlider->getRenderer()->setThumbColor(tgui::Color(100, 140, 100));
+        // Filter gain control from 0.0x to 2.0x
+        
+        // Connect slider to filter gain control
+        gainSlider->onValueChange([this, f](float value) {
+            if (network && network->getRhythmInterpreter()) {
+                network->getRhythmInterpreter()->setFilterGain(f, value);
+            }
+        });
+        
+        connectionMatrixPanel->add(gainSlider);
+        filterGainSliders.push_back(gainSlider);
+    }
+    
+    // Neuron column labels (horizontal) - only if we have neurons
+    neuronColumnLabels.clear();
+    if (numNeurons > 0) {
+        for (size_t n = 0; n < numNeurons; ++n) {
+            auto label = tgui::Label::create("N" + std::to_string(n + 1));
+            label->setPosition(80 + n * 45, 40); // Moved down to accommodate buttons
+            label->setTextSize(10);
+            label->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+            connectionMatrixPanel->add(label);
+            neuronColumnLabels.push_back(label);
+        }
+    }
+    
+    // Create matrix of toggle buttons and gain sliders - only if we have neurons
+    matrixToggleButtons.clear();
+    matrixGainSliders.clear();
+    
+    if (numNeurons > 0) {
+        for (size_t f = 0; f < numFilters; ++f) {
+            std::vector<tgui::Button::Ptr> buttonRow;
+            std::vector<tgui::Slider::Ptr> sliderRow;
+            
+            for (size_t n = 0; n < numNeurons; ++n) {
+            // Toggle button
+            auto toggleButton = tgui::Button::create("○");
+            toggleButton->setPosition(80 + n * 45, 90 + f * 60); // Moved down further for filter gain sliders
+            toggleButton->setSize(20, 20);
+            toggleButton->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+            toggleButton->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
+            toggleButton->getRenderer()->setBorderColor(tgui::Color(80, 80, 80));
+            toggleButton->getRenderer()->setBorders(1);
+            
+            // Add tooltip with filter description
+            auto tooltip = tgui::Label::create(filterTooltips[f] + "\n→ Neuron " + std::to_string(n + 1));
+            tooltip->getRenderer()->setBackgroundColor(tgui::Color(0, 0, 0, 200));
+            tooltip->getRenderer()->setTextColor(tgui::Color::White);
+            tooltip->setTextSize(10);
+            toggleButton->setToolTip(tooltip);
+            
+            // Check current connection state
+            float currentWeight = rhythmInterpreter->getConnectionMatrix()->getWeight(f, n);
+            bool isConnected = std::abs(currentWeight) > 0.001f;
+            
+            if (isConnected) {
+                toggleButton->setText("●");
+                // Color based on connection strength
+                int intensity = static_cast<int>(std::abs(currentWeight) * 255);
+                toggleButton->getRenderer()->setBackgroundColor(tgui::Color(60, intensity, 60));
+                toggleButton->getRenderer()->setTextColor(tgui::Color::White);
+            }
+            
+            // Toggle connection callback
+            toggleButton->onPress([=, this]() {
+                auto currentMatrix = network->getRhythmInterpreter()->getConnectionMatrix();
+                float weight = currentMatrix->getWeight(f, n);
+                bool wasConnected = std::abs(weight) > 0.001f;
+                
+                if (wasConnected) {
+                    // Disconnect
+                    currentMatrix->setWeight(f, n, 0.0f);
+                    toggleButton->setText("○");
+                    toggleButton->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+                    toggleButton->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
+                    matrixGainSliders[f][n]->setVisible(false);
+                } else {
+                    // Connect with default gain
+                    float defaultGain = 0.3f;
+                    currentMatrix->setWeight(f, n, defaultGain);
+                    toggleButton->setText("●");
+                    toggleButton->getRenderer()->setBackgroundColor(tgui::Color(60, 120, 60));
+                    toggleButton->getRenderer()->setTextColor(tgui::Color::White);
+                    matrixGainSliders[f][n]->setValue(defaultGain * 100.0f); // Convert to 0-100 range
+                    matrixGainSliders[f][n]->setVisible(true);
+                }
+                
+                // Block matrix updates for several frames after toggle interaction
+                toggleBlockCounter = 30; // Block for ~0.5 seconds at 60fps
+            });
+            
+            connectionMatrixPanel->add(toggleButton);
+            buttonRow.push_back(toggleButton);
+            
+            // Gain slider (only visible when connected)
+            auto gainSlider = tgui::Slider::create(0.0f, 100.0f);
+            gainSlider->setPosition(105 + n * 45, 90 + f * 60); // Moved down further for filter gain sliders
+            gainSlider->setSize(15, 20);
+            gainSlider->setValue(std::abs(currentWeight) * 100.0f); // Convert to 0-100 range
+            gainSlider->setVisible(isConnected);
+            
+            // Gain change callback
+            gainSlider->onValueChange([=, this](float value) {
+                auto currentMatrix = network->getRhythmInterpreter()->getConnectionMatrix();
+                float weight = value / 100.0f; // Convert from 0-100 to 0-1 range
+                
+                // Preserve sign if it was negative
+                float currentWeight = currentMatrix->getWeight(f, n);
+                if (currentWeight < 0) {
+                    weight = -weight;
+                }
+                
+                currentMatrix->setWeight(f, n, weight);
+            });
+            
+            connectionMatrixPanel->add(gainSlider);
+            sliderRow.push_back(gainSlider);
+        }
+        
+            matrixToggleButtons.push_back(buttonRow);
+            matrixGainSliders.push_back(sliderRow);
+        }
+    }
+}
+
+void GUI::updateConnectionMatrix() {
+    // COMPLETELY DISABLE automatic matrix updates to fix multiple toggle issue
+    // Matrix will only be updated manually when needed (Clear All, Random, etc.)
+    return;
+    
+    if (!connectionMatrixPanel || !network || !network->getRhythmInterpreter()) {
+        return;
+    }
+    
+    // Skip update completely if matrix is being updated by user interactions
+    if (isUpdatingMatrix) {
+        return;
+    }
+    
+    isUpdatingMatrix = true; // Prevent recursive calls
+    
+    auto rhythmInterpreter = network->getRhythmInterpreter();
+    auto connectionMatrix = rhythmInterpreter->getConnectionMatrix();
+    size_t numFilters = rhythmInterpreter->getNumFilters();
+    size_t numNeurons = network->getNeuronCount();
+    
+    // Update title
+    if (matrixTitleLabel) {
+        matrixTitleLabel->setText("🎛️ Rhythm Interpreter connection matrix (8×" + std::to_string(numNeurons) + ")");
+    }
+    
+    // Update button states and slider values
+    for (size_t f = 0; f < std::min(numFilters, matrixToggleButtons.size()); ++f) {
+        for (size_t n = 0; n < std::min(numNeurons, matrixToggleButtons[f].size()); ++n) {
+            float weight = connectionMatrix->getWeight(f, n);
+            bool isConnected = std::abs(weight) > 0.001f;
+            
+            // Update toggle button
+            if (isConnected) {
+                matrixToggleButtons[f][n]->setText("●");
+                matrixToggleButtons[f][n]->getRenderer()->setBackgroundColor(tgui::Color(60, 120, 60));
+                matrixToggleButtons[f][n]->getRenderer()->setTextColor(tgui::Color::White);
+            } else {
+                matrixToggleButtons[f][n]->setText("○");
+                matrixToggleButtons[f][n]->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+                matrixToggleButtons[f][n]->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
+            }
+            
+            // Update gain slider
+            matrixGainSliders[f][n]->setValue(std::abs(weight) * 100.0f);
+            matrixGainSliders[f][n]->setVisible(isConnected);
+        }
+    }
+    
+    // Update filter gain sliders to match current values
+    for (size_t f = 0; f < std::min(numFilters, filterGainSliders.size()); ++f) {
+        float currentGain = rhythmInterpreter->getFilterGain(f);
+        filterGainSliders[f]->setValue(currentGain);
+    }
+    
+    isUpdatingMatrix = false; // Reset the flag
+}
+
+void GUI::toggleMatrixVisibility() {
+    if (!connectionMatrixPanel) {
+        return;
+    }
+    
+    matrixVisible = !matrixVisible;
+    connectionMatrixPanel->setVisible(matrixVisible);
+    
+    std::cout << "🎛️ Rhythm Interpreter connection matrix " << (matrixVisible ? "shown" : "hidden") 
+              << " (press M to toggle)" << std::endl;
 }

@@ -48,6 +48,28 @@ private:
     tgui::ComboBox::Ptr viewModeComboBox;
     tgui::Label::Ptr viewModeLabel;
     
+    // Rhythm interpreter controls
+    tgui::Panel::Ptr rhythmPanel;
+    tgui::Button::Ptr rhythmEnableButton;
+    tgui::Slider::Ptr rhythmGainSlider;
+    tgui::Label::Ptr rhythmStatusLabel;
+    tgui::Label::Ptr rhythmTempoLabel;
+    std::vector<tgui::Slider::Ptr> filterFreqSliders;
+    std::vector<tgui::Slider::Ptr> filterBandwidthSliders;
+    std::vector<tgui::Slider::Ptr> filterGainSliders;
+    
+    // Connection matrix GUI (8 filters × N neurons)
+    tgui::Panel::Ptr connectionMatrixPanel;
+    tgui::Label::Ptr matrixTitleLabel;
+    std::vector<std::vector<tgui::Button::Ptr>> matrixToggleButtons; // [filter][neuron]
+    std::vector<std::vector<tgui::Slider::Ptr>> matrixGainSliders;   // [filter][neuron] 
+    std::vector<tgui::Label::Ptr> filterLabels; // Labels for filter bands
+    std::vector<tgui::Label::Ptr> neuronColumnLabels; // Labels for neuron columns
+    bool matrixVisible = true; // Connection matrix visibility state
+    bool isUpdatingMatrix = false; // Flag to prevent recursive updates
+    int matrixUpdateCounter = 0; // Counter to reduce update frequency
+    int toggleBlockCounter = 0; // Counter to block updates after toggle interactions
+    
     // Layout
     float controlPanelTopOffset = 0.0f;
     
@@ -55,7 +77,11 @@ private:
     void createControlPanel();
     void createConnectionSliders();
     void createNeuronSliders();
+    void createRhythmInterpreterPanel();
+    void createConnectionMatrixPanel();
     void updateStatusDisplay();
+    void updateRhythmStatus();
+    void updateConnectionMatrix();
     
     // Menu actions
     void addNeuron();
@@ -97,5 +123,9 @@ public:
     // Control methods
     void refreshConnectionSliders();
     void refreshNeuronSliders();
+    void refreshConnectionMatrix();
     void setSliderValue(size_t connectionIndex, float value);
+    
+    // Matrix visibility control
+    void toggleMatrixVisibility();
 };

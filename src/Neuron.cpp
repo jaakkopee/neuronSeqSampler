@@ -11,6 +11,7 @@ Neuron::Neuron(int sampleIndex, float initialActivation, float threshold,
     , threshold(threshold)
     , decayRate(decayRate)
     , activationIncreasePerIteration(activationIncreasePerIteration)
+    , externalInput(0.0f)
     , activationFunc(func)
     , hasFired(false)
     , audioManager(nullptr)
@@ -24,8 +25,11 @@ void Neuron::setAudioManager(AudioManager* manager) {
 }
 
 float Neuron::activate(float inputValue) {
-    // Apply input value only (per-iteration increase is handled in update())
-    activation += inputValue;
+    // Apply input value and external input (per-iteration increase is handled in update())
+    activation += inputValue + externalInput;
+    
+    // Reset external input after use (it accumulates between calls)
+    externalInput = 0.0f;
     
     if (activation > threshold) {
         playSample();
@@ -66,6 +70,11 @@ void Neuron::update() {
         activationHistory.erase(activationHistory.begin());
     }
     activationHistory.push_back(activation);
+}
+
+void Neuron::addExternalInput(float input) {
+    // Accumulate external input - will be used in next activate() call
+    externalInput += input;
 }
 
 void Neuron::playSample() {

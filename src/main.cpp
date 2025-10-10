@@ -132,6 +132,7 @@ public:
             // Refresh GUI to show the new network
             guiManager.refreshNeuronSliders();
             guiManager.refreshConnectionSliders();
+            guiManager.refreshConnectionMatrix();
 #endif
             // Refresh visualizer layout
             visualizer.refreshLayout();
@@ -157,16 +158,23 @@ public:
             }
             
 #ifdef USE_TGUI
-            // Handle GUI events
-            gui.handleEvent(event);
-#endif
+            // Handle GUI events - check if event was consumed by GUI
+            bool eventConsumedByGUI = gui.handleEvent(event);
             
-            // Handle mouse clicks on neurons (for manual activation)
+            // Only handle mouse clicks if GUI didn't consume the event
+            if (!eventConsumedByGUI && event.type == sf::Event::MouseButtonPressed) {
+                if (event.mouseButton.button == sf::Mouse::Left) {
+                    handleMouseDrag(event.mouseButton.x, event.mouseButton.y);
+                }
+            }
+#else
+            // Handle mouse clicks on neurons (for manual activation) - no GUI
             if (event.type == sf::Event::MouseButtonPressed) {
                 if (event.mouseButton.button == sf::Mouse::Left) {
                     handleMouseDrag(event.mouseButton.x, event.mouseButton.y);
                 }
             }
+#endif
 
             // Handle mouse scroll for zooming
             if (event.type == sf::Event::MouseWheelScrolled) {
@@ -212,6 +220,10 @@ public:
                         std::cout << "No neurons in network. Use the Network menu to add neurons." << std::endl;
                     }
                 }
+                else if (event.key.code == sf::Keyboard::M) {
+                    // Toggle connection matrix visibility with 'M' key
+                    guiManager.toggleMatrixVisibility();
+                }
             }
         }
     }
@@ -241,6 +253,12 @@ public:
     }
 
     void update() {
+        // Process audio through rhythm interpreter (if available and recording)
+        if (recorder.isCurrentlyRecording() && network.getRhythmInterpreter()) {
+            auto audioData = recorder.getRealtimeAudioBuffer(512);
+            network.processAudioForRhythm(audioData);
+        }
+        
         // Automatic network activation at intervals
         if (clock.getElapsedTime().asMilliseconds() >= activationInterval) {
             network.activate();

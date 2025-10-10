@@ -18,6 +18,7 @@ private:
     float threshold;
     float decayRate;
     float activationIncreasePerIteration;
+    float externalInput; // Accumulates external inputs from rhythm interpreter
     int sampleIndex;
     std::vector<float> activationHistory;
     static const size_t maxHistoryLength = 100;
@@ -34,6 +35,7 @@ public:
     void setAudioManager(AudioManager* manager);
     float activate(float inputValue);
     void update(); // Update neuron state (apply activation_increase_per_iteration)
+    void addExternalInput(float input); // Add external input (e.g., from rhythm interpreter)
     void playSample();
     void playSample(float offsetSeconds); // Play sample starting from the beginning with optional time offset
     
@@ -42,6 +44,7 @@ public:
     float getThreshold() const { return threshold; }
     float getDecayRate() const { return decayRate; }
     float getActivationIncreasePerIteration() const { return activationIncreasePerIteration; }
+    float getExternalInput() const { return externalInput; }
     ActivationFunction getActivationFunction() const { return activationFunc; }
     bool getHasFired() const { return hasFired; }
     int getSampleIndex() const { return sampleIndex; }
