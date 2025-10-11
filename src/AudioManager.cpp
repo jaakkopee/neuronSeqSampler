@@ -203,16 +203,16 @@ void AudioManager::setFilterMode(bool enabled) {
               << ", rhythmInterpreter=" << (rhythmInterpreter ? "valid" : "null") << std::endl;
               
     if (enabled && rhythmInterpreter) {
-        // Set up filter callback to route samples through RhythmInterpreter
+        // Set up filter callback to analyze audio through RhythmInterpreter but return original audio
         setFilterCallback([this](const std::vector<float>& audioData) -> std::vector<float> {
-            std::cout << "🎛️  Lambda callback executing - calling processAudioFrame" << std::endl;
-            // Process audio through rhythm interpreter and get filtered output
+            std::cout << "🎛️  Lambda callback executing - analyzing audio through filter bank" << std::endl;
+            // Process audio through rhythm interpreter for analysis (updates filter outputs)
             rhythmInterpreter->processAudioFrame(audioData);
-            auto result = rhythmInterpreter->getProcessedAudioOutput();
-            std::cout << "🎛️  Lambda callback returning " << result.size() << " samples" << std::endl;
-            return result;
+            // Return original audio data for playback (not the filtered version)
+            std::cout << "🎛️  Lambda callback returning original " << audioData.size() << " samples" << std::endl;
+            return audioData; // Return original unfiltered audio
         });
-        std::cout << "🎛️  Filter Mode ENABLED - routing through RhythmInterpreter" << std::endl;
+        std::cout << "🎛️  Filter Mode ENABLED - analyzing through RhythmInterpreter, playing original audio" << std::endl;
     } else {
         // Disable filter callback
         setFilterCallback(nullptr);
@@ -226,13 +226,14 @@ void AudioManager::setFilterMode(bool enabled) {
 
 void AudioManager::setAdaptiveFilterMode(bool enabled) {
     if (enabled && rhythmInterpreter) {
-        // Set up adaptive filter callback to route samples through RhythmInterpreter with adaptation
+        // Set up adaptive filter callback to analyze audio with adaptation but play original
         setFilterCallback([this](const std::vector<float>& audioData) -> std::vector<float> {
-            // Process audio through rhythm interpreter with adaptive filtering
+            // Process audio through rhythm interpreter with adaptive filtering for analysis
             rhythmInterpreter->processAudioFrame(audioData);
-            return rhythmInterpreter->getProcessedAudioOutput();
+            // Return original audio data for playback (not the filtered version)
+            return audioData; // Return original unfiltered audio
         });
-        std::cout << "🎛️  Adaptive Filter Mode ENABLED - routing through adaptive RhythmInterpreter" << std::endl;
+        std::cout << "🎛️  Adaptive Filter Mode ENABLED - analyzing through adaptive RhythmInterpreter, playing original audio" << std::endl;
     } else {
         // Disable adaptive filter callback
         setFilterCallback(nullptr);
