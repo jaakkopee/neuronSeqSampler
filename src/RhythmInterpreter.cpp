@@ -352,7 +352,7 @@ RhythmInterpreter::RhythmInterpreter(NeuronNetwork* network, AudioManager* audio
                                    size_t sampleRate, size_t bufferSize)
     : neuronNetwork(network), audioManager(audioMgr), 
       sampleRate(sampleRate), bufferSize(bufferSize),
-      enabled(true), globalGain(1.0f) {
+      enabled(true), globalGain(0.0f) { // Set to 0 for analysis-only mode
     
     initializeFilterBank();
     rhythmDetector = std::make_unique<RhythmDetector>();

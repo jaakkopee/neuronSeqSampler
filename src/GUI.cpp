@@ -1878,8 +1878,8 @@ void GUI::updateConnectionMatrix() {
     for (size_t f = 0; f < std::min(numFilters, filterOutputDisplays.size()) && f < filterOutputs.size(); ++f) {
         float outputLevel = std::min(1.0f, std::abs(filterOutputs[f])); // Clamp to 0-1 range
         
-        // Debug: Log filter output levels occasionally
-        if (++guiDebugCounter % 1000 == 0 && f == 0) {
+        // Debug: Log filter output levels occasionally  
+        if (++guiDebugCounter % 50 == 0 && f < 2) {
             std::cout << "🎛️  GUI Filter " << f << " output level: " << filterOutputs[f] 
                       << " (clamped: " << outputLevel << ")" << std::endl;
         }

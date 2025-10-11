@@ -151,7 +151,7 @@ private:
     size_t sampleRate;
     size_t bufferSize;
     bool enabled;
-    float globalGain;
+    float globalGain; // Should be 0 for analysis-only mode, >0 for filtered audio output
     std::vector<float> filterGains; // User-controlled gain for each filter band
     std::vector<bool> filterSoloEnabled; // Solo/listen state for each filter band
     bool anyFilterSoloed; // True if any filter is currently soloed

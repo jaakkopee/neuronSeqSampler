@@ -240,10 +240,13 @@ public:
                         auto rhythmInterpreter = network.getRhythmInterpreter();
                         audioManager.setFilterCallback([rhythmInterpreter](const std::vector<float>& audioData) -> std::vector<float> {
                             // Process audio through rhythm interpreter and get filtered output
+                            std::cout << "🔥  F-KEY FILTERED CALLBACK executing - returning filtered audio!" << std::endl;
                             rhythmInterpreter->processAudioFrame(audioData);
-                            return rhythmInterpreter->getProcessedAudioOutput();
+                            auto filtered = rhythmInterpreter->getProcessedAudioOutput();
+                            std::cout << "🔥  F-KEY returning " << filtered.size() << " filtered samples" << std::endl;
+                            return filtered;
                         });
-                        std::cout << "Filtered audio output ENABLED - samples route through filter bank" << std::endl;
+                        std::cout << "🔥  F-KEY Filtered audio output ENABLED - samples route through filter bank" << std::endl;
                     } else {
                         // Disable filter callback for direct playback
                         audioManager.setFilterCallback(nullptr);

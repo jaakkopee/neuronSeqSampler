@@ -186,11 +186,14 @@ std::vector<float> AudioManager::getSampleData(int sampleIndex) const {
 }
 
 void AudioManager::setFilterCallback(std::function<std::vector<float>(const std::vector<float>&)> callback) {
+    if (filterCallback && callback) {
+        std::cout << "⚠️  WARNING: Overriding existing filter callback!" << std::endl;
+    }
     filterCallback = callback;
     if (callback) {
-        std::cout << "🎛️  Filter mode ENABLED - samples will route through filter bank" << std::endl;
+        std::cout << "🎛️  Filter callback ENABLED - samples will route through filter processing" << std::endl;
     } else {
-        std::cout << "🎛️  Filter mode DISABLED - samples play directly" << std::endl;
+        std::cout << "🎛️  Filter callback DISABLED - samples play directly" << std::endl;
     }
 }
 
@@ -203,16 +206,20 @@ void AudioManager::setFilterMode(bool enabled) {
               << ", rhythmInterpreter=" << (rhythmInterpreter ? "valid" : "null") << std::endl;
               
     if (enabled && rhythmInterpreter) {
-        // Set up filter callback to analyze audio through RhythmInterpreter but return original audio
-        setFilterCallback([this](const std::vector<float>& audioData) -> std::vector<float> {
-            std::cout << "🎛️  Lambda callback executing - analyzing audio through filter bank" << std::endl;
+        // FORCE clear any existing callback (e.g., F-key filtered callback) before setting analysis-only callback
+        std::cout << "🔧  FORCE CLEARING existing callback and setting ANALYSIS-ONLY mode" << std::endl;
+        
+        // Directly set the analysis-only callback without using setFilterCallback to avoid the override warning
+        filterCallback = [this](const std::vector<float>& audioData) -> std::vector<float> {
+            std::cout << "🎛️  ANALYSIS-ONLY Lambda callback executing - analyzing audio through filter bank" << std::endl;
             // Process audio through rhythm interpreter for analysis (updates filter outputs)
             rhythmInterpreter->processAudioFrame(audioData);
             // Return original audio data for playback (not the filtered version)
-            std::cout << "🎛️  Lambda callback returning original " << audioData.size() << " samples" << std::endl;
+            std::cout << "🎛️  ANALYSIS-ONLY Lambda callback returning original " << audioData.size() << " samples" << std::endl;
             return audioData; // Return original unfiltered audio
-        });
-        std::cout << "🎛️  Filter Mode ENABLED - analyzing through RhythmInterpreter, playing original audio" << std::endl;
+        };
+        
+        std::cout << "🎛️  ANALYSIS-ONLY Filter Mode FORCIBLY ENABLED - analyzing through RhythmInterpreter, playing original audio" << std::endl;
     } else {
         // Disable filter callback
         setFilterCallback(nullptr);
