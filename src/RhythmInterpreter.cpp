@@ -582,11 +582,28 @@ void RhythmInterpreter::update() {
     // Transform filter outputs to neuron inputs through connection matrix
     neuronInputs = connectionMatrix->transform(filterOutputs);
     
-    // Apply inputs to neurons (this would need integration with NeuronNetwork)
+    // Apply rhythmogram inputs to neurons based on matrix connections
     const auto& neurons = neuronNetwork->getNeurons();
+    static int debugCounter = 0;
+    bool hasSignificantInput = false;
+    
     for (size_t i = 0; i < std::min(neuronInputs.size(), neurons.size()); ++i) {
-        // This would require adding a method to Neuron class to accept external input
-        // For now, we'll store the inputs for potential future integration
+        // Send rhythmogram-derived input to each neuron based on connection matrix
+        if (std::abs(neuronInputs[i]) > 0.001f) { // Only apply significant inputs
+            neurons[i]->addExternalInput(neuronInputs[i]);
+            hasSignificantInput = true;
+            
+            // Debug: Log neuron input occasionally
+            if (++debugCounter % 100 == 0) {
+                std::cout << "🎯 Neuron " << (i+1) << " receiving rhythmogram input: " 
+                         << neuronInputs[i] << std::endl;
+            }
+        }
+    }
+    
+    // Debug: Show when rhythmogram is actively driving neurons
+    if (hasSignificantInput && debugCounter % 200 == 0) {
+        std::cout << "🎵 Rhythmogram → Neurons: Active connections driving neural activation" << std::endl;
     }
     
     // Adaptive weight learning if enabled
