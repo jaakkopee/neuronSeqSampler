@@ -370,9 +370,16 @@ float ConnectionMatrix::getWeight(size_t filterIndex, size_t neuronIndex) const 
 std::vector<float> ConnectionMatrix::transform(const std::vector<float>& filterOutputs) const {
     std::vector<float> neuronInputs(numNeurons, 0.0f);
     
+    // Scale rhythmogram outputs to meaningful neural activation levels
+    // Typical rhythmogram values: 0.001-0.01, Neural threshold: 1.0
+    // Scaling factor of 500 ensures rhythmogram can trigger neural activation
+    const float RHYTHMOGRAM_SCALE = 500.0f;
+    
     for (size_t f = 0; f < std::min(filterOutputs.size(), numFilters); ++f) {
         for (size_t n = 0; n < numNeurons; ++n) {
-            neuronInputs[n] += weights[f][n] * filterOutputs[f];
+            // Apply connection weight and rhythmogram scaling for meaningful neural input
+            float scaledInput = weights[f][n] * filterOutputs[f] * RHYTHMOGRAM_SCALE;
+            neuronInputs[n] += scaledInput;
         }
     }
     
@@ -587,16 +594,53 @@ void RhythmInterpreter::update() {
     static int debugCounter = 0;
     bool hasSignificantInput = false;
     
+    // Debug: Show connection matrix transform results occasionally
+    if (debugCounter % 200 == 0) {
+        std::cout << "🔄 Connection matrix transform: " << filterOutputs.size() 
+                  << " filters → " << neuronInputs.size() << " neurons" << std::endl;
+        
+        // Show matrix weights for debugging
+        bool foundAnyWeights = false;
+        for (size_t f = 0; f < std::min(filterOutputs.size(), size_t(8)); ++f) {
+            if (filterOutputs[f] > 0.00001f) {  // Only check filters with output
+                for (size_t n = 0; n < neuronInputs.size(); ++n) {
+                    float weight = connectionMatrix->getWeight(f, n);
+                    if (weight > 0.001f) {
+                        std::cout << "   Filter " << f << " → Neuron " << (n+1) 
+                                  << ": output=" << filterOutputs[f] 
+                                  << " * weight=" << weight 
+                                  << " * scale=500" 
+                                  << " = " << (filterOutputs[f] * weight * 500.0f) << std::endl;
+                        foundAnyWeights = true;
+                    }
+                }
+            }
+        }
+        if (!foundAnyWeights) {
+            std::cout << "   ❌ No connection weights found! Matrix may be uninitialized." << std::endl;
+            // Show first few filter outputs and all weights for first neuron
+            for (size_t f = 0; f < std::min(size_t(3), filterOutputs.size()); ++f) {
+                float weight0 = (neuronInputs.size() > 0) ? connectionMatrix->getWeight(f, 0) : 0.0f;
+                std::cout << "      Filter " << f << ": output=" << filterOutputs[f] << " weight[0]=" << weight0 << std::endl;
+            }
+        }
+        
+        for (size_t i = 0; i < std::min(size_t(3), neuronInputs.size()); ++i) {
+            std::cout << "   Neuron " << (i+1) << " input: " << neuronInputs[i] << std::endl;
+        }
+    }
+    
     for (size_t i = 0; i < std::min(neuronInputs.size(), neurons.size()); ++i) {
         // Send rhythmogram-derived input to each neuron based on connection matrix
-        if (std::abs(neuronInputs[i]) > 0.001f) { // Only apply significant inputs
+        if (std::abs(neuronInputs[i]) > 0.005f) { // Apply inputs that can meaningfully affect neural activation
             neurons[i]->addExternalInput(neuronInputs[i]);
             hasSignificantInput = true;
             
             // Debug: Log neuron input occasionally
-            if (++debugCounter % 100 == 0) {
-                std::cout << "🎯 Neuron " << (i+1) << " receiving rhythmogram input: " 
-                         << neuronInputs[i] << std::endl;
+            if (++debugCounter % 50 == 0) {
+                std::cout << "🎯 Neuron " << (i+1) << " receiving scaled rhythmogram input: " 
+                         << neuronInputs[i] << " (activation: " << neurons[i]->getActivation() 
+                         << ", threshold: " << neurons[i]->getThreshold() << ")" << std::endl;
             }
         }
     }

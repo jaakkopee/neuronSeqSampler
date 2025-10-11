@@ -137,6 +137,26 @@ public:
             std::cout << "- 808 neuron (sample 3): " << (bassLoaded ? "✓" : "✗") << std::endl;
             std::cout << "- 6 connections created (fully connected)" << std::endl;
             
+            // Initialize rhythmogram connection matrix with some default connections
+            auto rhythmInterpreter = network.getRhythmInterpreter();
+            if (rhythmInterpreter) {
+                // Set up some meaningful rhythmogram connections for testing
+                // Connect kick to lower frequencies (quarter note, eighth note)
+                rhythmInterpreter->setConnectionWeight(3, 0, 0.4f); // Quarter (1Hz) → Kick
+                rhythmInterpreter->setConnectionWeight(4, 0, 0.3f); // Eighth (2Hz) → Kick
+                
+                // Connect clap to mid frequencies (eighth, sixteenth)
+                rhythmInterpreter->setConnectionWeight(4, 1, 0.5f); // Eighth (2Hz) → Clap  
+                rhythmInterpreter->setConnectionWeight(5, 1, 0.4f); // 16th (4Hz) → Clap
+                
+                // Connect 808 to lower frequencies (whole, half, quarter)
+                rhythmInterpreter->setConnectionWeight(1, 2, 0.6f); // Whole (0.25Hz) → 808
+                rhythmInterpreter->setConnectionWeight(2, 2, 0.5f); // Half (0.5Hz) → 808
+                rhythmInterpreter->setConnectionWeight(3, 2, 0.3f); // Quarter (1Hz) → 808
+                
+                std::cout << "- Rhythmogram connection matrix initialized" << std::endl;
+            }
+            
 #ifdef USE_TGUI
             // Refresh GUI to show the new network
             guiManager.refreshNeuronSliders();
