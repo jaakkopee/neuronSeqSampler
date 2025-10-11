@@ -10,20 +10,17 @@ NeuronSeqSampler is an experimental audio application that uses interconnected a
 
 ## What Makes It Special
 
-- **Neural Network Audio**: Audio samples are triggered by artificial neurons with realistic activation thresholds and decay
-- **Todd (1994) Rhythmogram Integration**: Revolutionary rhythmic analysis system directly drives neural activation based on Neil Todd's rhythmic hierarchy research
-- **Adaptive Rhythm Interpreter**: 8-band filterbank analyzes audio output and creates intelligent feedback loops
-- **Real-Time Rhythmogram Mapping**: Interactive matrix interface routes frequency bands (0.125Hz-16Hz) to specific neurons with per decamille precision
-- **Direct Neural Activation**: Rhythmogram analysis bypasses audio processing and directly activates neurons based on matrix connections
-- **Real-Time Audio Analysis**: Tempo detection, beat tracking, and spectral analysis of network output
-- **Self-Organizing Music**: Network learns from its own audio output to create more musical patterns
-- **Per-Neuron Activation Functions**: Each neuron can use Linear, Sigmoid, ReLU, or Tanh activation functions independently
-- **Self-Modulating Neurons**: Neurons can oscillate and evolve automatically with configurable self-activation rates
-- **Interactive Visualization**: Real-time rendering of neural network state with curved connections and dynamic colors
-- **Weight-Based Animation**: Connections dance and vibrate only when they have meaningful weights
-- **Live Patching**: Modify network connections, activation functions, and parameters while the system is running
-- **Dual Recording**: Record both external audio input and internal neural network output
-- **Testing Mode**: Instant setup with pre-configured drum patterns for immediate experimentation
+- **🧠 Neural Network Audio**: Audio samples triggered by artificial neurons with realistic activation thresholds and decay
+- **🎵 Todd (1994) Rhythmogram Integration**: Revolutionary rhythmic analysis system directly drives neural activation 
+- **🔄 Real-Time Feedback Loop**: 8-band filterbank analyzes network output and creates intelligent self-organization
+- **🎛️ Interactive Matrix Interface**: Visual routing between rhythmic frequency bands and neurons with per decamille precision
+- **⚡ Direct Neural Activation**: Rhythmogram bypasses audio processing for immediate neural response
+- **🎨 Per-Neuron Activation Functions**: Linear, Sigmoid, ReLU, or Tanh functions independently per neuron
+- **🌊 Self-Modulating Neurons**: Autonomous oscillation and evolution with configurable rates
+- **📊 Live Visualization**: Real-time network rendering with weight-based animation and dynamic colors
+- **🎚️ Live Patching**: Modify connections, functions, and parameters during performance
+- **📹 Dual Recording**: Capture both external input and internal network output
+- **🚀 Testing Mode**: Pre-configured drum network for immediate experimentation
 
 ## Quick Start
 
@@ -85,15 +82,11 @@ make
 - **Real-time Feedback**: Connections dance only when weights are non-zero
 
 **Rhythmogram Mapping Panel** (Press M to toggle):
-- **8×N Grid**: Visual routing between Todd (1994) frequency bands and neurons
-- **Per Decamille Displays**: Real-time rhythmogram activity shown in ‰ (parts per 10,000)
-- **Filter Gain Sliders**: Individual sensitivity control (0.0x-2.0x) for each rhythmic frequency band
-- **Toggle Buttons (○/●)**: Enable/disable frequency-to-neuron connections with visual state indication
-- **Connection Gain Sliders**: Fine-tune connection strength (0-100%) for active rhythmogram routes
-- **Quick Actions**: "Clear All" and "Random" buttons for rapid rhythmic reconfiguration  
-- **Musical Frequency Bands**: Phrase (0.125Hz) → Onset (16Hz) following rhythmic hierarchy research
-- **Direct Neural Activation**: Rhythmogram analysis directly drives neuron activation bypassing audio processing
-- **Perfect Alignment**: Frequency labels positioned on same rows as neuron toggle buttons
+- **8×N Visual Grid**: Routes Todd (1994) rhythmic frequencies to neurons with toggle buttons (○/●)
+- **Per Decamille Displays**: Real-time activity monitoring in ‰ precision (parts per 10,000)
+- **Filter Gain Control**: Sensitivity adjustment (0x-5x) for each frequency band
+- **Connection Gain Control**: Fine-tune routing strength (0-100%) per connection
+- **Quick Actions**: "Clear All" and "Random" buttons for rapid reconfiguration
 
 ### Sample Organization
 
@@ -169,87 +162,60 @@ cd ..
 ./NeuronSeqSampler --testing
 ```
 
-## 🎛️ Rhythm Interpreter System
+## � Rhythmogram Neural Integration
 
-The **Rhythm Interpreter** is an intelligent audio analysis and feedback system that creates a closed loop between the network's output and input, enabling self-organizing musical behavior.
+**Revolutionary Feature**: NeuronSeqSampler implements **Neil Todd's (1994) rhythmogram principles** to directly drive neural activation through real-time rhythmic analysis.
 
-### How It Works
+### System Architecture
 
 ```
-Audio Output → Rhythm Analysis → Filterbank → Connection Matrix → Neuron Inputs
+Audio Output → Rhythmogram Analysis → Connection Matrix → Direct Neuron Activation
      ↑                                                              ↓
      └─────────────── Neural Network Processing ←──────────────────┘
 ```
 
-### Core Components
+### Todd (1994) Frequency Bands
 
-#### � **Todd (1994) Rhythmogram Analyzer** (8 bands)
-- **Phrase (0.125Hz)**: 8-beat phrases, long-term rhythmic patterns
-- **Whole (0.25Hz)**: 4-beat units, measure-level rhythmic structure
-- **Half (0.5Hz)**: 2-beat units, strong-weak beat patterns
-- **Quarter (1Hz)**: Basic beat, fundamental pulse, main tempo
-- **Eighth (2Hz)**: Sub-beat subdivisions, syncopation, groove
-- **16th (4Hz)**: Fast subdivisions, hi-hat patterns, shuffle
-- **32nd (8Hz)**: Very fast subdivisions, rolls, ornaments
-- **Onset (16Hz)**: Micro-timing, attack transients, rhythmic precision
+**8-band logarithmic distribution (0.125Hz - 16Hz) covering musical time structures:**
 
-#### � **Direct Neural Activation Engine**
-- **Real-time rhythmogram processing** with hybrid filtering approach
-- **Per decamille precision** (‰) displays for rhythmic activity monitoring
-- **Bypass audio processing** - direct neural input without sound alteration
-- **Threshold-based activation** - only significant rhythmic events trigger neurons
-- **Debug monitoring** - comprehensive logging of neural input delivery
+| Band | Frequency | Musical Function | Neural Applications |
+|------|-----------|------------------|-------------------|
+| **Phrase** | 0.125Hz | 8-beat phrases, long-term structure | Compositional/tempo neurons |
+| **Whole** | 0.25Hz | 4-beat units, measure-level rhythm | Foundation/anchor neurons |
+| **Half** | 0.5Hz | 2-beat units, strong-weak patterns | Backbeat/emphasis neurons |
+| **Quarter** | 1Hz | Basic beat, fundamental pulse | Primary rhythm neurons |
+| **Eighth** | 2Hz | Sub-beat subdivisions, groove | Syncopation/swing neurons |
+| **16th** | 4Hz | Fast subdivisions, hi-hat patterns | Texture/fill neurons |
+| **32nd** | 8Hz | Very fast subdivisions, rolls | Ornament/decoration neurons |
+| **Onset** | 16Hz | Micro-timing, attack transients | Percussive/transient neurons |
 
-#### 🔄 **Interactive Connection Matrix** (8×N)
-- **Visual routing interface**: Toggle buttons for frequency-to-neuron connections
-- **Connection gain control**: Individual strength adjustment (0-100%) per route
-- **Real-time feedback**: Per decamille displays show live rhythmogram activity
-- **Musical intelligence**: Frequency bands optimized for rhythmic hierarchy
-- **State persistence**: Configuration survives user interactions and network changes
+### Core Features
 
-### Musical Applications
+#### 🧠 **Direct Neural Activation Engine**
+- **Hybrid Processing**: Envelope following (<4Hz) + biquad filters (≥4Hz) for optimal detection
+- **Per Decamille Precision**: Real-time activity monitoring in ‰ (parts per 10,000)
+- **Audio Bypass**: Direct neural input without sound alteration
+- **Threshold Activation**: Only significant rhythmic events trigger neurons
 
-#### 🎵 **Rhythm Entrainment**
-- Network naturally synchronizes with detected beats
-- Tempo changes guide neural activation intervals  
-- Polyrhythmic patterns emerge from frequency interactions
+#### 🔄 **Interactive Connection Matrix (8×N)**
+- **Visual Routing**: Toggle buttons (○/●) for frequency-to-neuron connections
+- **Dual Gain Control**: Filter sensitivity (0x-5x) + connection strength (0-100%)
+- **Real-Time Feedback**: Live rhythmogram activity displays
+- **State Persistence**: Configuration survives network changes
 
-#### 🎨 **Spectral Shaping**
-- **Low frequencies** → Drive percussive elements (kicks, bass)
-- **Mid frequencies** → Control melodic content (leads, pads)
-- **High frequencies** → Modulate textural elements (hi-hats, FX)
-
-#### 🧠 **Self-Organization**
-- Network learns optimal frequency-to-neuron mappings
-- Rhythmic patterns become more coherent over time
-- Complex musical structures emerge from simple rules
+#### 🎵 **Musical Intelligence**
+- **Rhythm Entrainment**: Network synchronizes with detected beats
+- **Spectral Mapping**: Low frequencies → percussion, high frequencies → texture
+- **Self-Organization**: Optimal frequency-to-neuron mappings emerge over time
+- **Polyrhythmic Patterns**: Complex interactions between frequency bands
 
 ### Technical Specifications
-
 - **Latency**: ~13ms total system latency
 - **Sample Rate**: 44.1kHz with 512-sample buffers
 - **Analysis Window**: 100 frames (~1.16 seconds of history)
 - **CPU Overhead**: <5% on modern systems
-- **Frequency Range**: 0.125Hz - 16Hz (logarithmic distribution following Todd 1994 research)
-
----
-
-## 🎵 Rhythmogram Neural Integration (NEW!)
-
-**Revolutionary Feature**: NeuronSeqSampler now implements **Neil Todd's (1994) rhythmogram principles** to directly drive neural activation through real-time rhythmic analysis.
-
-### What Is a Rhythmogram?
-
-Based on Dr. Neil Todd's groundbreaking research at Sheffield University, rhythmograms analyze rhythmic hierarchies in music using logarithmically spaced frequency bands that correspond to musical time structures:
-
-- **Phrase (0.125Hz)**: 8-beat phrases, 2-measure groups, long-term rhythmic patterns
-- **Whole (0.25Hz)**: 4-beat units, measure-level rhythmic structure  
-- **Half (0.5Hz)**: 2-beat units, strong-weak beat patterns
-- **Quarter (1Hz)**: Basic beat, fundamental pulse, main tempo
-- **Eighth (2Hz)**: Sub-beat subdivisions, syncopation, groove
-- **16th (4Hz)**: Fast subdivisions, hi-hat patterns, shuffle
-- **32nd (8Hz)**: Very fast subdivisions, rolls, ornaments
-- **Onset (16Hz)**: Micro-timing, attack transients, rhythmic precision
+- **Filter Gain Range**: 0x-5x with 0.1x step increments
+- **Connection Gain Range**: 0-100% per frequency-neuron route
 
 ### How It Works
 
@@ -337,40 +303,15 @@ This breakthrough integration transforms NeuronSeqSampler from an interactive au
 
 ## Advanced Features
 
-### Rhythmogram Matrix Control
-
-The **Rhythmogram Mapping Matrix** provides visual control over how Todd (1994) rhythmic analysis directly drives your neural network:
-
-#### **Interface Elements**
-- **8×N Grid Layout**: Rows represent rhythmic frequency bands (Phrase → Onset), columns represent neurons
-- **Toggle Buttons**: Click ○ (off) or ● (on) to enable direct rhythmogram-to-neuron activation
-- **Gain Sliders**: Adjust neural input strength (0-100%) for active connections  
-- **Per Decamille Displays**: Real-time rhythmogram activity shown in ‰ precision
-- **Color Coding**: Button brightness indicates connection strength and neural input level
-- **Musical Tooltips**: Hover for rhythmic frequency descriptions and neural applications
-
-#### **Rhythmic Frequency Bands** (Todd 1994 Logarithmic Distribution)
-- **Phrase (0.125Hz)**: 8-beat phrases, long-term structure → Compositional/tempo neurons
-- **Whole (0.25Hz)**: 4-beat units, measure-level rhythm → Foundation/anchor neurons
-- **Half (0.5Hz)**: 2-beat units, strong-weak patterns → Backbeat/emphasis neurons
-- **Quarter (1Hz)**: Basic beat, fundamental pulse → Primary rhythm neurons
-- **Eighth (2Hz)**: Sub-beat subdivisions, groove feel → Syncopation/swing neurons
-- **16th (4Hz)**: Fast subdivisions, hi-hat patterns → Texture/fill neurons
-- **32nd (8Hz)**: Very fast subdivisions, rolls → Ornament/decoration neurons
-- **Onset (16Hz)**: Micro-timing, attack detection → Percussive/transient neurons
-
-#### **Quick Actions**
-- **Clear All**: Disconnect all frequency bands from all neurons
-- **Random**: Generate varied connection patterns with random weights
-- **Real-time Updates**: Changes immediately affect rhythm processing
+### Rhythmogram Matrix Interface
 
 #### **Usage Strategy**
 1. **Show Matrix** (Press 'M') to display the rhythmogram mapping interface
-2. **Play Audio** (number keys 1-9) to generate rhythmogram analysis data
+2. **Play Audio** (number keys 1-9) to generate rhythmogram analysis data  
 3. **Create Connections** by clicking toggle buttons (○ → ●) to route frequency bands to neurons
-4. **Adjust Gains** with connection sliders for optimal neural input levels
+4. **Adjust Gains** with filter (0x-5x) and connection (0-100%) sliders for optimal levels
 5. **Monitor Activity** via per decamille displays showing real-time rhythmic analysis
-6. **Experiment** with Todd (1994) rhythmic hierarchy principles for musical intelligence
+6. **Quick Actions**: Use "Clear All" and "Random" buttons for rapid reconfiguration
 
 ### Per-Neuron Activation Functions
 
