@@ -8,6 +8,7 @@
 #include <functional>
 
 class Recorder; // Forward declaration
+class RhythmInterpreter; // Forward declaration
 
 class AudioManager {
 private:
@@ -22,6 +23,12 @@ private:
     
     // Filter callback for routing samples through filter bank
     std::function<std::vector<float>(const std::vector<float>&)> filterCallback;
+    
+    // RhythmInterpreter reference for filter modes
+    RhythmInterpreter* rhythmInterpreter;
+    
+    // Storage for filtered sound buffers (needed to keep them alive during playback)
+    std::unordered_map<int, std::unique_ptr<sf::SoundBuffer>> filteredBuffers;
 
 public:
     AudioManager(const std::string& samplesDir = "samples/girliepop/", bool loadDefaults = false);
@@ -41,6 +48,7 @@ public:
     // Sample data access for filtering
     std::vector<float> getSampleData(int sampleIndex) const; // Get sample as float data
     void setFilterCallback(std::function<std::vector<float>(const std::vector<float>&)> callback); // Set filter processing callback
+    void setRhythmInterpreter(RhythmInterpreter* interpreter); // Set rhythm interpreter reference
     void setFilterMode(bool enabled); // Enable or disable filter mode
     void setAdaptiveFilterMode(bool enabled); // Enable or disable adaptive filter mode
     bool isFilterModeEnabled() const { return filterCallback != nullptr; }

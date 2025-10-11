@@ -1,10 +1,11 @@
 #include "AudioManager.h"
 #include "Recorder.h"
+#include "RhythmInterpreter.h"
 #include <iostream>
 #include <SFML/System/Time.hpp>
 
 AudioManager::AudioManager(const std::string& samplesDir, bool loadDefaults) 
-    : samplesDirectory(samplesDir), internalRecorder(nullptr), recordingOutput(false)
+    : samplesDirectory(samplesDir), internalRecorder(nullptr), recordingOutput(false), rhythmInterpreter(nullptr)
 {
     if (loadDefaults) {
         loadDefaultSamples();
@@ -53,10 +54,14 @@ bool AudioManager::playSample(int sampleIndex, float offsetSeconds) {
         
         // Check if filter mode is enabled
         if (filterCallback) {
+            std::cout << "🎛️  Filter callback is active - processing sample " << sampleIndex << std::endl;
             // Route through filter bank
             std::vector<float> sampleData = getSampleData(sampleIndex);
+            std::cout << "🎛️  Sample data size: " << sampleData.size() << std::endl;
             if (!sampleData.empty()) {
+                std::cout << "🎛️  Calling filter callback..." << std::endl;
                 std::vector<float> filteredData = filterCallback(sampleData);
+                std::cout << "🎛️  Filter callback returned " << filteredData.size() << " samples" << std::endl;
                 
                 // Create a new sound buffer with filtered data
                 if (!filteredData.empty()) {
@@ -68,10 +73,11 @@ bool AudioManager::playSample(int sampleIndex, float offsetSeconds) {
                         int16Data.push_back(static_cast<sf::Int16>(clampedSample * 32767.0f));
                     }
                     
-                    // Create temporary buffer and play filtered audio
-                    sf::SoundBuffer filteredBuffer;
-                    if (filteredBuffer.loadFromSamples(&int16Data[0], int16Data.size(), 1, 44100)) {
-                        it->second->setBuffer(filteredBuffer);
+                    // Create persistent buffer and play filtered audio
+                    auto filteredBuffer = std::make_unique<sf::SoundBuffer>();
+                    if (filteredBuffer->loadFromSamples(&int16Data[0], int16Data.size(), 1, 44100)) {
+                        it->second->setBuffer(*filteredBuffer);
+                        filteredBuffers[sampleIndex] = std::move(filteredBuffer); // Store buffer to keep it alive
                         it->second->setPlayingOffset(sf::Time::Zero);
                         it->second->play();
                         std::cout << "🎛️  Playing sample " << sampleIndex << " through filter bank (" << filteredData.size() << " samples)" << std::endl;
@@ -156,16 +162,25 @@ bool AudioManager::isRecordingOutput() const {
 std::vector<float> AudioManager::getSampleData(int sampleIndex) const {
     std::vector<float> data;
     auto bufferIt = soundBuffers.find(sampleIndex);
+    std::cout << "🎛️  getSampleData for index " << sampleIndex << " - buffer found: " << (bufferIt != soundBuffers.end()) << std::endl;
     if (bufferIt != soundBuffers.end()) {
         const sf::SoundBuffer* buffer = bufferIt->second.get();
         const sf::Int16* samples = buffer->getSamples();
         std::size_t sampleCount = buffer->getSampleCount();
+        std::cout << "🎛️  Sample count: " << sampleCount << std::endl;
         
         // Convert Int16 samples to float
         data.reserve(sampleCount);
         for (std::size_t i = 0; i < sampleCount; ++i) {
             data.push_back(static_cast<float>(samples[i]) / 32767.0f);
         }
+        
+        // Check if we have actual audio data
+        float maxSample = 0.0f;
+        for (float sample : data) {
+            maxSample = std::max(maxSample, std::abs(sample));
+        }
+        std::cout << "🎛️  Converted " << data.size() << " samples, max level: " << maxSample << std::endl;
     }
     return data;
 }
@@ -179,34 +194,48 @@ void AudioManager::setFilterCallback(std::function<std::vector<float>(const std:
     }
 }
 
+void AudioManager::setRhythmInterpreter(RhythmInterpreter* interpreter) {
+    rhythmInterpreter = interpreter;
+}
+
 void AudioManager::setFilterMode(bool enabled) {
-    if (enabled) {
-        // Example: Set a default filter callback
-        setFilterCallback([](const std::vector<float>& input) -> std::vector<float> {
-            // Pass-through filter (no processing)
-            return input;
+    std::cout << "🎛️  setFilterMode called with enabled=" << enabled 
+              << ", rhythmInterpreter=" << (rhythmInterpreter ? "valid" : "null") << std::endl;
+              
+    if (enabled && rhythmInterpreter) {
+        // Set up filter callback to route samples through RhythmInterpreter
+        setFilterCallback([this](const std::vector<float>& audioData) -> std::vector<float> {
+            std::cout << "🎛️  Lambda callback executing - calling processAudioFrame" << std::endl;
+            // Process audio through rhythm interpreter and get filtered output
+            rhythmInterpreter->processAudioFrame(audioData);
+            auto result = rhythmInterpreter->getProcessedAudioOutput();
+            std::cout << "🎛️  Lambda callback returning " << result.size() << " samples" << std::endl;
+            return result;
         });
+        std::cout << "🎛️  Filter Mode ENABLED - routing through RhythmInterpreter" << std::endl;
     } else {
         // Disable filter callback
         setFilterCallback(nullptr);
+        if (enabled && !rhythmInterpreter) {
+            std::cout << "⚠️  Filter Mode requested but RhythmInterpreter is null!" << std::endl;
+        } else {
+            std::cout << "🎛️  Filter Mode DISABLED - direct sample playback" << std::endl;
+        }
     }
 }
 
 void AudioManager::setAdaptiveFilterMode(bool enabled) {
-    if (enabled) {
-        // Example: Set an adaptive filter callback
-        setFilterCallback([](const std::vector<float>& input) -> std::vector<float> {
-            std::vector<float> output;
-            output.reserve(input.size());
-            for (size_t i = 0; i < input.size(); ++i) {
-                // Example adaptive filter logic: simple moving average
-                float filteredSample = input[i] * 0.8f + (i > 0 ? input[i - 1] * 0.2f : 0.0f);
-                output.push_back(filteredSample);
-            }
-            return output;
+    if (enabled && rhythmInterpreter) {
+        // Set up adaptive filter callback to route samples through RhythmInterpreter with adaptation
+        setFilterCallback([this](const std::vector<float>& audioData) -> std::vector<float> {
+            // Process audio through rhythm interpreter with adaptive filtering
+            rhythmInterpreter->processAudioFrame(audioData);
+            return rhythmInterpreter->getProcessedAudioOutput();
         });
+        std::cout << "🎛️  Adaptive Filter Mode ENABLED - routing through adaptive RhythmInterpreter" << std::endl;
     } else {
         // Disable adaptive filter callback
         setFilterCallback(nullptr);
+        std::cout << "🎛️  Adaptive Filter Mode DISABLED - direct sample playback" << std::endl;
     }
 }

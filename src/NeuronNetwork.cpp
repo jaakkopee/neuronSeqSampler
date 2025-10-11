@@ -128,7 +128,9 @@ void NeuronNetwork::clearNetwork() {
 void NeuronNetwork::initializeRhythmInterpreter() {
     if (audioManager && !rhythmInterpreter) {
         rhythmInterpreter = new RhythmInterpreter(this, audioManager);
-        std::cout << "🎵 RhythmInterpreter initialized with filter bank" << std::endl;
+        // Set the RhythmInterpreter reference in AudioManager for filter modes
+        audioManager->setRhythmInterpreter(rhythmInterpreter);
+        std::cout << "🎵 RhythmInterpreter initialized with filter bank and linked to AudioManager" << std::endl;
         
         // Set up some default connections for testing if there are neurons
         if (!neurons.empty()) {

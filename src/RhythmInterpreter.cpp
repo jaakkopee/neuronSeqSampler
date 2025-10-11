@@ -389,11 +389,25 @@ void RhythmInterpreter::initializeFilterBank() {
 }
 
 void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
-    if (!enabled || !neuronNetwork) return;
+    static int debugCounter = 0;
+    
+    // Debug: Always log first few calls and periodically after
+    if (debugCounter < 5 || debugCounter % 1000 == 0) {
+        std::cout << "🎛️  processAudioFrame called #" << debugCounter 
+                  << " - enabled: " << enabled 
+                  << ", neuronNetwork: " << (neuronNetwork ? "yes" : "no")
+                  << ", audioData size: " << audioData.size() << std::endl;
+    }
+    
+    if (!enabled || !neuronNetwork) {
+        std::cout << "⚠️  processAudioFrame early return - enabled: " << enabled 
+                  << ", neuronNetwork: " << (neuronNetwork ? "valid" : "null") << std::endl;
+        return;
+    }
     
     // Debug: Check if we're receiving audio data
-    static int debugCounter = 0;
-    if (++debugCounter % 100 == 0 && !audioData.empty()) {
+    debugCounter++;
+    if (debugCounter % 100 == 0 && !audioData.empty()) {
         float maxSample = 0.0f;
         for (float sample : audioData) {
             maxSample = std::max(maxSample, std::abs(sample));
@@ -418,12 +432,20 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     // Process each filter
     for (size_t i = 0; i < filterBank.size() && i < filterOutputs.size(); ++i) {
         float sum = 0.0f;
+        float maxFilteredSample = 0.0f;
         for (size_t j = 0; j < audioData.size(); ++j) {
             float filteredSample = filterBank[i]->process(audioData[j]);
+            maxFilteredSample = std::max(maxFilteredSample, std::abs(filteredSample));
             filterAudioOutputs[i][j] = filteredSample * globalGain * filterGains[i];
             sum += filteredSample;
         }
         filterOutputs[i] = (sum / audioData.size()) * globalGain * filterGains[i];
+        
+        // Debug: Log filter output levels occasionally
+        if (debugCounter % 1000 == 0 && i == 0) { // Only log for first filter to avoid spam
+            std::cout << "🎛️  Filter " << i << " - Raw sum: " << sum << ", Max sample: " << maxFilteredSample 
+                      << ", Final output: " << filterOutputs[i] << ", Gain: " << filterGains[i] << std::endl;
+        }
         
         // Adapt filter based on rhythm strength
         float rhythmStrength = rhythmDetector->getBeatStrength();

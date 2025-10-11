@@ -1598,8 +1598,10 @@ void GUI::createConnectionMatrixPanel() {
     filterModeToggle->onPress([this, filterModeToggle]() {
         static bool filterModeEnabled = false;
         filterModeEnabled = !filterModeEnabled;
+        std::cout << "🎛️  Filter Mode button pressed - new state: " << (filterModeEnabled ? "ON" : "OFF") << std::endl;
         filterModeToggle->setText(filterModeEnabled ? "Filter Mode: ON" : "Filter Mode: OFF");
         audioManager->setFilterMode(filterModeEnabled);
+        std::cout << "🎛️  Called audioManager->setFilterMode(" << filterModeEnabled << ")" << std::endl;
     });
     connectionMatrixPanel->add(filterModeToggle);
 
@@ -1638,6 +1640,7 @@ void GUI::createConnectionMatrixPanel() {
     filterLabels.clear();
     filterGainSliders.clear();
     filterResonanceSliders.clear();
+    filterOutputDisplays.clear();
     for (size_t f = 0; f < numFilters; ++f) {
         auto label = tgui::Label::create(filterNames[f]);
         label->setPosition(5, 55 + f * 60); // Moved down to accommodate buttons
@@ -1688,6 +1691,19 @@ void GUI::createConnectionMatrixPanel() {
         
         connectionMatrixPanel->add(resonanceSlider);
         filterResonanceSliders.push_back(resonanceSlider);
+        
+        // Add filter output display (label showing current output level)
+        auto outputDisplay = tgui::Label::create("0.0");
+        outputDisplay->setPosition(105, 70 + f * 60); // Next to resonance slider
+        outputDisplay->setSize(40, 15); // Small label
+        outputDisplay->setTextSize(8);
+        outputDisplay->getRenderer()->setTextColor(tgui::Color(100, 200, 100));
+        outputDisplay->getRenderer()->setBackgroundColor(tgui::Color(20, 20, 20));
+        outputDisplay->getRenderer()->setBorderColor(tgui::Color(60, 60, 60));
+        outputDisplay->getRenderer()->setBorders(1);
+        
+        connectionMatrixPanel->add(outputDisplay);
+        filterOutputDisplays.push_back(outputDisplay);
     }
     
     // Neuron column labels (horizontal) - only if we have neurons
@@ -1852,6 +1868,33 @@ void GUI::updateConnectionMatrix() {
             // Update gain slider
             matrixGainSliders[f][n]->setValue(std::abs(weight) * 100.0f);
             matrixGainSliders[f][n]->setVisible(isConnected);
+        }
+    }
+    
+    // Update filter output displays with real-time levels
+    auto filterOutputs = rhythmInterpreter->getFilterOutputs();
+    static int guiDebugCounter = 0;
+    
+    for (size_t f = 0; f < std::min(numFilters, filterOutputDisplays.size()) && f < filterOutputs.size(); ++f) {
+        float outputLevel = std::min(1.0f, std::abs(filterOutputs[f])); // Clamp to 0-1 range
+        
+        // Debug: Log filter output levels occasionally
+        if (++guiDebugCounter % 1000 == 0 && f == 0) {
+            std::cout << "🎛️  GUI Filter " << f << " output level: " << filterOutputs[f] 
+                      << " (clamped: " << outputLevel << ")" << std::endl;
+        }
+        
+        // Format as percentage with 1 decimal place
+        std::string levelText = std::to_string(static_cast<int>(outputLevel * 100)) + "%";
+        filterOutputDisplays[f]->setText(levelText);
+        
+        // Color coding: green for low, yellow for medium, red for high levels
+        if (outputLevel < 0.3f) {
+            filterOutputDisplays[f]->getRenderer()->setTextColor(tgui::Color(100, 200, 100));
+        } else if (outputLevel < 0.7f) {
+            filterOutputDisplays[f]->getRenderer()->setTextColor(tgui::Color(200, 200, 100));
+        } else {
+            filterOutputDisplays[f]->getRenderer()->setTextColor(tgui::Color(200, 100, 100));
         }
     }
     
