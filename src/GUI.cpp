@@ -1558,8 +1558,8 @@ void GUI::createConnectionMatrixPanel() {
     gui->add(connectionMatrixPanel, "ConnectionMatrixPanel");
     
     // Title label
-    std::string title = numNeurons == 0 ? "🎛️ Filter Feedback (8×0) - Add neurons first" : 
-                                         "🎛️ Filter Feedback (8×" + std::to_string(numNeurons) + ")";
+    std::string title = numNeurons == 0 ? "🎛️ Rhythmogram Mapping (8×0) - Add neurons first" : 
+                                         "🎛️ Rhythmogram Mapping (8×" + std::to_string(numNeurons) + ")";
     matrixTitleLabel = tgui::Label::create(title);
     matrixTitleLabel->setPosition(5, 5);
     matrixTitleLabel->setTextSize(14);
@@ -1627,21 +1627,21 @@ void GUI::createConnectionMatrixPanel() {
     });
     connectionMatrixPanel->add(adaptiveModeToggle);
     
-    // Filter band labels (vertical) - Exponential frequency distribution
+    // Rhythmogram frequency bands (Todd, 1994) - Logarithmic distribution for rhythmic hierarchy
     const std::vector<std::string> filterNames = {
-        "Ultra (1Hz)", "VLow (3Hz)", "Low (11Hz)", "Sub (38Hz)",
-        "Bass (128Hz)", "Mid (430Hz)", "Pres (1.4kHz)", "Air (8kHz)"
+        "Phrase (0.125Hz)", "Whole (0.25Hz)", "Half (0.5Hz)", "Quarter (1Hz)",
+        "Eighth (2Hz)", "16th (4Hz)", "32nd (8Hz)", "Onset (16Hz)"
     };
     
     const std::vector<std::string> filterTooltips = {
-        "Ultra-Low: Subsonic rhythmic patterns and very slow modulations",
-        "Very Low: Extremely slow rhythmic elements and bass patterns", 
-        "Low: Slow bass rhythms and deep percussion fundamentals",
-        "Sub Bass: Kick drum fundamentals and low-end power",
-        "Bass: Kick harmonics, bassline, and low snare content",
-        "Mids: Snare attack, vocals, and mid percussion",
-        "Presence: Hi-hat attack, upper percussion, and clarity", 
-        "Air: High-frequency content, cymbals, and spatial detail"
+        "Phrase Structure: 8-beat phrases, 2-measure groups, long-term rhythmic patterns",
+        "Whole Note Level: 4-beat units, measure-level rhythmic structure", 
+        "Half Note Level: 2-beat units, strong-weak beat patterns",
+        "Quarter Note Level: Basic beat, fundamental pulse, main tempo",
+        "Eighth Note Level: Sub-beat subdivisions, syncopation, groove",
+        "Sixteenth Note Level: Fast subdivisions, hi-hat patterns, shuffle",
+        "Thirty-Second Note Level: Very fast subdivisions, rolls, ornaments", 
+        "Onset Detection: Micro-timing, attack transients, rhythmic precision"
     };
     
     filterLabels.clear();
@@ -1852,7 +1852,7 @@ void GUI::updateConnectionMatrix() {
     
     // Update title
     if (matrixTitleLabel) {
-        matrixTitleLabel->setText("🎛️ Filter Feedback (8×" + std::to_string(numNeurons) + ")");
+        matrixTitleLabel->setText("🎛️ Rhythmogram Mapping (8×" + std::to_string(numNeurons) + ")");
     }
     
     // Update button states and slider values
@@ -1885,9 +1885,13 @@ void GUI::updateConnectionMatrix() {
     for (size_t f = 0; f < std::min(numFilters, filterOutputDisplays.size()) && f < filterOutputs.size(); ++f) {
         float outputLevel = std::min(1.0f, std::abs(filterOutputs[f])); // Clamp to 0-1 range
         
-        // Debug: Log filter output levels occasionally  
-        if (++guiDebugCounter % 50 == 0 && f < 4) { // Show first 4 filters
-            std::cout << "🎛️  GUI Filter " << f << " output level: " << filterOutputs[f] 
+        // Debug: Log rhythmogram output levels occasionally  
+        if (++guiDebugCounter % 50 == 0 && f < 6) { // Show first 6 rhythmogram bands
+            const std::vector<std::string> bandNames = {
+                "Phrase(0.125Hz)", "Whole(0.25Hz)", "Half(0.5Hz)", "Quarter(1Hz)", "Eighth(2Hz)", "16th(4Hz)"
+            };
+            std::string bandName = (f < bandNames.size()) ? bandNames[f] : "Band" + std::to_string(f);
+            std::cout << "🎛️  Rhythmogram " << f << " (" << bandName << ") level: " << filterOutputs[f] 
                       << " (clamped: " << outputLevel << ")" << std::endl;
         }
 
@@ -1928,7 +1932,7 @@ void GUI::toggleMatrixVisibility() {
     matrixVisible = !matrixVisible;
     connectionMatrixPanel->setVisible(matrixVisible);
     
-    std::cout << "🎛️ Filter Feedback " << (matrixVisible ? "shown" : "hidden") 
+    std::cout << "🎛️ Rhythmogram Mapping " << (matrixVisible ? "shown" : "hidden") 
               << " (press M to toggle)" << std::endl;
 }
 

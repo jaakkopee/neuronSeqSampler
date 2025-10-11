@@ -7,38 +7,64 @@
 #include <numeric>
 #include <iostream>
 
-// Default frequency bands with exponential distribution starting from 1.0 Hz
+/*
+ * RHYTHMOGRAM IMPLEMENTATION (Todd, 1994)
+ * 
+ * This RhythmInterpreter implements the rhythmogram approach for visualizing 
+ * rhythmic structure in musical performances. The rhythmogram uses a low-frequency
+ * filterbank arranged logarithmically to capture different levels of rhythmic
+ * hierarchy:
+ * 
+ * - 0.125Hz: Long-term phrase structure (8-beat groups, 2-measure phrases)
+ * - 0.25Hz:  Whole note level rhythmic structure
+ * - 0.5Hz:   Half note level rhythmic structure  
+ * - 1.0Hz:   Quarter note level (basic beat)
+ * - 2.0Hz:   Eighth note subdivisions
+ * - 4.0Hz:   Sixteenth note subdivisions
+ * - 8.0Hz:   Thirty-second note subdivisions
+ * - 16.0Hz:  Micro-rhythmic variations and onset detection
+ * 
+ * Fast musical events (e.g., sixteenth notes) activate higher frequency filters,
+ * while slower structural elements (e.g., whole notes, phrases) activate lower
+ * frequency filters. This creates a tree-like representation of rhythmic hierarchy.
+ * 
+ * Reference: Todd, N. P. M. (1994). The auditory "primal sketch": A multiscale 
+ * model of rhythmic grouping. Journal of New Music Research, 23(1), 25-70.
+ */
+
+// Rhythmogram frequency bands following Todd (1994) principles
+// Low-frequency filterbank arranged logarithmically to capture rhythmic hierarchy
 const std::vector<float> RhythmInterpreter::DEFAULT_FREQUENCIES = {
-    1.0f,     // Ultra-low (subsonic/infrasonic rhythms)
-    3.36f,    // Very low (very slow rhythmic patterns) 
-    11.3f,    // Low (slow bass rhythms)
-    38.0f,    // Sub bass (kick fundamentals)
-    127.8f,   // Bass (kick harmonics, low snare)
-    429.7f,   // Mids (snare snap, mid percussion)
-    1445.7f,  // Presence (hi-hat attack, upper percussion)
-    8000.0f   // Air (high frequency content, cymbals)
+    0.125f,   // Very long structures (8-beat phrases, 2-measure groups)
+    0.25f,    // Whole notes (4-beat rhythmic units)
+    0.5f,     // Half notes (2-beat rhythmic units) 
+    1.0f,     // Quarter notes (1-beat rhythmic units)
+    2.0f,     // Eighth notes (sub-beat rhythmic units)
+    4.0f,     // Sixteenth notes (fast rhythmic subdivisions)
+    8.0f,     // Thirty-second notes (very fast subdivisions)
+    16.0f     // Micro-rhythmic variations and onset detection
 };
 
 const std::vector<float> RhythmInterpreter::DEFAULT_BANDWIDTHS = {
-    0.5f,     // Narrow for ultra-low (0.5 Hz around 1.0 Hz)
-    1.2f,     // Narrow for very low (1.2 Hz around 3.36 Hz)
-    4.0f,     // Medium for low (4.0 Hz around 11.3 Hz)
-    13.0f,    // Medium for sub bass (13 Hz around 38 Hz)
-    43.0f,    // Medium-wide for bass (43 Hz around 128 Hz)
-    145.0f,   // Wide for mids (145 Hz around 430 Hz)
-    480.0f,   // Wide for presence (480 Hz around 1446 Hz)
-    2500.0f   // Very wide for air (2500 Hz around 8000 Hz)
+    0.03f,    // Very narrow for 0.125Hz (captures 8-beat phrase structure)
+    0.06f,    // Narrow for 0.25Hz (captures whole note timing)
+    0.12f,    // Narrow for 0.5Hz (captures half note timing)
+    0.25f,    // Narrow for 1.0Hz (captures quarter note timing)
+    0.5f,     // Medium for 2.0Hz (captures eighth note timing)
+    1.0f,     // Medium for 4.0Hz (captures sixteenth note timing)
+    2.0f,     // Medium-wide for 8.0Hz (captures thirty-second notes)
+    4.0f      // Wide for 16.0Hz (captures micro-timing and onsets)
 };
 
 const std::vector<float> RhythmInterpreter::DEFAULT_RESONANCES = {
-    2.0f,     // Moderate resonance for ultra-low
-    2.5f,     // Slightly higher for very low
-    3.0f,     // Medium resonance for low
-    4.0f,     // Higher resonance for sub bass (punch)
-    5.0f,     // High resonance for bass (tight)
-    3.5f,     // Medium-high for mids (clarity)
-    2.5f,     // Lower for presence (smooth)
-    1.5f      // Low resonance for air (gentle)
+    8.0f,     // High Q for 0.125Hz (precise long-term structure detection)
+    6.0f,     // High Q for 0.25Hz (precise whole note detection)
+    5.0f,     // High Q for 0.5Hz (precise half note detection)
+    4.0f,     // Medium-high Q for 1.0Hz (quarter note detection)
+    3.5f,     // Medium Q for 2.0Hz (eighth note detection)
+    3.0f,     // Medium Q for 4.0Hz (sixteenth note detection)
+    2.5f,     // Lower Q for 8.0Hz (thirty-second note detection)
+    2.0f      // Moderate Q for 16.0Hz (onset detection, allow some bandwidth)
 };
 
 // ============================================================================
@@ -47,7 +73,7 @@ const std::vector<float> RhythmInterpreter::DEFAULT_RESONANCES = {
 
 AdaptiveFilter::AdaptiveFilter(float freq, float bw, float adaptRate, float res)
     : centerFrequency(freq), bandwidth(bw), adaptationRate(adaptRate), resonance(res),
-      currentEnergy(0.0f), adaptiveGain(1.0f) {
+      currentEnergy(0.0f), adaptiveGain(1.0f), sampleCount(0.0f), smoothedOutput(0.0f) {
     
     // Initialize simple bandpass filter coefficients
     coefficients.resize(5); // Biquad filter
@@ -57,8 +83,23 @@ AdaptiveFilter::AdaptiveFilter(float freq, float bw, float adaptRate, float res)
 }
 
 void AdaptiveFilter::updateFilterCoefficients() {
-    // Calculate biquad coefficients for bandpass filter with resonance
+    // For rhythmogram analysis, use different approaches based on frequency range
     float omega = 2.0f * M_PI * centerFrequency / 44100.0f; // Assume 44.1kHz
+    
+    // For very low frequencies (< 4Hz), omega becomes extremely small and causes numerical issues
+    // Instead, we'll detect these in the process() method using envelope following
+    if (centerFrequency < 4.0f) {
+        // Mark as low-frequency rhythmogram filter - will be handled specially in process()
+        // Set coefficients to pass-through for now
+        coefficients[0] = 1.0f; // b0 - pass input
+        coefficients[1] = 0.0f; // b1
+        coefficients[2] = 0.0f; // b2
+        coefficients[3] = 0.0f; // a1 
+        coefficients[4] = 0.0f; // a2
+        return;
+    }
+    
+    // For higher frequencies (>= 4Hz), use traditional biquad bandpass filter
     float Q = resonance; // Use resonance as Q factor
     float alpha = sin(omega) / (2.0f * Q);
     
@@ -78,24 +119,59 @@ void AdaptiveFilter::updateFilterCoefficients() {
 }
 
 float AdaptiveFilter::process(float input) {
-    // Apply biquad filter: y[n] = b0*x[n] + b1*x[n-1] + b2*x[n-2] - a1*y[n-1] - a2*y[n-2]
-    float output = coefficients[0] * input + 
-                   coefficients[1] * delayLine[0] + 
-                   coefficients[2] * delayLine[1] - 
-                   coefficients[3] * delayLine[2] - 
-                   coefficients[4] * delayLine[3];
+    float output = 0.0f;
     
-    // Update delay line
-    delayLine[1] = delayLine[0]; // x[n-2] = x[n-1]
-    delayLine[0] = input;        // x[n-1] = x[n]
-    delayLine[3] = delayLine[2]; // y[n-2] = y[n-1]
-    delayLine[2] = output;       // y[n-1] = y[n]
-    
-    // Apply adaptive gain
-    output *= adaptiveGain;
-    
-    // Update energy estimate
-    currentEnergy = 0.95f * currentEnergy + 0.05f * (output * output);
+    if (centerFrequency < 4.0f) {
+        // RHYTHMOGRAM LOW-FREQUENCY PROCESSING
+        // For frequencies < 4Hz, use envelope following and rhythm detection
+        
+        // Calculate input energy (envelope following)
+        float inputEnergy = input * input;
+        
+        // Update energy estimate with time constant based on target frequency
+        // Lower frequencies need longer time constants to capture slower rhythmic patterns
+        float timeConstant = 0.99f - (centerFrequency / 4.0f) * 0.1f; // 0.99 to 0.89
+        currentEnergy = timeConstant * currentEnergy + (1.0f - timeConstant) * inputEnergy;
+        
+        // For rhythmogram, we want to detect rhythmic modulation at the target frequency
+        // Use a simple oscillating reference to detect correlation with the target rhythm
+        sampleCount += 1.0f;
+        
+        // Generate reference oscillation at target frequency 
+        float referenceFreq = centerFrequency; // Hz
+        float referencePhase = 2.0f * M_PI * referenceFreq * sampleCount / 44100.0f;
+        float reference = (sin(referencePhase) + 1.0f) * 0.5f; // 0 to 1 range
+        
+        // Correlate energy envelope with reference rhythm
+        float correlation = currentEnergy * reference;
+        
+        // Apply smoothing to the correlation to get rhythmogram output
+        float smoothing = 0.95f; // Slower decay for rhythmogram visualization
+        smoothedOutput = smoothing * smoothedOutput + (1.0f - smoothing) * correlation;
+        
+        output = smoothedOutput * adaptiveGain;
+        
+    } else {
+        // TRADITIONAL HIGH-FREQUENCY FILTERING (>= 4Hz)
+        // Apply biquad filter: y[n] = b0*x[n] + b1*x[n-1] + b2*x[n-2] - a1*y[n-1] - a2*y[n-2]
+        output = coefficients[0] * input + 
+                 coefficients[1] * delayLine[0] + 
+                 coefficients[2] * delayLine[1] - 
+                 coefficients[3] * delayLine[2] - 
+                 coefficients[4] * delayLine[3];
+        
+        // Update delay line
+        delayLine[1] = delayLine[0]; // x[n-2] = x[n-1]
+        delayLine[0] = input;        // x[n-1] = x[n]
+        delayLine[3] = delayLine[2]; // y[n-2] = y[n-1]
+        delayLine[2] = output;       // y[n-1] = y[n]
+        
+        // Apply adaptive gain
+        output *= adaptiveGain;
+        
+        // Update energy estimate
+        currentEnergy = 0.95f * currentEnergy + 0.05f * (output * output);
+    }
     
     return output;
 }

@@ -23,6 +23,10 @@ private:
     float currentEnergy;
     float adaptiveGain;
     
+    // Rhythmogram processing state for low-frequency detection
+    float sampleCount;          // For phase tracking in rhythmogram analysis
+    float smoothedOutput;       // Smoothed correlation output for rhythmogram
+    
     void updateFilterCoefficients(); // Update coefficients when parameters change
 
 public:
