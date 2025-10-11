@@ -29,6 +29,13 @@ void GUI::initialize() {
     createConnectionSliders();
     createConnectionMatrixPanel();
     updateStatusDisplay();  // Initialize status display with current network state
+    
+    // Enable analysis-only mode by default for RhythmInterpreter GUI updates
+    // This allows filter output displays to work even when filtered audio output is disabled
+    if (audioManager) {
+        std::cout << "🎛️  GUI: Enabling analysis-only mode by default for filter output displays" << std::endl;
+        audioManager->setFilterMode(true);  // Enable analysis-only mode
+    }
 }
 
 void GUI::createMenuBar() {
@@ -1879,11 +1886,11 @@ void GUI::updateConnectionMatrix() {
         float outputLevel = std::min(1.0f, std::abs(filterOutputs[f])); // Clamp to 0-1 range
         
         // Debug: Log filter output levels occasionally  
-        if (++guiDebugCounter % 50 == 0 && f < 2) {
+        if (++guiDebugCounter % 50 == 0 && f < 4) { // Show first 4 filters
             std::cout << "🎛️  GUI Filter " << f << " output level: " << filterOutputs[f] 
                       << " (clamped: " << outputLevel << ")" << std::endl;
         }
-        
+
         // Format as percentage with 1 decimal place
         std::string levelText = std::to_string(static_cast<int>(outputLevel * 100)) + "%";
         filterOutputDisplays[f]->setText(levelText);

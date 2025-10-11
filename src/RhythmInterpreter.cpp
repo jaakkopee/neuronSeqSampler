@@ -439,7 +439,9 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
             filterAudioOutputs[i][j] = filteredSample * globalGain * filterGains[i];
             sum += filteredSample;
         }
-        filterOutputs[i] = (sum / audioData.size()) * globalGain * filterGains[i];
+        // For GUI display, we want the actual filter response regardless of globalGain
+        // globalGain controls audio output mixing, but GUI should show actual filter levels
+        filterOutputs[i] = (sum / audioData.size()) * filterGains[i]; // Remove globalGain from GUI display calculation
         
         // Debug: Log filter output levels occasionally
         if (debugCounter % 1000 == 0 && i == 0) { // Only log for first filter to avoid spam
