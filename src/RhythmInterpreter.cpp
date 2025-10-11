@@ -722,7 +722,7 @@ float RhythmInterpreter::getOverallRhythmStrength() const {
 
 void RhythmInterpreter::setFilterGain(size_t filterIndex, float gain) {
     if (filterIndex < filterGains.size()) {
-        filterGains[filterIndex] = std::max(0.0f, std::min(2.0f, gain)); // Clamp between 0.0 and 2.0
+        filterGains[filterIndex] = std::max(0.0f, std::min(5.0f, gain)); // Clamp between 0.0 and 5.0
     }
 }
 
