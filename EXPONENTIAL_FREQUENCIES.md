@@ -1,8 +1,8 @@
-# 🎵 Exponential Frequency Distribution Update
+# 🎵 Todd (1994) Rhythmogram Frequency Implementation
 
-## 🔄 Rhythm Interpreter Enhancement
+## 🔄 Scientific Rhythmic Hierarchy Enhancement
 
-The rhythm interpreter now uses an **exponential frequency distribution** starting from 1.0 Hz, providing better coverage across the audible spectrum and improved low-frequency resolution.
+The rhythmogram system now implements **Neil Todd's (1994) logarithmic frequency distribution** starting from 0.125 Hz, providing scientific temporal hierarchy analysis based on established rhythmic perception research.
 
 ## 📊 New Frequency Bands
 
@@ -18,43 +18,44 @@ Brilliance: 4000 Hz  → Cymbal shimmer
 Air:        8000 Hz  → High frequency content
 ```
 
-### After (Exponential Distribution):
+### After (Todd 1994 Rhythmogram Distribution):
 ```
-Ultra-Low:    1.0 Hz  → Subsonic rhythmic patterns
-Very Low:     3.4 Hz  → Extremely slow rhythmic elements
-Low:         11.3 Hz  → Slow bass rhythms
-Sub Bass:    38.0 Hz  → Kick drum fundamentals
-Bass:       127.8 Hz  → Kick harmonics, bassline
-Mids:       429.7 Hz  → Snare attack, vocals
-Presence:  1445.7 Hz  → Hi-hat attack, upper percussion
-Air:       8000.0 Hz  → High-frequency content, cymbals
+0.125 Hz  → Ultra-slow modulation (8-second macro-structure)
+0.25 Hz   → Very slow rhythm (4-second phrase patterns)
+0.5 Hz    → Slow rhythm (2-second breathing/phrasing)
+1.0 Hz    → Basic pulse (fundamental beat detection)
+2.0 Hz    → Fast rhythm (subdivision and syncopation)
+4.0 Hz    → Sub-syllable rate (articulation and phonemes)
+8.0 Hz    → Syllable rate (attack transients, consonants)
+16.0 Hz   → Formant rate (micro-timing, tremolo effects)
 ```
 
-## 🎯 Benefits of Exponential Distribution
+## 🎯 Benefits of Todd (1994) Rhythmogram Distribution
 
-### 🎼 Musical Advantages:
-- **Better Low-End Resolution**: More detailed analysis of bass and sub-bass frequencies
-- **Logarithmic Perception**: Matches human frequency perception (each octave doubles frequency)
-- **Extended Range**: Now captures subsonic modulations (1-10 Hz) for deeper rhythm analysis
-- **Balanced Coverage**: More even distribution across the audible spectrum
+### 🎼 Scientific Rhythmic Analysis:
+- **Temporal Hierarchy Theory**: Based on Todd's nested rhythmic structure research
+- **Perceptually Motivated**: Each octave represents equal perceptual temporal distance
+- **Complete Coverage**: Spans from macro-form (8s) to micro-timing (62.5ms)
+- **Research Foundation**: Implements established cognitive rhythmic processing principles
 
-### 🔬 Technical Improvements:
-- **Exponential Formula**: f(n) = 1.0 × (8000/1.0)^(n/7) for bands 0-7
-- **Proportional Bandwidths**: Bandwidth scales with center frequency for optimal resolution
-- **Enhanced Low-Frequency Detection**: Better capture of kick drum fundamentals and bass patterns
-- **Preserved High-End**: Still captures full high-frequency detail up to 8kHz
+### 🔬 Technical Implementation:
+- **Todd Formula**: f(n) = 0.125 × 2^n for bands 0-7 (pure octave doubling)
+- **Hybrid Processing**: Envelope following for <4Hz, biquad filtering for ≥4Hz
+- **Per Decamille Display**: Scientific measurement precision in ‰ units
+- **Neural Scaling**: 500x scaling factor for meaningful neural activation
+- **Scrollable Interface**: Accommodates large networks with optimized spacing
 
-## 🎛️ Updated GUI Labels
+## 🎛️ Scrollable Todd Rhythmogram Interface
 
-The connection matrix now shows the new frequency ranges:
-- **Ultra (1Hz)** - Subsonic rhythmic patterns
-- **VLow (3Hz)** - Very slow rhythmic elements  
-- **Low (11Hz)** - Slow bass rhythms
-- **Sub (38Hz)** - Kick drum fundamentals
-- **Bass (128Hz)** - Kick harmonics, bassline
-- **Mid (430Hz)** - Snare attack, vocals
-- **Pres (1.4kHz)** - Hi-hat attack, upper percussion
-- **Air (8kHz)** - High-frequency content, cymbals
+The scrollable matrix displays Todd (1994) frequency hierarchy:
+- **0.125Hz** - Ultra-slow modulation (macro-structure, 8-second patterns)
+- **0.25Hz** - Very slow rhythm (phrase boundaries, 4-second sections)  
+- **0.5Hz** - Slow rhythm (breathing, phrasing, 2-second patterns)
+- **1.0Hz** - Basic pulse (fundamental beat, 1-second intervals)
+- **2.0Hz** - Fast rhythm (subdivisions, syncopation, 500ms)
+- **4.0Hz** - Sub-syllable rate (articulation, phonemes, 250ms)
+- **8.0Hz** - Syllable rate (attack transients, 125ms)
+- **16.0Hz** - Formant rate (micro-timing, tremolo, 62.5ms)
 
 ## 🎵 Musical Impact
 
@@ -64,4 +65,4 @@ This exponential distribution provides:
 - **Enhanced kick drum tracking** with improved sub-bass resolution
 - **Maintained high-frequency detail** for cymbals and spatial elements
 
-The rhythm interpreter now offers professional-grade frequency analysis comparable to high-end audio analysis tools! 🎛️✨
+The Todd (1994) rhythmogram system now offers research-grade temporal hierarchy analysis with scrollable interface and neural integration! 🎛️✨📊

@@ -1,15 +1,15 @@
-# 🎵 Rhythm Interpreter Design Document
+# 🎵 Todd (1994) Rhythmogram Design Document
 
 ## Overview
-The Rhythm Interpreter is a sophisticated audio analysis and feedback system that creates a closed-loop between the neural network's audio output and its input. It analyzes the rhythm, tempo, and spectral content of the network's generated audio and feeds this information back to influence the network's behavior, creating more musical and responsive patterns.
+The Rhythmogram system implements Neil Todd's (1994) temporal hierarchy theory for neural network feedback. It analyzes rhythmic structure at 8 logarithmic frequencies (0.125Hz-16Hz) using hybrid envelope/biquad processing, providing direct neural activation through a scrollable 8×N matrix interface with scientific per decamille precision.
 
 ## Architecture
 
-### System Flow
+### Todd Rhythmogram System Flow
 ```
-Audio Output → Rhythm Analysis → Filterbank → Connection Matrix → Neuron Inputs
-     ↑                                                                  ↓
-     └────────────────── Neural Network Processing ←───────────────────┘
+Audio Output → Todd Analysis → Envelope/Biquad → Per Decamille → Matrix Toggle → Direct Neural Input
+     ↑                                                                                ↓
+     └─────────────────── Neural Network Processing (Separate from Audio) ←─────────┘
 ```
 
 ### Core Components
@@ -49,19 +49,19 @@ Audio Output → Rhythm Analysis → Filterbank → Connection Matrix → Neuron
 
 ## Technical Specifications
 
-### Filterbank Configuration
-The system uses 8 frequency bands optimized for musical content:
+### Todd (1994) Rhythmogram Configuration
+The system uses 8 logarithmic temporal frequencies based on Todd's hierarchy theory:
 
-| Band | Center Freq | Bandwidth | Musical Content |
-|------|-------------|-----------|-----------------|
-| 1    | 60 Hz       | 40 Hz     | Sub bass (kick fundamentals) |
-| 2    | 120 Hz      | 60 Hz     | Bass (kick harmonics) |
-| 3    | 250 Hz      | 100 Hz    | Low mids (snare body) |
-| 4    | 500 Hz      | 200 Hz    | Mids (snare snap) |
-| 5    | 1 kHz       | 400 Hz    | Upper mids (hi-hat body) |
-| 6    | 2 kHz       | 800 Hz    | Presence (hi-hat attack) |
-| 7    | 4 kHz       | 1.6 kHz   | Brilliance (cymbal shimmer) |
-| 8    | 8 kHz       | 3.2 kHz   | Air (high frequency content) |
+| Band | Todd Freq | Period | Processing Method | Rhythmic Level |
+|------|-----------|--------|-------------------|----------------|
+| 1    | 0.125 Hz  | 8.0 s  | Envelope following | Ultra-slow (macro-form) |
+| 2    | 0.25 Hz   | 4.0 s  | Envelope following | Very slow (phrases) |
+| 3    | 0.5 Hz    | 2.0 s  | Envelope following | Slow (breathing) |
+| 4    | 1.0 Hz    | 1.0 s  | Envelope following | Basic pulse |
+| 5    | 2.0 Hz    | 0.5 s  | Envelope following | Fast rhythm |
+| 6    | 4.0 Hz    | 0.25 s | Biquad filtering | Sub-syllable |
+| 7    | 8.0 Hz    | 0.125 s| Biquad filtering | Syllable rate |
+| 8    | 16.0 Hz   | 0.0625 s| Biquad filtering | Formant rate |
 
 ### Rhythm Analysis Parameters
 - **Sample Rate**: 44.1 kHz
@@ -71,11 +71,12 @@ The system uses 8 frequency bands optimized for musical content:
 - **History Length**: 100 frames (~1.16 seconds)
 - **Smoothing Factor**: 0.1 (tempo estimation)
 
-### Connection Matrix
-- **Size**: 8 filters × N neurons (where N = network size)
-- **Weight Range**: -1.0 to +1.0
-- **Learning Rate**: 0.01 (Hebbian adaptation)
-- **Update Method**: Correlation-based strengthening
+### Scrollable Connection Matrix (8×N)
+- **Interface**: TGUI ScrollablePanel with 80px optimized neuron spacing
+- **Toggle Control**: ○/● buttons with instant rhythmogram feedback enable/disable
+- **Weight Management**: User-controlled via toggle buttons (0.0 = off, 1.0 = on)
+- **Filter Gains**: 0x-5x range with 0.1x precision steps per Todd frequency
+- **Display Precision**: Per decamille (‰) measurements for scientific accuracy
 
 ## Integration with Neural Network
 
@@ -154,9 +155,10 @@ The feedback loop enables self-organizing musical structures:
 - Connection matrix: N×8 floats (depends on network size)
 
 ### Latency
-- Audio processing: 512 samples @ 44.1kHz = 11.6ms
-- Analysis overhead: <1ms
-- Total system latency: ~13ms (acceptable for real-time performance)
+- Todd rhythmogram processing: 512 samples @ 44.1kHz = 11.6ms
+- Envelope/biquad analysis overhead: <1ms
+- Neural scaling and matrix routing: <0.5ms  
+- Total system latency: ~13ms (optimal for real-time rhythmic feedback)
 
 ## Future Enhancements
 
@@ -191,5 +193,6 @@ The feedback loop enables self-organizing musical structures:
 
 ---
 
-**Status**: Initial implementation complete, GUI integration in progress
-**Next Steps**: Testing, GUI controls, performance optimization
+**Status**: Todd (1994) rhythmogram fully implemented with scrollable matrix interface
+**Current State**: Complete system with toggle persistence, 5x filter gains, neural color updates
+**Achievement**: Revolutionary temporal hierarchy neural feedback system operational

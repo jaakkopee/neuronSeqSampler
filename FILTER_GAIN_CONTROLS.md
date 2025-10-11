@@ -1,40 +1,40 @@
-# 🎛️ Filter Gain Controls - User Manual
+# 🎛️ Todd Rhythmogram Filter Gain Controls - User Manual
 
-## 🎯 New Feature: Individual Filter Gain Control
+## 🎯 Enhanced Feature: 5x Range Individual Filter Gain Control
 
-The Rhythm Interpreter now includes **user-controlled gain sliders** for each of the 8 frequency bands, allowing precise control over the sensitivity of each filter.
+The Todd (1994) Rhythmogram system includes **enhanced 0x-5x gain sliders** for each of the 8 logarithmic frequency bands, providing precise control over rhythmic hierarchy analysis sensitivity with scientific accuracy.
 
 ## 🔧 How It Works
 
 ### 📍 Location
-- **GUI Panel**: Right side of screen in "Rhythm Interpreter connection matrix" panel
-- **Position**: Small horizontal sliders directly below each frequency band label
-- **Range**: 0.0x to 2.0x gain (1.0x = unity/normal gain)
+- **GUI Panel**: Scrollable "Rhythmogram Mapping" panel (press M to toggle)
+- **Position**: Horizontal sliders below Todd frequency band labels in scrollable interface
+- **Enhanced Range**: 0.0x to 5.0x multiplicative gain with 0.1x step precision (1.0x = unity)
 
-### 🎚️ Filter Gain Sliders
+### 🎚️ Todd Rhythmogram Filter Gains (0x-5x Range)
 
-Each frequency band now has its own gain control:
+Each Todd frequency band has independent gain control:
 
-| Band | Frequency | Label | Gain Control Purpose |
-|------|-----------|--------|---------------------|
-| 1 | 1.0 Hz | Ultra (1Hz) | Control subsonic pattern sensitivity |
-| 2 | 3.4 Hz | VLow (3Hz) | Adjust very low rhythm detection |
-| 3 | 11.3 Hz | Low (11Hz) | Fine-tune slow bass rhythm response |
-| 4 | 38.0 Hz | Sub (38Hz) | Control kick drum fundamental sensitivity |
-| 5 | 127.8 Hz | Bass (128Hz) | Adjust kick harmonics and bassline |
-| 6 | 429.7 Hz | Mid (430Hz) | Control snare attack and vocal sensitivity |
-| 7 | 1445.7 Hz | Pres (1.4kHz) | Adjust hi-hat attack and clarity |
-| 8 | 8000.0 Hz | Air (8kHz) | Control high-frequency and cymbal sensitivity |
+| Band | Todd Frequency | Rhythmic Category | 5x Gain Control Purpose |
+|------|----------------|-------------------|-------------------------|
+| 1 | 0.125 Hz | Ultra-slow modulation | Control 8-second macro-structure sensitivity |
+| 2 | 0.25 Hz | Very slow rhythm | Adjust 4-second phrase pattern detection |
+| 3 | 0.5 Hz | Slow rhythm | Fine-tune 2-second breathing/phrasing response |
+| 4 | 1.0 Hz | Basic pulse | Control fundamental beat/pulse sensitivity |
+| 5 | 2.0 Hz | Fast rhythm | Adjust subdivision and syncopation detection |
+| 6 | 4.0 Hz | Sub-syllable rate | Control articulation and phoneme sensitivity |
+| 7 | 8.0 Hz | Syllable rate | Adjust attack transient and consonant detection |
+| 8 | 16.0 Hz | Formant rate | Control micro-timing and tremolo sensitivity |
 
 ## 🎵 Musical Applications
 
 ### 🎚️ Common Gain Settings
 
-**Boost Low-End Focus** (Electronic Music):
-- Ultra/VLow/Low: 1.5x-2.0x (emphasize deep bass patterns)
-- Sub/Bass: 1.8x (strong kick and bass response)
-- Mid: 1.0x (normal snare sensitivity)
-- Pres/Air: 0.8x (reduce high-frequency interference)
+**Boost Macro-Structure Focus** (Ambient/Electronic):
+- 0.125Hz-0.5Hz: 2.5x-4.0x (emphasize slow structural patterns)
+- 1.0Hz-2.0Hz: 3.2x (strong fundamental pulse and rhythm)
+- 4.0Hz: 1.0x (normal articulation sensitivity)
+- 8.0Hz-16.0Hz: 0.5x-1.2x (reduce high-rate interference)
 
 **Enhance Percussion Clarity** (Acoustic Drums):
 - Ultra/VLow: 0.5x (reduce subsonic noise)
@@ -52,14 +52,15 @@ Each frequency band now has its own gain control:
 ## 🔧 Technical Details
 
 ### Implementation
-- **Real-time Control**: Changes apply immediately to audio analysis
-- **Range Clamping**: Values automatically limited between 0.0x and 2.0x
-- **Multiplicative Gain**: Applied after global gain but before connection matrix
-- **Default State**: All filters start at 1.0x (unity gain)
+- **Real-time Control**: Changes apply immediately to Todd rhythmogram analysis
+- **Enhanced Range**: Values span 0.0x to 5.0x with 0.1x step precision
+- **Multiplicative Processing**: Applied to rhythmogram envelope/biquad outputs before neural scaling
+- **Default State**: All Todd filters start at 1.0x (unity gain)
+- **Scrollable Interface**: Accessible through TGUI ScrollablePanel with optimized spacing
 
-### Signal Flow
+### Todd Rhythmogram Signal Flow
 ```
-Audio Input → Filterbank → Individual Gain × Global Gain → Connection Matrix → Neuron Activation
+Audio Input → Todd Analysis → Envelope/Biquad → Individual Gain (0x-5x) → 500x Neural Scaling → Matrix Toggle → Direct Neural Input
 ```
 
 ### Memory
@@ -77,10 +78,10 @@ Audio Input → Filterbank → Individual Gain × Global Gain → Connection Mat
 5. **Save Presets**: Note successful gain combinations for different music styles
 
 ### 🔍 Troubleshooting
-- **Too Much Bass**: Reduce Ultra/VLow/Low/Sub gains (0.5x-0.8x)
-- **Weak Kick Response**: Boost Sub/Bass gains (1.3x-1.8x)
-- **Missing Hi-hat Detail**: Increase Pres/Air gains (1.2x-1.6x)
-- **Overactive Connections**: Lower gains in frequency bands that trigger too frequently
+- **Too Much Macro-Structure**: Reduce 0.125Hz-0.5Hz gains (0.2x-0.6x)
+- **Weak Pulse Response**: Boost 1.0Hz-2.0Hz gains (2.5x-4.5x)
+- **Missing Micro-Detail**: Increase 8.0Hz-16.0Hz gains (2.0x-3.5x)
+- **Overactive Neural Feedback**: Lower gains in Todd bands that trigger excessively
 
 ## ✨ Benefits
 
@@ -96,4 +97,4 @@ Audio Input → Filterbank → Individual Gain × Global Gain → Connection Mat
 - **Real-time**: Immediate response for live performance and experimentation
 - **Preserved Ratios**: Maintains relative balance between connected frequencies
 
-**The Rhythm Interpreter now offers professional-level frequency shaping control!** 🎛️🎵
+**The Todd (1994) Rhythmogram system now offers scientific-grade temporal hierarchy control with 5x precision gain range!** 🎛️🎵📊

@@ -1,56 +1,74 @@
-# 🎛️ Connection Matrix GUI User Guide
+# 🎛️ Rhythmogram Connection Matrix User Guide
 
 ## Overview
-The **Connection Matrix** provides visual, interactive control over how the 8-band rhythm interpreter filterbank connects to your neural network. Each toggle button represents a connection between a specific frequency band and a neuron, with gain sliders for precise control.
+The **Rhythmogram Connection ### Rhythmogram Analysis Flow
 
-## Interface Layout
+### Todd (1994) Processing Pipeline
+1. **Audio Capture**: Network-generated audio sampled in real-time
+2. **Rhythmogram Analysis**: Todd frequency bands extract rhythmic hierarchy
+3. **Envelope/Biquad Processing**: Hybrid filtering optimized for each frequency range
+4. **Per Decamille Display**: Precise measurement in ‰ units for scientific accuracy
+5. **Neural Scaling**: 500x scaling factor transforms analysis to meaningful neural activation
+6. **Matrix Routing**: Toggle-controlled connections route rhythmogram→neurons
+7. **External Input**: Direct `neuron->addExternalInput()` bypasses audio processing provides visual, interactive control over how Todd (1994) rhythmogram frequency analysis connects to your neural network. This revolutionary system implements Neil Todd's rhythmic hierarchy principles with 8 logarithmically-distributed frequency bands (0.125Hz-16Hz) that directly drive neural activation through a scrollable 8×N interface.
+
+## Scrollable Interface Layout
 
 ```
-🎛️ Connection Matrix (8×N)
+🎛️ Rhythmogram Matrix (8×N) - Scrollable Panel
 [Clear All] [Random]           <- Quick Actions
 
-        N1    N2    N3         <- Neuron Columns
-Sub     [○]   [○]   [●]——|     <- 60Hz (kick fundamentals)
-Bass    [○]   [●]   [○]  |     <- 120Hz (kick harmonics)  
-LMid    [●]   [○]   [○]  |     <- 250Hz (snare body)
-Mid     [○]   [○]   [●]——|     <- 500Hz (snare snap)
-UMid    [○]   [●]   [○]  |     <- 1kHz (hi-hat body)
-Pres    [●]   [○]   [○]  |     <- 2kHz (hi-hat attack)
-Bril    [○]   [○]   [●]——|     <- 4kHz (cymbal shimmer)
-Air     [○]   [●]   [○]       <- 8kHz (high-frequency air)
+Todd (1994) Frequencies    N1    N2    N3    [Scroll→]
+0.125Hz (Ultra-slow)      [○]   [○]   [●]——|  0.5‰ 
+0.25Hz  (Very slow)       [○]   [●]   [○]  |  1.2‰
+0.5Hz   (Slow rhythm)     [●]   [○]   [○]  |  2.3‰
+1.0Hz   (Basic pulse)     [○]   [○]   [●]——|  3.1‰
+2.0Hz   (Fast rhythm)     [○]   [●]   [○]  |  1.8‰
+4.0Hz   (Sub-syllable)    [●]   [○]   [○]  |  2.7‰
+8.0Hz   (Syllable rate)   [○]   [○]   [●]——|  1.5‰
+16.0Hz  (Formant rate)    [○]   [●]   [○]    0.9‰
+
+Filter Gain Controls: 0.0x─────●─────5.0x (per frequency band)
 ```
 
 ## Controls
 
-### Toggle Buttons
-- **○ (Empty Circle)**: No connection - this frequency band doesn't affect this neuron
-- **● (Filled Circle)**: Active connection - this frequency band influences this neuron
-- **Click**: Toggle connection on/off
-- **Hover**: Shows tooltip with frequency band description and target neuron
-- **Color Intensity**: Brighter green indicates stronger connection weight
+### Toggle Buttons (○/●)
+- **○ (Empty Circle)**: Connection disabled - rhythmogram feedback completely stopped for this frequency→neuron pair
+- **● (Filled Circle)**: Connection enabled - rhythmogram analysis directly drives neural activation
+- **Click Response**: Immediate toggle with zero delay - feedback starts/stops instantly
+- **Visual Feedback**: Button state synchronized with actual connection weights
+- **Tooltip Info**: Shows Todd frequency band and target neuron details
+- **Persistence**: Toggle states maintained during all GUI operations and filter adjustments
 
-### Gain Sliders  
-- **Visibility**: Only appear when a connection is active (● button)
-- **Range**: 0-100% gain control
-- **Real-time**: Changes immediately affect the rhythm interpreter
-- **Position**: Located to the right of each toggle button
+### Filter Gain Controls (0x-5x Range)
+- **Location**: Horizontal sliders below frequency band labels
+- **Range**: 0.0x to 5.0x multiplicative gain (1.0x = unity)
+- **Precision**: 0.1x step increments for fine control
+- **Real-time**: Immediate effect on rhythmogram analysis strength
+- **Per-band Control**: Each Todd frequency has independent gain adjustment
 
 ### Quick Actions
 - **Clear All**: Disconnects all frequency bands from all neurons
 - **Random**: Creates random connection pattern with varied weights
 
-## Frequency Bands Explained
+## Todd (1994) Rhythmogram Frequencies
 
-| **Band** | **Frequency** | **Musical Content** | **Best For** |
-|----------|---------------|-------------------|--------------|
-| **Sub** | 60Hz | Kick drum fundamentals, sub-bass | Triggering bass-heavy neurons |
-| **Bass** | 120Hz | Kick harmonics, basslines | Rhythmic foundation neurons |
-| **LMid** | 250Hz | Snare body, tom warmth | Percussive texture neurons |
-| **Mid** | 500Hz | Snare attack, vocal clarity | Melodic/lead neurons |
-| **UMid** | 1kHz | Hi-hat body, presence | Mid-frequency texture neurons |
-| **Pres** | 2kHz | Hi-hat attack, definition | Sharp percussive neurons |  
-| **Bril** | 4kHz | Cymbal shimmer, sparkle | High-frequency detail neurons |
-| **Air** | 8kHz | Ambience, breath, space | Atmospheric/reverb neurons |
+| **Frequency** | **Todd Category** | **Rhythmic Hierarchy** | **Neural Application** |
+|---------------|-------------------|------------------------|------------------------|
+| **0.125Hz** | Ultra-slow modulation | 8-second phrases, macro-structure | Compositional form neurons |
+| **0.25Hz** | Very slow rhythm | 4-second sections, verse/chorus | Structural pattern neurons |
+| **0.5Hz** | Slow rhythm | 2-second patterns, breathing | Phrase boundary neurons |
+| **1.0Hz** | Basic pulse | 1-second beat, fundamental pulse | Primary rhythm neurons |
+| **2.0Hz** | Fast rhythm | 500ms subdivisions, eighth notes | Subdivision pattern neurons |
+| **4.0Hz** | Sub-syllable rate | 250ms articulations, phonemes | Textural detail neurons |
+| **8.0Hz** | Syllable rate | 125ms attacks, consonants | Attack/transient neurons |
+| **16.0Hz** | Formant rate | 62.5ms micro-timing, tremolo | Micro-timing neurons |
+
+### Logarithmic Distribution Benefits
+- **Perceptually Uniform**: Each octave represents equal perceptual distance
+- **Rhythmic Hierarchy**: Matches Todd's nested temporal structure theory
+- **Musical Relevance**: Covers complete range from macro-form to micro-timing
 
 ## Usage Strategies
 
@@ -95,10 +113,12 @@ Use gain sliders to balance frequency influences:
 ## Tips & Tricks
 
 ### 🎯 **Getting Started**
-1. **Use Random**: Start with random connections to hear possibilities
-2. **Enable Recording**: Press 'R' to activate rhythm analysis
-3. **Trigger Network**: Use spacebar to generate audio for analysis
-4. **Adjust Gradually**: Make small gain changes to hear subtle effects
+1. **Open Matrix**: Press 'M' to show scrollable rhythmogram interface
+2. **Enable Analysis**: Press 'R' to activate Todd (1994) rhythmogram processing
+3. **Generate Audio**: Use spacebar to create network audio for analysis
+4. **Configure Connections**: Click toggle buttons (○→●) to enable frequency→neuron routing
+5. **Adjust Filter Gains**: Use 0x-5x sliders for per-frequency intensity control
+6. **Scroll Interface**: Navigate large networks with smooth scrollable panel
 
 ### 🔧 **Troubleshooting**
 - **No Effect**: Ensure recording is active (press 'R')
@@ -114,4 +134,4 @@ Use gain sliders to balance frequency influences:
 
 ---
 
-**🎵 The Connection Matrix transforms your neural network into a living, breathing musical organism that responds intelligently to its own audio output!**
+**🎵 The Todd (1994) Rhythmogram Matrix creates a revolutionary neural-musical feedback system where temporal hierarchy analysis drives network evolution with scientific precision and artistic intuition!**

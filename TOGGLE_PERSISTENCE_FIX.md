@@ -1,11 +1,12 @@
-# 🔧 Toggle Persistence Fix
+# 🔧 Todd Rhythmogram Toggle Persistence Fix
 
 ## 🐛 Issue Description
 
-**Problem**: Connection matrix toggles were resetting unexpectedly in the following situations:
-- **Multiple Toggle Selection**: Selecting more than one toggle would reset previous selections
-- **Filter Gain Modification**: Adjusting any filter gain slider would clear all toggle states
-- **GUI Refresh Operations**: Any internal GUI update would reset the connection matrix
+**Problem**: Rhythmogram connection matrix toggles were resetting unexpectedly in the following situations:
+- **Multiple Toggle Selection**: Selecting more than one rhythmogram connection would reset previous selections
+- **Filter Gain Modification**: Adjusting 0x-5x filter gain sliders would clear all toggle states  
+- **GUI Refresh Operations**: ScrollablePanel updates would reset the entire matrix interface
+- **Rhythmogram Feedback Control**: Toggles not properly stopping/starting rhythmogram neural input
 
 ## ✅ Root Cause Analysis
 
@@ -137,4 +138,4 @@ void GUI::updateConnectionMatrix() {
 - Instant response to filter gain adjustments
 - Preserved memory efficiency during normal operations
 
-**The connection matrix now maintains full state persistence during all user interactions!** 🎛️✅
+**The Todd rhythmogram matrix now maintains full toggle persistence with instant rhythmogram feedback control and scrollable interface support!** 🎛️✅📊
