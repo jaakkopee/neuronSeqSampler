@@ -55,6 +55,10 @@ void Neuron::update() {
     // Apply per-iteration activation increase/decrease
     activation += activationIncreasePerIteration;
     
+    // Process accumulated external input (e.g., from rhythmogram)
+    activation += externalInput;
+    externalInput = 0.0f; // Reset external input after use
+    
     if (activation > threshold) {
         playSample();
         hasFired = true;

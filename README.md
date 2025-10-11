@@ -82,11 +82,12 @@ make
 - **Real-time Feedback**: Connections dance only when weights are non-zero
 
 **Rhythmogram Mapping Panel** (Press M to toggle):
-- **8×N Visual Grid**: Routes Todd (1994) rhythmic frequencies to neurons with toggle buttons (○/●)
-- **Per Decamille Displays**: Real-time activity monitoring in ‰ precision (parts per 10,000)
-- **Filter Gain Control**: Sensitivity adjustment (0x-5x) for each frequency band
-- **Connection Gain Control**: Fine-tune routing strength (0-100%) per connection
-- **Quick Actions**: "Clear All" and "Random" buttons for rapid reconfiguration
+- **📊 Scrollable 8×N Matrix**: Visual grid routes Todd (1994) frequencies to neurons with optimized spacing
+- **🔘 Toggle Control**: Click buttons (○ off / ● on) to enable/disable specific frequency→neuron connections
+- **📈 Per Decamille Displays**: Real-time rhythmic activity monitoring in ‰ precision (parts per 10,000)
+- **🎚️ Dual Gain System**: Filter sensitivity (0x-5x) + connection strength (0-100%) per route
+- **⚡ Instant Response**: Toggle changes immediately stop/start rhythmogram feedback to neurons
+- **🎛️ Quick Actions**: "Clear All" and "Random" buttons for rapid matrix reconfiguration
 
 ### Sample Organization
 
@@ -198,10 +199,12 @@ Audio Output → Rhythmogram Analysis → Connection Matrix → Direct Neuron Ac
 - **Threshold Activation**: Only significant rhythmic events trigger neurons
 
 #### 🔄 **Interactive Connection Matrix (8×N)**
-- **Visual Routing**: Toggle buttons (○/●) for frequency-to-neuron connections
-- **Dual Gain Control**: Filter sensitivity (0x-5x) + connection strength (0-100%)
-- **Real-Time Feedback**: Live rhythmogram activity displays
-- **State Persistence**: Configuration survives network changes
+- **📊 Scrollable Interface**: Accommodates large networks with smooth scrolling and optimized 80px neuron spacing
+- **🔘 Precise Toggle Control**: Click buttons (○ → ●) to enable connections; disabled toggles completely stop rhythmogram feedback
+- **📊 Dual Gain Architecture**: Filter sensitivity sliders (0x-5x with 0.1x steps) + per-connection strength (0-100%)
+- **📈 Real-Time Monitoring**: Live per decamille displays show rhythmic activity as it happens
+- **💾 State Persistence**: Connection configurations survive network changes and GUI interactions
+- **🎨 Visual Clarity**: Color-coded buttons indicate connection strength and current activation state
 
 #### 🎵 **Musical Intelligence**
 - **Rhythm Entrainment**: Network synchronizes with detected beats
@@ -210,12 +213,24 @@ Audio Output → Rhythmogram Analysis → Connection Matrix → Direct Neuron Ac
 - **Polyrhythmic Patterns**: Complex interactions between frequency bands
 
 ### Technical Specifications
-- **Latency**: ~13ms total system latency
-- **Sample Rate**: 44.1kHz with 512-sample buffers
-- **Analysis Window**: 100 frames (~1.16 seconds of history)
-- **CPU Overhead**: <5% on modern systems
-- **Filter Gain Range**: 0x-5x with 0.1x step increments
-- **Connection Gain Range**: 0-100% per frequency-neuron route
+
+**🔧 Performance:**
+- **Latency**: ~13ms total system latency (audio → rhythmogram → neural activation)
+- **Sample Rate**: 44.1kHz with 512-sample buffers for optimal real-time response
+- **Analysis Window**: 100 frames (~1.16 seconds) rhythmic history for pattern detection
+- **CPU Overhead**: <5% on modern systems with full 8×N matrix active
+
+**📊 Matrix Capabilities:**
+- **Matrix Size**: 8 Todd frequency bands × unlimited neurons (tested up to 20+ neurons)
+- **Scrollable Interface**: Smooth navigation for large networks with 80px optimized spacing
+- **Filter Gain Range**: 0x-5x with 0.1x precision steps for sensitive control
+- **Connection Gain Range**: 0-100% per individual frequency→neuron route
+- **Toggle Response**: Immediate (single-frame) connection enable/disable with zero feedback delay
+
+**🎵 Audio Analysis:**
+- **Frequency Range**: 0.125Hz-16Hz logarithmic Todd (1994) distribution
+- **Precision**: Per decamille (‰) display accuracy for rhythmic activity monitoring
+- **Processing**: Hybrid envelope following (<4Hz) + biquad filtering (≥4Hz) approach
 
 ### How It Works
 
@@ -232,13 +247,24 @@ Audio → Rhythmogram Analysis → Matrix Connections → Direct Neuron Activati
 3. **Connection Matrix**: Interactive 8×N grid routes frequency bands to specific neurons
 4. **Direct Activation**: Rhythmogram levels directly call `neuron->addExternalInput()` based on matrix weights
 
-#### **Interactive Matrix Interface**
+#### **8×N Matrix Architecture**
 
-- **Toggle Connections**: Click ○/● buttons to enable frequency→neuron routing
-- **Gain Control**: Adjust connection strength (0-100%) with per-connection sliders  
-- **Real-Time Feedback**: Per decamille displays show live rhythmogram activity
-- **Visual Alignment**: Frequency labels perfectly aligned with neuron toggle columns
-- **Musical Tooltips**: Hover descriptions explain each frequency band's musical role
+The **Interactive Connection Matrix** provides comprehensive control over Todd (1994) rhythmogram-to-neuron routing:
+
+**🎛️ Matrix Layout:**
+- **8 Rows**: Todd frequency bands (Phrase 0.125Hz → Onset 16Hz) with musical tooltips
+- **N Columns**: Neural network neurons with optimized 80px spacing for clarity
+- **Scrollable Design**: Handles large networks (tested with 10+ neurons) smoothly
+
+**🔘 Connection Control:**
+- **Toggle Buttons**: Click ○ (disabled) ↔ ● (enabled) to control individual frequency→neuron routes
+- **Immediate Response**: Disabled connections (○) completely stop rhythmogram feedback; enabled (●) allow full signal flow
+- **Visual Feedback**: Button color intensity reflects connection strength and current activity level
+
+**📊 Precision Control:**
+- **Filter Gain Sliders**: Individual sensitivity (0x-5x, 0.1x steps) per frequency band
+- **Connection Gain Sliders**: Per-route strength adjustment (0-100%) for fine-tuning neural input
+- **Per Decamille Displays**: Real-time activity monitoring with ‰ precision showing actual rhythmic detection levels
 
 #### **Revolutionary Integration**
 
@@ -305,13 +331,25 @@ This breakthrough integration transforms NeuronSeqSampler from an interactive au
 
 ### Rhythmogram Matrix Interface
 
-#### **Usage Strategy**
-1. **Show Matrix** (Press 'M') to display the rhythmogram mapping interface
-2. **Play Audio** (number keys 1-9) to generate rhythmogram analysis data  
-3. **Create Connections** by clicking toggle buttons (○ → ●) to route frequency bands to neurons
-4. **Adjust Gains** with filter (0x-5x) and connection (0-100%) sliders for optimal levels
-5. **Monitor Activity** via per decamille displays showing real-time rhythmic analysis
-6. **Quick Actions**: Use "Clear All" and "Random" buttons for rapid reconfiguration
+#### **Matrix Operation Guide**
+
+**🚀 Quick Start:**
+1. **Show Matrix** (Press 'M') to display the scrollable 8×N rhythmogram interface
+2. **Create Network** (Add neurons via Network menu) to populate matrix columns
+3. **Enable Connections** by clicking toggle buttons (○ → ●) to route specific frequencies to neurons
+4. **Play Audio** (number keys 1-9) to generate rhythmogram analysis and observe neuron activation
+
+**🎛️ Fine-Tuning:**
+1. **Adjust Filter Gains** (0x-5x) to control sensitivity of each Todd frequency band
+2. **Tune Connection Gains** (0-100%) for optimal neural input levels per route
+3. **Monitor Activity** via per decamille displays showing live rhythmic detection
+4. **Test Response** by toggling connections on/off to verify immediate feedback control
+
+**⚡ Advanced Usage:**
+- **Scroll Navigation**: Use mouse wheel or scroll bars for large networks
+- **Bulk Operations**: "Clear All" removes all connections; "Random" creates varied patterns  
+- **Live Performance**: Toggle connections in real-time during audio playback for dynamic control
+- **Musical Mapping**: Route low frequencies (0.125-1Hz) → bass/kick neurons, high frequencies (4-16Hz) → texture/hi-hat neurons
 
 ### Per-Neuron Activation Functions
 

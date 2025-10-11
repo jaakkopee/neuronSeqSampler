@@ -378,6 +378,7 @@ std::vector<float> ConnectionMatrix::transform(const std::vector<float>& filterO
     for (size_t f = 0; f < std::min(filterOutputs.size(), numFilters); ++f) {
         for (size_t n = 0; n < numNeurons; ++n) {
             // Apply connection weight and rhythmogram scaling for meaningful neural input
+            // Note: Zero weights (from disabled toggles) will naturally produce zero input
             float scaledInput = weights[f][n] * filterOutputs[f] * RHYTHMOGRAM_SCALE;
             neuronInputs[n] += scaledInput;
         }

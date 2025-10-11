@@ -132,19 +132,8 @@ void NeuronNetwork::initializeRhythmInterpreter() {
         audioManager->setRhythmInterpreter(rhythmInterpreter);
         std::cout << "🎵 RhythmInterpreter initialized with filter bank and linked to AudioManager" << std::endl;
         
-        // Set up some default connections for testing if there are neurons
-        if (!neurons.empty()) {
-            // Connect each filter to neurons in a round-robin fashion
-            size_t numFilters = rhythmInterpreter->getNumFilters();
-            for (size_t f = 0; f < numFilters; ++f) {
-                for (size_t n = 0; n < neurons.size(); ++n) {
-                    // Create interesting patterns: different filters affect different neurons
-                    float weight = 0.1f * std::sin(f + n); // Create varied connection strengths
-                    rhythmInterpreter->setConnectionWeight(f, n, weight);
-                }
-            }
-            std::cout << "🔗 Filter-neuron connections established" << std::endl;
-        }
+        // Note: Rhythmogram connections should be configured through the GUI toggle matrix
+        // Default connections are only set up in testing mode via main.cpp
     }
 }
 
