@@ -90,11 +90,12 @@ public:
         std::cout << "  - Mouse: Click to activate neurons" << std::endl;
         std::cout << "  - Number keys: Activate specific neurons (when available)" << std::endl;
         std::cout << "  - Spacebar: Manual network activation" << std::endl;
-        std::cout << "  - F key: Toggle filter mode (routes samples through filter bank) �️" << std::endl;
+        std::cout << "  - F key: Toggle filtered audio output (hearing filtered vs original)" << std::endl;
+        std::cout << "  - M key: Toggle rhythmogram matrix visibility 🎛️" << std::endl;
         std::cout << "  - L buttons: Solo individual filter bands 🎚️" << std::endl;
         std::cout << "  - Number keys: Play samples (1-9)" << std::endl;
-        std::cout << "\n🔴 IMPORTANT: Press 'F' to enable filter mode, then use number keys to play samples!" << std::endl;
-        std::cout << "  - GUI sliders: Adjust connection weights" << std::endl;
+        std::cout << "\n🎛️ Rhythmogram analysis is always active - use gain sliders to control mapping!" << std::endl;
+        std::cout << "  - GUI sliders: Adjust filter gains and connection weights" << std::endl;
         std::cout << "  - Menu: Add/remove neurons and connections" << std::endl;
     }
     
@@ -233,7 +234,7 @@ public:
                     guiManager.toggleMatrixVisibility();
                 }
                 else if (event.key.code == sf::Keyboard::F) {
-                    // Toggle filtered audio output with 'F' key
+                    // Toggle filtered audio output (analysis is always active)
                     audioStreamingEnabled = !audioStreamingEnabled;
                     if (audioStreamingEnabled && network.getRhythmInterpreter()) {
                         // Set up filter callback to route samples through filter bank
@@ -246,11 +247,11 @@ public:
                             std::cout << "🔥  F-KEY returning " << filtered.size() << " filtered samples" << std::endl;
                             return filtered;
                         });
-                        std::cout << "🔥  F-KEY Filtered audio output ENABLED - samples route through filter bank" << std::endl;
+                        std::cout << "🔥  F-KEY Filtered audio output ENABLED - hearing filtered samples (analysis continues)" << std::endl;
                     } else {
-                        // Disable filter callback for direct playback
+                        // Disable filter callback for direct playback (analysis continues)
                         audioManager.setFilterCallback(nullptr);
-                        std::cout << "Filtered audio output DISABLED - direct sample playback" << std::endl;
+                        std::cout << "🔊  F-KEY Filtered audio output DISABLED - hearing original samples (analysis continues)" << std::endl;
                     }
                 }
             }

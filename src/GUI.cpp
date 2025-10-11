@@ -30,11 +30,11 @@ void GUI::initialize() {
     createConnectionMatrixPanel();
     updateStatusDisplay();  // Initialize status display with current network state
     
-    // Enable analysis-only mode by default for RhythmInterpreter GUI updates
-    // This allows filter output displays to work even when filtered audio output is disabled
+    // Enable rhythmogram analysis by default for neuron activation
+    // Audio always plays directly, rhythmogram data drives neural network
     if (audioManager) {
-        std::cout << "🎛️  GUI: Enabling analysis-only mode by default for filter output displays" << std::endl;
-        audioManager->setFilterMode(true);  // Enable analysis-only mode
+        std::cout << "🎛️  GUI: Enabling rhythmogram analysis for neuron activation (audio plays directly)" << std::endl;
+        audioManager->setFilterMode(true);  // Enable rhythmogram analysis
     }
 }
 
@@ -1595,38 +1595,6 @@ void GUI::createConnectionMatrixPanel() {
     });
     connectionMatrixPanel->add(randomizeButton);
     
-    // Adjust Filter Mode toggle button size to fit text
-    auto filterModeToggle = tgui::Button::create("Filter Mode: OFF");
-    filterModeToggle->setPosition(5, matrixTitleLabel->getPosition().y + 20);
-    filterModeToggle->setSize(90, 25); // Increased size to fit text
-    filterModeToggle->setTextSize(10); // Reduced text size
-    filterModeToggle->getRenderer()->setBackgroundColor(tgui::Color(70, 70, 70));
-    filterModeToggle->getRenderer()->setTextColor(tgui::Color::White);
-    filterModeToggle->onPress([this, filterModeToggle]() {
-        static bool filterModeEnabled = false;
-        filterModeEnabled = !filterModeEnabled;
-        std::cout << "🎛️  Filter Mode button pressed - new state: " << (filterModeEnabled ? "ON" : "OFF") << std::endl;
-        filterModeToggle->setText(filterModeEnabled ? "Filter Mode: ON" : "Filter Mode: OFF");
-        audioManager->setFilterMode(filterModeEnabled);
-        std::cout << "🎛️  Called audioManager->setFilterMode(" << filterModeEnabled << ")" << std::endl;
-    });
-    connectionMatrixPanel->add(filterModeToggle);
-
-    // Adjust Adaptive Mode toggle button size to fit text
-    auto adaptiveModeToggle = tgui::Button::create("Adaptive Mode: OFF");
-    adaptiveModeToggle->setPosition(105, matrixTitleLabel->getPosition().y + 20);
-    adaptiveModeToggle->setSize(90, 25); // Increased size to fit text
-    adaptiveModeToggle->setTextSize(10); // Reduced text size
-    adaptiveModeToggle->getRenderer()->setBackgroundColor(tgui::Color(70, 70, 70));
-    adaptiveModeToggle->getRenderer()->setTextColor(tgui::Color::White);
-    adaptiveModeToggle->onPress([this, adaptiveModeToggle]() {
-        static bool adaptiveModeEnabled = false;
-        adaptiveModeEnabled = !adaptiveModeEnabled;
-        adaptiveModeToggle->setText(adaptiveModeEnabled ? "Adaptive Mode: ON" : "Adaptive Mode: OFF");
-        audioManager->setAdaptiveFilterMode(adaptiveModeEnabled);
-    });
-    connectionMatrixPanel->add(adaptiveModeToggle);
-    
     // Rhythmogram frequency bands (Todd, 1994) - Logarithmic distribution for rhythmic hierarchy
     const std::vector<std::string> filterNames = {
         "Phrase (0.125Hz)", "Whole (0.25Hz)", "Half (0.5Hz)", "Quarter (1Hz)",
@@ -1649,7 +1617,7 @@ void GUI::createConnectionMatrixPanel() {
     filterOutputDisplays.clear();
     for (size_t f = 0; f < numFilters; ++f) {
         auto label = tgui::Label::create(filterNames[f]);
-        label->setPosition(5, 55 + f * 60); // Moved down to accommodate buttons
+        label->setPosition(5, 90 + f * 60); // Aligned with neuron toggle buttons
         label->setTextSize(10);
         label->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
         
@@ -1661,7 +1629,7 @@ void GUI::createConnectionMatrixPanel() {
         // Add filter gain slider next to each frequency label
         auto gainSlider = tgui::Slider::create(0.0f, 2.0f);
         gainSlider->setValue(rhythmInterpreter->getFilterGain(f));
-        gainSlider->setPosition(5, 70 + f * 60); // Just below the label
+        gainSlider->setPosition(5, 105 + f * 60); // Just below the label
         gainSlider->setSize(65, 15); // Small horizontal slider
         gainSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
         gainSlider->getRenderer()->setThumbColor(tgui::Color(100, 140, 100));
@@ -1680,7 +1648,7 @@ void GUI::createConnectionMatrixPanel() {
         
         // Add filter output display (label showing current output level)
         auto outputDisplay = tgui::Label::create("0.0");
-        outputDisplay->setPosition(75, 70 + f * 60); // Next to gain slider
+        outputDisplay->setPosition(85, 95 + f * 60); // Per decamille displays - slightly right and down
         outputDisplay->setSize(40, 15); // Small label
         outputDisplay->setTextSize(8);
         outputDisplay->getRenderer()->setTextColor(tgui::Color(100, 200, 100));
@@ -1697,7 +1665,7 @@ void GUI::createConnectionMatrixPanel() {
     if (numNeurons > 0) {
         for (size_t n = 0; n < numNeurons; ++n) {
             auto label = tgui::Label::create("N" + std::to_string(n + 1));
-            label->setPosition(80 + n * 45, 40); // Moved down to accommodate buttons
+            label->setPosition(130 + n * 45, 40); // Moved right to avoid overlap with filter displays
             label->setTextSize(10);
             label->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
             connectionMatrixPanel->add(label);
@@ -1717,7 +1685,7 @@ void GUI::createConnectionMatrixPanel() {
             for (size_t n = 0; n < numNeurons; ++n) {
             // Toggle button
             auto toggleButton = tgui::Button::create("○");
-            toggleButton->setPosition(80 + n * 45, 90 + f * 60); // Moved down further for filter gain sliders
+            toggleButton->setPosition(130 + n * 45, 90 + f * 60); // Moved right to avoid overlap with filter displays
             toggleButton->setSize(20, 20);
             toggleButton->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
             toggleButton->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
@@ -1778,7 +1746,7 @@ void GUI::createConnectionMatrixPanel() {
             
             // Gain slider (only visible when connected)
             auto gainSlider = tgui::Slider::create(0.0f, 100.0f);
-            gainSlider->setPosition(105 + n * 45, 90 + f * 60); // Moved down further for filter gain sliders
+            gainSlider->setPosition(155 + n * 45, 90 + f * 60); // Moved right to be next to toggle button
             gainSlider->setSize(15, 20);
             gainSlider->setValue(std::abs(currentWeight) * 100.0f); // Convert to 0-100 range
             gainSlider->setVisible(isConnected);
@@ -1874,8 +1842,8 @@ void GUI::updateConnectionMatrix() {
                       << " (clamped: " << outputLevel << ")" << std::endl;
         }
 
-        // Format as percentage with 1 decimal place
-        std::string levelText = std::to_string(static_cast<int>(outputLevel * 100)) + "%";
+        // Format as per decamille (‰) for higher precision
+        std::string levelText = std::to_string(static_cast<int>(outputLevel * 10000)) + "‰";
         filterOutputDisplays[f]->setText(levelText);
         
         // Color coding: green for low, yellow for medium, red for high levels

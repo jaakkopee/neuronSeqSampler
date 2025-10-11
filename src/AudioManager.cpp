@@ -52,20 +52,30 @@ bool AudioManager::playSample(int sampleIndex, float offsetSeconds) {
         // Stop any previous instance of this specific sample (neuron offset behavior)
         it->second->stop();
         
-        // Check if filter mode is enabled
-        if (filterCallback) {
-            std::cout << "🎛️  Filter callback is active - processing sample " << sampleIndex << std::endl;
-            // Route through filter bank
+        // Always play audio directly (no filtering)
+        it->second->setPlayingOffset(sf::Time::Zero);
+        it->second->play();
+        std::cout << "🔊 Playing sample " << sampleIndex << " directly" << std::endl;
+        
+        // Run rhythmogram analysis separately (if enabled) without affecting audio playback
+        if (rhythmInterpreter) {
             std::vector<float> sampleData = getSampleData(sampleIndex);
-            std::cout << "🎛️  Sample data size: " << sampleData.size() << std::endl;
             if (!sampleData.empty()) {
-                std::cout << "🎛️  Calling filter callback..." << std::endl;
+                std::cout << "🎛️ Running rhythmogram analysis on sample " << sampleIndex << " (" << sampleData.size() << " samples)" << std::endl;
+                rhythmInterpreter->processAudioFrame(sampleData);
+                std::cout << "🎛️ Rhythmogram analysis complete - data available for neuron activation" << std::endl;
+            }
+        }
+        
+        // Handle F-key filtered audio output (if enabled via F key)
+        if (filterCallback) {
+            std::cout << "🔥 F-key filter active - outputting filtered audio" << std::endl;
+            std::vector<float> sampleData = getSampleData(sampleIndex);
+            if (!sampleData.empty()) {
                 std::vector<float> filteredData = filterCallback(sampleData);
-                std::cout << "🎛️  Filter callback returned " << filteredData.size() << " samples" << std::endl;
                 
-                // Create a new sound buffer with filtered data
+                // Create a new sound buffer with filtered data and play it
                 if (!filteredData.empty()) {
-                    // Convert back to Int16
                     std::vector<sf::Int16> int16Data;
                     int16Data.reserve(filteredData.size());
                     for (float sample : filteredData) {
@@ -73,22 +83,18 @@ bool AudioManager::playSample(int sampleIndex, float offsetSeconds) {
                         int16Data.push_back(static_cast<sf::Int16>(clampedSample * 32767.0f));
                     }
                     
-                    // Create persistent buffer and play filtered audio
                     auto filteredBuffer = std::make_unique<sf::SoundBuffer>();
                     if (filteredBuffer->loadFromSamples(&int16Data[0], int16Data.size(), 1, 44100)) {
+                        // Stop direct audio and play filtered version instead
+                        it->second->stop();
                         it->second->setBuffer(*filteredBuffer);
-                        filteredBuffers[sampleIndex] = std::move(filteredBuffer); // Store buffer to keep it alive
+                        filteredBuffers[sampleIndex] = std::move(filteredBuffer);
                         it->second->setPlayingOffset(sf::Time::Zero);
                         it->second->play();
-                        std::cout << "🎛️  Playing sample " << sampleIndex << " through filter bank (" << filteredData.size() << " samples)" << std::endl;
+                        std::cout << "🔥 Playing filtered audio instead of direct sample" << std::endl;
                     }
                 }
             }
-        } else {
-            // Direct playback (original behavior)
-            it->second->setPlayingOffset(sf::Time::Zero);
-            it->second->play();
-            std::cout << "Playing sample " << sampleIndex << " from beginning (stopped previous instance)" << std::endl;
         }
         
         // If internal recording is active, capture the sample data
@@ -202,31 +208,19 @@ void AudioManager::setRhythmInterpreter(RhythmInterpreter* interpreter) {
 }
 
 void AudioManager::setFilterMode(bool enabled) {
-    std::cout << "🎛️  setFilterMode called with enabled=" << enabled 
+    std::cout << "🎛️  setRhythmAnalysis called with enabled=" << enabled 
               << ", rhythmInterpreter=" << (rhythmInterpreter ? "valid" : "null") << std::endl;
               
+    // Clear any filter callback to ensure direct audio playback
+    setFilterCallback(nullptr);
+    
     if (enabled && rhythmInterpreter) {
-        // FORCE clear any existing callback (e.g., F-key filtered callback) before setting analysis-only callback
-        std::cout << "🔧  FORCE CLEARING existing callback and setting ANALYSIS-ONLY mode" << std::endl;
-        
-        // Directly set the analysis-only callback without using setFilterCallback to avoid the override warning
-        filterCallback = [this](const std::vector<float>& audioData) -> std::vector<float> {
-            std::cout << "🎛️  ANALYSIS-ONLY Lambda callback executing - analyzing audio through filter bank" << std::endl;
-            // Process audio through rhythm interpreter for analysis (updates filter outputs)
-            rhythmInterpreter->processAudioFrame(audioData);
-            // Return original audio data for playback (not the filtered version)
-            std::cout << "🎛️  ANALYSIS-ONLY Lambda callback returning original " << audioData.size() << " samples" << std::endl;
-            return audioData; // Return original unfiltered audio
-        };
-        
-        std::cout << "🎛️  ANALYSIS-ONLY Filter Mode FORCIBLY ENABLED - analyzing through RhythmInterpreter, playing original audio" << std::endl;
+        std::cout << "🎛️  RHYTHMOGRAM ANALYSIS ENABLED - audio plays directly, analysis runs separately" << std::endl;
     } else {
-        // Disable filter callback
-        setFilterCallback(nullptr);
         if (enabled && !rhythmInterpreter) {
-            std::cout << "⚠️  Filter Mode requested but RhythmInterpreter is null!" << std::endl;
+            std::cout << "⚠️  Rhythmogram analysis requested but RhythmInterpreter is null!" << std::endl;
         } else {
-            std::cout << "🎛️  Filter Mode DISABLED - direct sample playback" << std::endl;
+            std::cout << "🎛️  Rhythmogram analysis DISABLED" << std::endl;
         }
     }
 }
