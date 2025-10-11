@@ -410,25 +410,61 @@ Connections define:
 
 ## Research Background and Inspiration
 
-NeuronSeqSampler draws its theoretical foundation from the pioneering work of **Dr. Pauli Laine**, a Finnish doctor in musicology whose research explores the intersection of neural networks and music composition.
+NeuronSeqSampler draws its theoretical foundation from groundbreaking research in computational musicology and neural networks, combining multiple academic disciplines to create a novel approach to musical generation.
 
-### Academic Foundation
-Dr. Laine's doctoral thesis, "[A Method for Generating Musical Motion Patterns](http://hdl.handle.net/10138/19434)" at the University of Helsinki, investigates computational approaches to musical sequence generation.
+### Todd (1994) Rhythmogram Theory
 
-### Biological Inspiration
-The core concept behind NeuronSeqSampler is rooted in **Central Pattern Generators (CPGs)** - specialized neural circuits found in biological systems that produce rhythmic, repetitive outputs with remarkable stability.
+The core rhythmic analysis system is based on **Dr. Neil Todd's seminal 1994 research** at the University of Sheffield, which introduced the concept of **rhythmograms** - a revolutionary method for analyzing rhythmic hierarchies in music.
 
-### Technical Implementation
+#### **"The Auditory 'Primal Sketch': A Multiscale Theory of Rhythmic Grouping"**
+Todd's groundbreaking paper established that human rhythmic perception operates through **logarithmically spaced frequency channels** corresponding to musical time structures. His research demonstrated:
 
-The NeuronSeqSampler algorithm implements a novel approach to musical sequence generation by leveraging the dynamics of **spiking neural networks**:
+- **Hierarchical Rhythm Processing**: Human auditory system processes rhythm at multiple temporal scales simultaneously
+- **Logarithmic Frequency Distribution**: Musical time structures follow mathematical relationships (0.125Hz → 16Hz)
+- **Biological Foundations**: Rhythmic perception mirrors neural processing in the auditory cortex
+- **Cross-Modal Integration**: Rhythmic analysis connects auditory perception with motor control
 
-- **Leaky Integrate-and-Fire (LIF) Neurons**: The foundation of our neural network architecture
-- **Real-time Sequence Generation**: Interactive composition and performance capabilities  
-- **Clock Quantization**: Ensures rhythmic consistency and musical timing
-- **Threshold-based Activation**: Mimics biological neuron firing patterns
-- **Dynamic Network Topology**: User-configurable connections and weights
+#### **Musical Time Hierarchy (Todd 1994)**
+Todd identified specific frequency bands that correspond to fundamental musical structures:
 
-This research-backed approach enables NeuronSeqSampler to generate emergent musical patterns that feel both organic and structured, bridging the gap between computational music generation and biological neural dynamics.
+- **Phrase Level (0.125-0.5Hz)**: Large-scale musical organization and sectional boundaries
+- **Beat Level (0.5-4Hz)**: Metric structures, tempo, and rhythmic patterns  
+- **Subdivision Level (4-16Hz)**: Microtiming, groove, and rhythmic ornamentation
+
+This hierarchy forms the theoretical basis for NeuronSeqSampler's 8-band rhythmogram analyzer, enabling **musically intelligent** frequency-to-neuron routing.
+
+### Neural Network Foundations
+
+#### **Dr. Pauli Laine's Computational Music Research**
+Dr. Laine's doctoral thesis, "[A Method for Generating Musical Motion Patterns](http://hdl.handle.net/10138/19434)" at the University of Helsinki, investigates computational approaches to musical sequence generation, providing the neural network architecture foundation.
+
+#### **Biological Inspiration: Central Pattern Generators (CPGs)**
+The core concept is rooted in **Central Pattern Generators** - specialized neural circuits found in biological systems that produce rhythmic, repetitive outputs with remarkable stability, enabling autonomous musical pattern generation.
+
+### Integrated Technical Implementation
+
+NeuronSeqSampler represents a **unique synthesis** of Todd's rhythmogram theory with modern neural network architectures:
+
+#### **Todd Rhythmogram Integration**
+- **8-Band Filterbank**: Direct implementation of Todd's logarithmic frequency distribution
+- **Hybrid Processing**: Envelope following (<4Hz) + biquad filters (≥4Hz) optimized for rhythmic detection
+- **Real-time Analysis**: Continuous rhythmogram computation with per decamille precision
+- **Direct Neural Activation**: Bypasses traditional audio processing for immediate rhythmic response
+
+#### **Neural Network Architecture** 
+- **Leaky Integrate-and-Fire (LIF) Neurons**: Biologically-inspired activation dynamics
+- **Spiking Neural Networks**: Threshold-based activation mimicking biological neuron firing
+- **Dynamic Topology**: User-configurable connections enabling complex rhythmic interactions
+- **Multi-Function Neurons**: Linear, Sigmoid, ReLU, Tanh activation functions per neuron
+
+#### **Revolutionary Integration**
+This **dual-stream approach** creates unprecedented musical intelligence:
+- **Rhythmic Hierarchy → Neural Activation**: Todd's frequency bands directly drive neural network input
+- **Emergent Musical Patterns**: Neural dynamics generate complex rhythmic structures
+- **Real-time Interaction**: Live performance capabilities with immediate visual/auditory feedback
+- **Biological Authenticity**: Both rhythmic perception and neural processing mirror natural systems
+
+The result bridges **computational musicology** (Todd 1994) with **artificial neural networks** (Laine), creating a system that generates music through scientifically grounded principles while maintaining artistic expressiveness.
 
 ## Contributing
 
