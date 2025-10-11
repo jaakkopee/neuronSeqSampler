@@ -1547,14 +1547,20 @@ void GUI::createConnectionMatrixPanel() {
     
     // Create panel even if no neurons yet - it will show as empty but ready
     
-    // Create main matrix panel
-    connectionMatrixPanel = tgui::Panel::create();
+    // Create main matrix panel with scrolling capability
+    connectionMatrixPanel = tgui::ScrollablePanel::create();
     connectionMatrixPanel->setPosition("70%", "20%");
     connectionMatrixPanel->setSize("28%", "75%");
     connectionMatrixPanel->getRenderer()->setBackgroundColor(tgui::Color(20, 20, 20, 200));
     connectionMatrixPanel->getRenderer()->setBorderColor(tgui::Color(60, 60, 60));
     connectionMatrixPanel->getRenderer()->setBorders(1);
     connectionMatrixPanel->setVisible(matrixVisible);
+    
+    // Set content size to accommodate all filters and neurons
+    float contentWidth = std::max(300.0f, static_cast<float>(220 + numNeurons * 80));
+    float contentHeight = std::max(400.0f, static_cast<float>(150 + numFilters * 60));
+    static_cast<tgui::ScrollablePanel*>(connectionMatrixPanel.get())->setContentSize(tgui::Vector2f(contentWidth, contentHeight));
+    
     gui->add(connectionMatrixPanel, "ConnectionMatrixPanel");
     
     // Title label
@@ -1614,6 +1620,7 @@ void GUI::createConnectionMatrixPanel() {
     
     filterLabels.clear();
     filterGainSliders.clear();
+    filterGainDisplays.clear();
     filterOutputDisplays.clear();
     for (size_t f = 0; f < numFilters; ++f) {
         auto label = tgui::Label::create(filterNames[f]);
@@ -1627,18 +1634,23 @@ void GUI::createConnectionMatrixPanel() {
         filterLabels.push_back(label);
         
         // Add filter gain slider next to each frequency label
-        auto gainSlider = tgui::Slider::create(0.0f, 2.0f);
+        auto gainSlider = tgui::Slider::create(0.0f, 5.0f);
         gainSlider->setValue(rhythmInterpreter->getFilterGain(f));
+        gainSlider->setStep(0.1f); // 0.1x step increments
         gainSlider->setPosition(5, 105 + f * 60); // Just below the label
         gainSlider->setSize(65, 15); // Small horizontal slider
         gainSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
         gainSlider->getRenderer()->setThumbColor(tgui::Color(100, 140, 100));
-        // Filter gain control from 0.0x to 2.0x
+        // Filter gain control from 0.0x to 5.0x with 0.1x steps
         
         // Connect slider to filter gain control
         gainSlider->onValueChange([this, f](float value) {
             if (network && network->getRhythmInterpreter()) {
                 network->getRhythmInterpreter()->setFilterGain(f, value);
+                // Update filter gain display with proper formatting (one decimal place)
+                std::ostringstream stream;
+                stream << std::fixed << std::setprecision(1) << value << "x";
+                filterGainDisplays[f]->setText(stream.str());
                 // Frequency response display temporarily disabled
             }
         });
@@ -1646,9 +1658,22 @@ void GUI::createConnectionMatrixPanel() {
         connectionMatrixPanel->add(gainSlider);
         filterGainSliders.push_back(gainSlider);
         
+        // Add filter gain value display (shows current gain setting)
+        auto gainDisplay = tgui::Label::create("1.0x");
+        gainDisplay->setPosition(75, 105 + f * 60); // Right of the gain slider
+        gainDisplay->setSize(25, 15); // Small label
+        gainDisplay->setTextSize(8);
+        gainDisplay->getRenderer()->setTextColor(tgui::Color(140, 140, 200));
+        gainDisplay->getRenderer()->setBackgroundColor(tgui::Color(15, 15, 25));
+        gainDisplay->getRenderer()->setBorderColor(tgui::Color(40, 40, 60));
+        gainDisplay->getRenderer()->setBorders(1);
+        
+        connectionMatrixPanel->add(gainDisplay);
+        filterGainDisplays.push_back(gainDisplay);
+        
         // Add filter output display (label showing current output level)
         auto outputDisplay = tgui::Label::create("0.0");
-        outputDisplay->setPosition(85, 95 + f * 60); // Per decamille displays - slightly right and down
+        outputDisplay->setPosition(105, 95 + f * 60); // Per decamille displays - moved right to make room for gain display
         outputDisplay->setSize(40, 15); // Small label
         outputDisplay->setTextSize(8);
         outputDisplay->getRenderer()->setTextColor(tgui::Color(100, 200, 100));
@@ -1665,7 +1690,7 @@ void GUI::createConnectionMatrixPanel() {
     if (numNeurons > 0) {
         for (size_t n = 0; n < numNeurons; ++n) {
             auto label = tgui::Label::create("N" + std::to_string(n + 1));
-            label->setPosition(130 + n * 45, 40); // Moved right to avoid overlap with filter displays
+            label->setPosition(150 + n * 80, 40); // Increased spacing to 80px for wider gaps between neurons
             label->setTextSize(10);
             label->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
             connectionMatrixPanel->add(label);
@@ -1676,16 +1701,18 @@ void GUI::createConnectionMatrixPanel() {
     // Create matrix of toggle buttons and gain sliders - only if we have neurons
     matrixToggleButtons.clear();
     matrixGainSliders.clear();
+    matrixGainDisplays.clear();
     
     if (numNeurons > 0) {
         for (size_t f = 0; f < numFilters; ++f) {
             std::vector<tgui::Button::Ptr> buttonRow;
             std::vector<tgui::Slider::Ptr> sliderRow;
+            std::vector<tgui::Label::Ptr> displayRow;
             
             for (size_t n = 0; n < numNeurons; ++n) {
             // Toggle button
             auto toggleButton = tgui::Button::create("○");
-            toggleButton->setPosition(130 + n * 45, 90 + f * 60); // Moved right to avoid overlap with filter displays
+            toggleButton->setPosition(150 + n * 80, 90 + f * 60); // Aligned with neuron column labels
             toggleButton->setSize(20, 20);
             toggleButton->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
             toggleButton->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
@@ -1726,6 +1753,8 @@ void GUI::createConnectionMatrixPanel() {
                     // Reset gain slider to default value and hide it
                     matrixGainSliders[f][n]->setValue(30.0f); // Reset to default 30% (0.3 *  100)
                     matrixGainSliders[f][n]->setVisible(false);
+                    // Hide connection gain display
+                    matrixGainDisplays[f][n]->setVisible(false);
                 } else {
                     // Connect with default gain
                     float defaultGain = 0.3f;
@@ -1735,6 +1764,9 @@ void GUI::createConnectionMatrixPanel() {
                     toggleButton->getRenderer()->setTextColor(tgui::Color::White);
                     matrixGainSliders[f][n]->setValue(defaultGain * 100.0f); // Convert to 0-100 range
                     matrixGainSliders[f][n]->setVisible(true);
+                    // Show and update connection gain display
+                    matrixGainDisplays[f][n]->setText(std::to_string(static_cast<int>(defaultGain * 100)));
+                    matrixGainDisplays[f][n]->setVisible(true);
                 }
                 
                 // Block matrix updates for several frames after toggle interaction
@@ -1746,7 +1778,7 @@ void GUI::createConnectionMatrixPanel() {
             
             // Gain slider (only visible when connected)
             auto gainSlider = tgui::Slider::create(0.0f, 100.0f);
-            gainSlider->setPosition(155 + n * 45, 90 + f * 60); // Moved right to be next to toggle button
+            gainSlider->setPosition(175 + n * 80, 90 + f * 60); // Right of toggle button
             gainSlider->setSize(15, 20);
             gainSlider->setValue(std::abs(currentWeight) * 100.0f); // Convert to 0-100 range
             gainSlider->setVisible(isConnected);
@@ -1763,14 +1795,37 @@ void GUI::createConnectionMatrixPanel() {
                 }
                 
                 currentMatrix->setWeight(f, n, weight);
+                
+                // Update connection gain display
+                matrixGainDisplays[f][n]->setText(std::to_string(static_cast<int>(value)));
             });
             
             connectionMatrixPanel->add(gainSlider);
             sliderRow.push_back(gainSlider);
+            
+            // Connection gain value display (shows current connection weight)
+            auto connectionGainDisplay = tgui::Label::create("0.0");
+            connectionGainDisplay->setPosition(195 + n * 80, 90 + f * 60); // Right of the gain slider
+            connectionGainDisplay->setSize(20, 20); // Small square label
+            connectionGainDisplay->setTextSize(7);
+            connectionGainDisplay->getRenderer()->setTextColor(tgui::Color(200, 200, 140));
+            connectionGainDisplay->getRenderer()->setBackgroundColor(tgui::Color(25, 25, 15));
+            connectionGainDisplay->getRenderer()->setBorderColor(tgui::Color(60, 60, 40));
+            connectionGainDisplay->getRenderer()->setBorders(1);
+            connectionGainDisplay->setVisible(isConnected);
+            
+            // Update display with current weight
+            if (isConnected) {
+                connectionGainDisplay->setText(std::to_string(static_cast<int>(std::abs(currentWeight) * 100)));
+            }
+            
+            connectionMatrixPanel->add(connectionGainDisplay);
+            displayRow.push_back(connectionGainDisplay);
         }
         
             matrixToggleButtons.push_back(buttonRow);
             matrixGainSliders.push_back(sliderRow);
+            matrixGainDisplays.push_back(displayRow);
         }
     }
 }
@@ -1822,7 +1877,21 @@ void GUI::updateConnectionMatrix() {
             // Update gain slider
             matrixGainSliders[f][n]->setValue(std::abs(weight) * 100.0f);
             matrixGainSliders[f][n]->setVisible(isConnected);
+            
+            // Update connection gain display
+            if (f < matrixGainDisplays.size() && n < matrixGainDisplays[f].size()) {
+                matrixGainDisplays[f][n]->setText(std::to_string(static_cast<int>(std::abs(weight) * 100)));
+                matrixGainDisplays[f][n]->setVisible(isConnected);
+            }
         }
+    }
+    
+    // Update filter gain displays
+    for (size_t f = 0; f < std::min(numFilters, filterGainDisplays.size()); ++f) {
+        float gainValue = rhythmInterpreter->getFilterGain(f);
+        std::ostringstream stream;
+        stream << std::fixed << std::setprecision(1) << gainValue << "x";
+        filterGainDisplays[f]->setText(stream.str());
     }
     
     // Update filter output displays with real-time levels

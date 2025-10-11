@@ -59,13 +59,15 @@ private:
     std::vector<tgui::Slider::Ptr> filterGainSliders;
     std::vector<tgui::Button::Ptr> filterListenButtons; // Solo/listen buttons for each filter band
     std::vector<tgui::Label::Ptr> filterOutputDisplays; // Real-time output level displays for each filter
+    std::vector<tgui::Label::Ptr> filterGainDisplays; // Display labels showing filter gain values
     // Frequency response visualization temporarily removed due to TGUI limitations
     
     // Connection matrix GUI (8 filters × N neurons)
-    tgui::Panel::Ptr connectionMatrixPanel;
+    tgui::ScrollablePanel::Ptr connectionMatrixPanel;
     tgui::Label::Ptr matrixTitleLabel;
     std::vector<std::vector<tgui::Button::Ptr>> matrixToggleButtons; // [filter][neuron]
     std::vector<std::vector<tgui::Slider::Ptr>> matrixGainSliders;   // [filter][neuron] 
+    std::vector<std::vector<tgui::Label::Ptr>> matrixGainDisplays;   // [filter][neuron] - Connection gain value displays
     std::vector<tgui::Label::Ptr> filterLabels; // Labels for filter bands
     std::vector<tgui::Label::Ptr> neuronColumnLabels; // Labels for neuron columns
     bool matrixVisible = true; // Connection matrix visibility state
