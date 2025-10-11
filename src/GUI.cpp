@@ -1646,7 +1646,6 @@ void GUI::createConnectionMatrixPanel() {
     
     filterLabels.clear();
     filterGainSliders.clear();
-    filterResonanceSliders.clear();
     filterOutputDisplays.clear();
     for (size_t f = 0; f < numFilters; ++f) {
         auto label = tgui::Label::create(filterNames[f]);
@@ -1679,29 +1678,9 @@ void GUI::createConnectionMatrixPanel() {
         connectionMatrixPanel->add(gainSlider);
         filterGainSliders.push_back(gainSlider);
         
-        // Add filter resonance slider next to gain slider
-        auto resonanceSlider = tgui::Slider::create(0.1f, 10.0f);
-        resonanceSlider->setValue(rhythmInterpreter->getFilterResonance(f));
-        resonanceSlider->setPosition(75, 70 + f * 60); // Next to gain slider
-        resonanceSlider->setSize(25, 15); // Smaller slider for resonance
-        resonanceSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 90));
-        resonanceSlider->getRenderer()->setThumbColor(tgui::Color(120, 120, 180));
-        // Filter resonance control from 0.1 to 10.0 (Q factor)
-        
-        // Connect slider to filter resonance control
-        resonanceSlider->onValueChange([this, f](float value) {
-            if (network && network->getRhythmInterpreter()) {
-                network->getRhythmInterpreter()->setFilterResonance(f, value);
-                // Frequency response display temporarily disabled
-            }
-        });
-        
-        connectionMatrixPanel->add(resonanceSlider);
-        filterResonanceSliders.push_back(resonanceSlider);
-        
         // Add filter output display (label showing current output level)
         auto outputDisplay = tgui::Label::create("0.0");
-        outputDisplay->setPosition(105, 70 + f * 60); // Next to resonance slider
+        outputDisplay->setPosition(75, 70 + f * 60); // Next to gain slider
         outputDisplay->setSize(40, 15); // Small label
         outputDisplay->setTextSize(8);
         outputDisplay->getRenderer()->setTextColor(tgui::Color(100, 200, 100));
@@ -1913,12 +1892,6 @@ void GUI::updateConnectionMatrix() {
     for (size_t f = 0; f < std::min(numFilters, filterGainSliders.size()); ++f) {
         float currentGain = rhythmInterpreter->getFilterGain(f);
         filterGainSliders[f]->setValue(currentGain);
-    }
-    
-    // Update filter resonance sliders to match current values
-    for (size_t f = 0; f < std::min(numFilters, filterResonanceSliders.size()); ++f) {
-        float currentResonance = rhythmInterpreter->getFilterResonance(f);
-        filterResonanceSliders[f]->setValue(currentResonance);
     }
     
     isUpdatingMatrix = false; // Reset the flag

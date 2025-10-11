@@ -57,7 +57,6 @@ private:
     std::vector<tgui::Slider::Ptr> filterFreqSliders;
     std::vector<tgui::Slider::Ptr> filterBandwidthSliders;
     std::vector<tgui::Slider::Ptr> filterGainSliders;
-    std::vector<tgui::Slider::Ptr> filterResonanceSliders;
     std::vector<tgui::Button::Ptr> filterListenButtons; // Solo/listen buttons for each filter band
     std::vector<tgui::Label::Ptr> filterOutputDisplays; // Real-time output level displays for each filter
     // Frequency response visualization temporarily removed due to TGUI limitations
