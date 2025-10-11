@@ -183,27 +183,29 @@ Audio Output → Rhythm Analysis → Filterbank → Connection Matrix → Neuron
 
 ### Core Components
 
-#### 🎚️ **Adaptive Filterbank** (8 bands)
-- **Sub Bass (60Hz)**: Captures kick drum fundamentals
-- **Bass (120Hz)**: Kick harmonics and low-end content  
-- **Low Mids (250Hz)**: Snare body and tonal content
-- **Mids (500Hz)**: Snare attack and vocal ranges
-- **Upper Mids (1kHz)**: Hi-hat body and clarity
-- **Presence (2kHz)**: Hi-hat attack and definition
-- **Brilliance (4kHz)**: Cymbal shimmer and sparkle
-- **Air (8kHz)**: High-frequency detail and space
+#### � **Todd (1994) Rhythmogram Analyzer** (8 bands)
+- **Phrase (0.125Hz)**: 8-beat phrases, long-term rhythmic patterns
+- **Whole (0.25Hz)**: 4-beat units, measure-level rhythmic structure
+- **Half (0.5Hz)**: 2-beat units, strong-weak beat patterns
+- **Quarter (1Hz)**: Basic beat, fundamental pulse, main tempo
+- **Eighth (2Hz)**: Sub-beat subdivisions, syncopation, groove
+- **16th (4Hz)**: Fast subdivisions, hi-hat patterns, shuffle
+- **32nd (8Hz)**: Very fast subdivisions, rolls, ornaments
+- **Onset (16Hz)**: Micro-timing, attack transients, rhythmic precision
 
-#### 🥁 **Rhythm Detection Engine**
-- **Real-time tempo tracking** (60-200 BPM range)
-- **Beat detection** with adaptive thresholds
-- **Rhythmic complexity analysis** for musical coherence
-- **Groove strength measurement** for timing feel
+#### � **Direct Neural Activation Engine**
+- **Real-time rhythmogram processing** with hybrid filtering approach
+- **Per decamille precision** (‰) displays for rhythmic activity monitoring
+- **Bypass audio processing** - direct neural input without sound alteration
+- **Threshold-based activation** - only significant rhythmic events trigger neurons
+- **Debug monitoring** - comprehensive logging of neural input delivery
 
-#### 🔄 **Connection Matrix** (8×N)
-- **Flexible routing**: Each filter can influence any neuron
-- **Adaptive learning**: Connections strengthen based on correlation
-- **Weight visualization**: Real-time connection strength display
-- **Pattern randomization**: Generate new routing configurations
+#### 🔄 **Interactive Connection Matrix** (8×N)
+- **Visual routing interface**: Toggle buttons for frequency-to-neuron connections
+- **Connection gain control**: Individual strength adjustment (0-100%) per route
+- **Real-time feedback**: Per decamille displays show live rhythmogram activity
+- **Musical intelligence**: Frequency bands optimized for rhythmic hierarchy
+- **State persistence**: Configuration survives user interactions and network changes
 
 ### Musical Applications
 
@@ -415,11 +417,13 @@ Each neuron can independently use different mathematical functions to process ac
 
 ### Core Components
 
-- **NeuronNetwork**: Manages neurons and their connections
-- **AudioManager**: Handles sample loading and playback
-- **Visualizer**: Renders neural network visualization
-- **GUI**: Provides real-time parameter controls
-- **Recorder**: Manages audio recording functionality
+- **NeuronNetwork**: Manages neurons, connections, and rhythmogram integration
+- **RhythmInterpreter**: Implements Todd (1994) rhythmogram analysis and neural activation
+- **ConnectionMatrix**: Routes rhythmic frequency bands to specific neurons with configurable weights
+- **AudioManager**: Handles sample loading, playback, and rhythmogram analysis coordination
+- **GUI**: Provides real-time parameter controls and rhythmogram mapping interface
+- **Visualizer**: Renders neural network visualization with real-time activity feedback
+- **Recorder**: Manages dual-channel audio recording (input + network output)
 
 ### Neural Network Implementation
 
@@ -429,8 +433,16 @@ Each neuron maintains:
 - **Decay Rate**: How quickly activation fades after firing
 - **Self-Modulation Rate**: Per-iteration activation increase/decrease (-0.1 to 0.6)
 - **Activation Function**: Mathematical transformation (Linear, Sigmoid, ReLU, Tanh)
+- **External Input**: Accumulator for rhythmogram-derived neural inputs
 - **Sample Index**: Which audio file to play when activated
 - **Activation History**: Rolling buffer for visualization and analysis
+
+Rhythmogram Integration adds:
+- **Connection Matrix Weights**: Individual routing coefficients (8 frequency bands × N neurons)
+- **Hybrid Filtering**: Envelope following (<4Hz) + biquad filters (≥4Hz) for optimal rhythmic detection
+- **Real-time Analysis Pipeline**: Audio → Rhythmogram → Matrix Transform → Neural Activation
+- **Per Decamille Monitoring**: High-precision (‰) display of rhythmic activity levels
+- **Direct Neural Input**: `addExternalInput()` bypasses audio processing for immediate activation
 
 Connections define:
 - **Source/Target**: Which neurons are linked
