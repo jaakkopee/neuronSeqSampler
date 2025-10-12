@@ -2071,17 +2071,26 @@ void GUI::updateConnectionMatrix() {
         float outputLevel = std::min(1.0f, std::abs(filterOutputs[f])); // Clamp to 0-1 range
         
         // Debug: Log rhythmogram output levels occasionally  
-        if (++guiDebugCounter % 50 == 0 && f < 6) { // Show first 6 rhythmogram bands
+        if (++guiDebugCounter % 50 == 0 && f < 8) { // Show all 8 rhythmogram bands
             const std::vector<std::string> bandNames = {
-                "Phrase(0.125Hz)", "Whole(0.25Hz)", "Half(0.5Hz)", "Quarter(1Hz)", "Eighth(2Hz)", "16th(4Hz)"
+                "Phrase(0.125Hz)", "Whole(0.25Hz)", "Half(0.5Hz)", "Quarter(1Hz)", "Eighth(2Hz)", "16th(4Hz)", "32nd(8Hz)", "Micro(16Hz)"
             };
             std::string bandName = (f < bandNames.size()) ? bandNames[f] : "Band" + std::to_string(f);
             std::cout << "🎛️  Rhythmogram " << f << " (" << bandName << ") level: " << filterOutputs[f] 
                       << " (clamped: " << outputLevel << ")" << std::endl;
         }
 
-        // Format as per decamille (‰) for higher precision
-        std::string levelText = std::to_string(static_cast<int>(outputLevel * 10000)) + "‰";
+        // Format with appropriate precision for both large and small values
+        std::string levelText;
+        if (outputLevel >= 0.0001f) {
+            // Use per-mille (‰) for values >= 0.01%
+            levelText = std::to_string(static_cast<int>(outputLevel * 10000)) + "‰";
+        } else {
+            // Use scientific notation for very small values
+            std::ostringstream stream;
+            stream << std::scientific << std::setprecision(1) << outputLevel;
+            levelText = stream.str();
+        }
         filterOutputDisplays[f]->setText(levelText);
         
         // Color coding: green for low, yellow for medium, red for high levels
