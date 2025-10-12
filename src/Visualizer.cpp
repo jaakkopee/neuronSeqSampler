@@ -3,6 +3,9 @@
 #include "Neuron.h"
 #include "Connection.h"
 #include <cmath>
+#include <iostream>
+#include <vector>
+#include <string>
 
 Visualizer::Visualizer(sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork)
     : window(renderWindow)
@@ -12,10 +15,13 @@ Visualizer::Visualizer(sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetw
     , firedNeuronColor(sf::Color::Red)
     , connectionColor(sf::Color::White)
     , highlightConnectionColor(sf::Color::Yellow)
+    , fontLoaded(false)
     , canvasOffset(50.0f, 50.0f)
     , canvasSize(500.0f, 400.0f)
     , currentViewMode(ViewMode::Grid)
 {
+    // Try to load a default system font
+    loadFont("");
     calculateNeuronPositions();
 }
 
@@ -154,11 +160,11 @@ void Visualizer::render() {
     
     // Draw neurons (reuse neurons variable from above)
     for (size_t i = 0; i < neurons.size() && i < neuronPositions.size(); ++i) {
-        drawNeuron(neurons[i].get(), neuronPositions[i]);
+        drawNeuron(neurons[i].get(), neuronPositions[i], i);
     }
 }
 
-void Visualizer::drawNeuron(const Neuron* neuron, const sf::Vector2f& position) {
+void Visualizer::drawNeuron(const Neuron* neuron, const sf::Vector2f& position, size_t neuronIndex) {
     sf::CircleShape circle(neuronRadius);
     circle.setOrigin(neuronRadius, neuronRadius);
     circle.setPosition(position);
@@ -180,8 +186,23 @@ void Visualizer::drawNeuron(const Neuron* neuron, const sf::Vector2f& position) 
     
     window->draw(circle);
     
-    // Note: Text rendering would require loading a font
-    // For now, neuron identification is by position only
+    // Draw text if font is loaded
+    if (fontLoaded) {
+        // Create neuron index text (N1, N2, etc.)
+        sf::Text neuronText;
+        neuronText.setFont(font);
+        neuronText.setString("N" + std::to_string(neuronIndex + 1));
+        neuronText.setCharacterSize(12);
+        neuronText.setFillColor(sf::Color::White);
+        
+        // Center the text on the neuron
+        sf::FloatRect textBounds = neuronText.getLocalBounds();
+        neuronText.setOrigin(textBounds.left + textBounds.width / 2.0f, 
+                            textBounds.top + textBounds.height / 2.0f);
+        neuronText.setPosition(position.x, position.y); // Centered on the neuron
+        
+        window->draw(neuronText);
+    }
 }
 
 void Visualizer::drawConnection(const Connection* connection, 
@@ -456,4 +477,38 @@ sf::Vector2f Visualizer::calculateBezierPoint(const sf::Vector2f& p0, const sf::
     
     sf::Vector2f result = uu * p0 + 2.0f * u * t * p1 + tt * p2;
     return result;
+}
+
+bool Visualizer::loadFont(const std::string& fontPath) {
+    fontLoaded = false;
+    
+    // Try to load the specified font first
+    if (!fontPath.empty()) {
+        if (font.loadFromFile(fontPath)) {
+            fontLoaded = true;
+            std::cout << "Loaded font: " << fontPath << std::endl;
+            return true;
+        }
+    }
+    
+    // Try to load system default font (SFML's built-in font is not available)
+    // Try common system font paths
+    std::vector<std::string> systemFonts = {
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans.ttf", 
+        "/System/Library/Fonts/Helvetica.ttc",
+        "/Windows/Fonts/arial.ttf",
+        "assets/fonts/DejaVuSans.ttf"
+    };
+    
+    for (const auto& path : systemFonts) {
+        if (font.loadFromFile(path)) {
+            fontLoaded = true;
+            std::cout << "Loaded system font: " << path << std::endl;
+            return true;
+        }
+    }
+    
+    std::cout << "Warning: Could not load any font. Text rendering will be disabled." << std::endl;
+    return false;
 }

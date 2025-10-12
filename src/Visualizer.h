@@ -25,6 +25,10 @@ private:
     sf::Color connectionColor;
     sf::Color highlightConnectionColor;
     
+    // Text rendering
+    sf::Font font;
+    bool fontLoaded;
+    
     // Animation timing
     sf::Clock animationClock;
     
@@ -39,7 +43,7 @@ private:
     void calculateNeuronPositions();
     void calculateGridPositions();
     void calculateCircularPositions();
-    void drawNeuron(const Neuron* neuron, const sf::Vector2f& position);
+    void drawNeuron(const Neuron* neuron, const sf::Vector2f& position, size_t neuronIndex);
     void drawConnection(const Connection* connection, 
                        const sf::Vector2f& sourcePos, 
                        const sf::Vector2f& targetPos);
@@ -56,6 +60,7 @@ public:
     void setCanvasArea(float x, float y, float width, float height);
     void render();
     void refreshLayout(); // Call this when the network structure changes
+    bool loadFont(const std::string& fontPath); // Load font for text rendering
     
     // Settings
     void setNeuronRadius(float radius) { neuronRadius = radius; }
