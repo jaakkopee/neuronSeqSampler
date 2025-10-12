@@ -367,19 +367,18 @@ float ConnectionMatrix::getWeight(size_t filterIndex, size_t neuronIndex) const 
     return 0.0f;
 }
 
-std::vector<float> ConnectionMatrix::transform(const std::vector<float>& filterOutputs) const {
+std::vector<float> ConnectionMatrix::transform(const std::vector<float>& filterOutputs, float rhythmogramScale) const {
     std::vector<float> neuronInputs(numNeurons, 0.0f);
     
     // Scale rhythmogram outputs to meaningful neural activation levels
     // Typical rhythmogram values: 0.001-0.01, Neural threshold: 1.0
-    // Scaling factor of 500 ensures rhythmogram can trigger neural activation
-    const float RHYTHMOGRAM_SCALE = 500.0f;
+    // User-configurable scaling factor (0.0-20.0, default 5.0) ensures rhythmogram can trigger neural activation
     
     for (size_t f = 0; f < std::min(filterOutputs.size(), numFilters); ++f) {
         for (size_t n = 0; n < numNeurons; ++n) {
             // Apply connection weight and rhythmogram scaling for meaningful neural input
             // Note: Zero weights (from disabled toggles) will naturally produce zero input
-            float scaledInput = weights[f][n] * filterOutputs[f] * RHYTHMOGRAM_SCALE;
+            float scaledInput = weights[f][n] * filterOutputs[f] * rhythmogramScale;
             neuronInputs[n] += scaledInput;
         }
     }
@@ -436,9 +435,12 @@ RhythmInterpreter::RhythmInterpreter(NeuronNetwork* network, AudioManager* audio
                                    size_t sampleRate, size_t bufferSize)
     : neuronNetwork(network), audioManager(audioMgr), 
       sampleRate(sampleRate), bufferSize(bufferSize),
-      enabled(true), globalGain(0.0f) { // Set to 0 for analysis-only mode
+      enabled(true), globalGain(0.0f), // Set to 0 for analysis-only mode
+      rhythmogramScale(5.0f), // Default rhythmogram scale of 5.0
+      bpm(120.0f) { // Default BPM of 120
     
     initializeFilterBank();
+    updateFilterBankForBPM(); // Apply initial BPM scaling to filters
     rhythmDetector = std::make_unique<RhythmDetector>();
     
     if (neuronNetwork) {
@@ -588,7 +590,7 @@ void RhythmInterpreter::update() {
     if (!enabled || !neuronNetwork || !connectionMatrix) return;
     
     // Transform filter outputs to neuron inputs through connection matrix
-    neuronInputs = connectionMatrix->transform(filterOutputs);
+    neuronInputs = connectionMatrix->transform(filterOutputs, rhythmogramScale);
     
     // Apply rhythmogram inputs to neurons based on matrix connections
     const auto& neurons = neuronNetwork->getNeurons();
@@ -745,6 +747,42 @@ float RhythmInterpreter::getFilterResonance(size_t filterIndex) const {
         return filterBank[filterIndex]->getResonance();
     }
     return 1.0f; // Default resonance
+}
+
+void RhythmInterpreter::setRhythmogramScale(float scale) {
+    rhythmogramScale = std::max(0.0f, std::min(20.0f, scale)); // Clamp between 0.0 and 20.0
+}
+
+void RhythmInterpreter::setBPM(float beatsPerMinute) {
+    bpm = std::max(30.0f, std::min(260.0f, beatsPerMinute)); // Clamp between 30.0 and 260.0 BPM
+    updateFilterBankForBPM(); // Update filter frequencies when BPM changes
+}
+
+void RhythmInterpreter::updateFilterBankForBPM() {
+    if (filterBank.empty()) return;
+    
+    // Calculate tempo scaling factor relative to default 120 BPM
+    // At 120 BPM: quarter note = 1.0 Hz, so scaling factor = bpm/120
+    float tempoScale = bpm / 120.0f;
+    
+    std::cout << "🎵 BPM changed to " << bpm << " (scale factor: " << tempoScale << "x)" << std::endl;
+    
+    // Scale all Todd frequencies proportionally to tempo
+    // This keeps the rhythmic hierarchy relative to the current tempo
+    for (size_t i = 0; i < filterBank.size() && i < DEFAULT_FREQUENCIES.size(); ++i) {
+        float scaledFrequency = DEFAULT_FREQUENCIES[i] * tempoScale;
+        float scaledBandwidth = DEFAULT_BANDWIDTHS[i] * tempoScale; // Bandwidth scales with frequency
+        float resonance = DEFAULT_RESONANCES[i]; // Resonance (Q factor) remains constant
+        
+        filterBank[i]->setCenterFrequency(scaledFrequency);
+        filterBank[i]->setBandwidth(scaledBandwidth);
+        filterBank[i]->setResonance(resonance);
+        
+        // Debug output for key frequencies
+        if (i == 3) { // Quarter note level
+            std::cout << "🎵   Quarter note freq: " << DEFAULT_FREQUENCIES[i] << "Hz → " << scaledFrequency << "Hz" << std::endl;
+        }
+    }
 }
 
 void RhythmInterpreter::setFilterSolo(size_t filterIndex, bool solo) {

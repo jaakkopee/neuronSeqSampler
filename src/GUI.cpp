@@ -1535,6 +1535,10 @@ void GUI::createConnectionMatrixPanel() {
         matrixGainSliders.clear();
         filterLabels.clear();
         neuronColumnLabels.clear();
+        rhythmogramScaleSlider = nullptr;
+        rhythmogramScaleLabel = nullptr;
+        bpmSlider = nullptr;
+        bpmLabel = nullptr;
     }
     
     if (!network || !network->getRhythmInterpreter()) {
@@ -1556,8 +1560,8 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixPanel->getRenderer()->setBorders(1);
     connectionMatrixPanel->setVisible(matrixVisible);
     
-    // Set content size to accommodate all filters and neurons
-    float contentWidth = std::max(300.0f, static_cast<float>(220 + numNeurons * 80));
+    // Set content size to accommodate all filters, neurons, and control sliders (Scale + BPM)
+    float contentWidth = std::max(350.0f, static_cast<float>(270 + numNeurons * 80)); // Extra space for two sliders
     float contentHeight = std::max(400.0f, static_cast<float>(150 + numFilters * 60));
     static_cast<tgui::ScrollablePanel*>(connectionMatrixPanel.get())->setContentSize(tgui::Vector2f(contentWidth, contentHeight));
     
@@ -1828,6 +1832,104 @@ void GUI::createConnectionMatrixPanel() {
             matrixGainDisplays.push_back(displayRow);
         }
     }
+    
+    // Add rhythmogram scale slider and BPM slider at the right end of the matrix
+    float scaleSliderX = contentWidth - 80; // Position scale slider
+    float bpmSliderX = contentWidth - 50; // Position BPM slider to the right of scale slider
+    
+    // Scale control label
+    auto scaleLabel = tgui::Label::create("Scale");
+    scaleLabel->setPosition(scaleSliderX - 10, 50);
+    scaleLabel->setTextSize(10);
+    scaleLabel->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+    connectionMatrixPanel->add(scaleLabel);
+    
+    // Vertical rhythmogram scale slider (0.0 - 20.0, default 5.0, step 0.1)
+    rhythmogramScaleSlider = tgui::Slider::create(0.0f, 20.0f);
+    rhythmogramScaleSlider->setValue(rhythmInterpreter->getRhythmogramScale());
+    rhythmogramScaleSlider->setStep(0.1f);
+    rhythmogramScaleSlider->setPosition(scaleSliderX, 70);
+    rhythmogramScaleSlider->setSize(20, 300); // Vertical slider
+    rhythmogramScaleSlider->setOrientation(tgui::Orientation::Vertical);
+    rhythmogramScaleSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
+    rhythmogramScaleSlider->getRenderer()->setThumbColor(tgui::Color(140, 100, 100));
+    
+    // Connect slider to rhythmogram scale control
+    rhythmogramScaleSlider->onValueChange([this](float value) {
+        if (network && network->getRhythmInterpreter()) {
+            network->getRhythmInterpreter()->setRhythmogramScale(value);
+            // Update scale display with proper formatting (one decimal place)
+            std::ostringstream stream;
+            stream << std::fixed << std::setprecision(1) << value;
+            rhythmogramScaleLabel->setText(stream.str());
+        }
+    });
+    
+    connectionMatrixPanel->add(rhythmogramScaleSlider);
+    
+    // Scale value display
+    rhythmogramScaleLabel = tgui::Label::create("5.0");
+    rhythmogramScaleLabel->setPosition(scaleSliderX - 5, 375);
+    rhythmogramScaleLabel->setSize(30, 20);
+    rhythmogramScaleLabel->setTextSize(9);
+    rhythmogramScaleLabel->getRenderer()->setTextColor(tgui::Color(200, 140, 140));
+    rhythmogramScaleLabel->getRenderer()->setBackgroundColor(tgui::Color(25, 15, 15));
+    rhythmogramScaleLabel->getRenderer()->setBorderColor(tgui::Color(60, 40, 40));
+    rhythmogramScaleLabel->getRenderer()->setBorders(1);
+    
+    // Initialize display with current value
+    std::ostringstream initStream;
+    initStream << std::fixed << std::setprecision(1) << rhythmInterpreter->getRhythmogramScale();
+    rhythmogramScaleLabel->setText(initStream.str());
+    
+    connectionMatrixPanel->add(rhythmogramScaleLabel);
+    
+    // BPM control label  
+    auto bpmLabelTitle = tgui::Label::create("BPM");
+    bpmLabelTitle->setPosition(bpmSliderX - 10, 50);
+    bpmLabelTitle->setTextSize(10);
+    bpmLabelTitle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+    connectionMatrixPanel->add(bpmLabelTitle);
+    
+    // Vertical BPM slider (30.0 - 260.0, default 120.0, step 0.1)
+    bpmSlider = tgui::Slider::create(30.0f, 260.0f);
+    bpmSlider->setValue(rhythmInterpreter->getBPM());
+    bpmSlider->setStep(0.1f);
+    bpmSlider->setPosition(bpmSliderX, 70);
+    bpmSlider->setSize(20, 300); // Vertical slider
+    bpmSlider->setOrientation(tgui::Orientation::Vertical);
+    bpmSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
+    bpmSlider->getRenderer()->setThumbColor(tgui::Color(100, 140, 100));
+    
+    // Connect BPM slider to BPM control
+    bpmSlider->onValueChange([this](float value) {
+        if (network && network->getRhythmInterpreter()) {
+            network->getRhythmInterpreter()->setBPM(value);
+            // Update BPM display with proper formatting (one decimal place)
+            std::ostringstream stream;
+            stream << std::fixed << std::setprecision(1) << value;
+            bpmLabel->setText(stream.str());
+        }
+    });
+    
+    connectionMatrixPanel->add(bpmSlider);
+    
+    // BPM value display
+    bpmLabel = tgui::Label::create("120.0");
+    bpmLabel->setPosition(bpmSliderX - 5, 375);
+    bpmLabel->setSize(30, 20);
+    bpmLabel->setTextSize(9);
+    bpmLabel->getRenderer()->setTextColor(tgui::Color(140, 200, 140));
+    bpmLabel->getRenderer()->setBackgroundColor(tgui::Color(15, 25, 15));
+    bpmLabel->getRenderer()->setBorderColor(tgui::Color(40, 60, 40));
+    bpmLabel->getRenderer()->setBorders(1);
+    
+    // Initialize BPM display with current value
+    std::ostringstream bpmInitStream;
+    bpmInitStream << std::fixed << std::setprecision(1) << rhythmInterpreter->getBPM();
+    bpmLabel->setText(bpmInitStream.str());
+    
+    connectionMatrixPanel->add(bpmLabel);
 }
 
 void GUI::updateConnectionMatrix() {
@@ -1929,6 +2031,24 @@ void GUI::updateConnectionMatrix() {
     for (size_t f = 0; f < std::min(numFilters, filterGainSliders.size()); ++f) {
         float currentGain = rhythmInterpreter->getFilterGain(f);
         filterGainSliders[f]->setValue(currentGain);
+    }
+    
+    // Update rhythmogram scale slider and display
+    if (rhythmogramScaleSlider && rhythmogramScaleLabel) {
+        float currentScale = rhythmInterpreter->getRhythmogramScale();
+        rhythmogramScaleSlider->setValue(currentScale);
+        std::ostringstream scaleStream;
+        scaleStream << std::fixed << std::setprecision(1) << currentScale;
+        rhythmogramScaleLabel->setText(scaleStream.str());
+    }
+    
+    // Update BPM slider and display
+    if (bpmSlider && bpmLabel) {
+        float currentBPM = rhythmInterpreter->getBPM();
+        bpmSlider->setValue(currentBPM);
+        std::ostringstream bpmStream;
+        bpmStream << std::fixed << std::setprecision(1) << currentBPM;
+        bpmLabel->setText(bpmStream.str());
     }
     
     isUpdatingMatrix = false; // Reset the flag

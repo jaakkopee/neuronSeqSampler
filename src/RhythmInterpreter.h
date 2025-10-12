@@ -113,7 +113,7 @@ public:
     float getWeight(size_t filterIndex, size_t neuronIndex) const;
     
     // Matrix operations
-    std::vector<float> transform(const std::vector<float>& filterOutputs) const;
+    std::vector<float> transform(const std::vector<float>& filterOutputs, float rhythmogramScale = 500.0f) const;
     void adaptWeights(const std::vector<float>& filterOutputs, 
                       const std::vector<float>& neuronFeedback);
     
@@ -160,6 +160,8 @@ private:
     std::vector<bool> filterSoloEnabled; // Solo/listen state for each filter band
     bool anyFilterSoloed; // True if any filter is currently soloed
     bool audioOutputEnabled; // Enable filtered audio output
+    float rhythmogramScale; // Scaling factor for rhythmogram to neural activation (0.0-20.0, default 5.0)
+    float bpm; // Beats per minute for tempo-relative frequency scaling (30.0-260.0, default 120.0)
     
     // Frequency bands for filterbank (in Hz)
     static const std::vector<float> DEFAULT_FREQUENCIES;
@@ -169,6 +171,7 @@ private:
     void initializeFilterBank();
     void processAudioBuffer();
     void updateNeuronInputs();
+    void updateFilterBankForBPM(); // Update filter frequencies based on current BPM
 
 public:
     RhythmInterpreter(NeuronNetwork* network, AudioManager* audioMgr, 
@@ -216,6 +219,14 @@ public:
     // Filter resonance control
     void setFilterResonance(size_t filterIndex, float resonance);
     float getFilterResonance(size_t filterIndex) const;
+    
+    // Rhythmogram scale control
+    void setRhythmogramScale(float scale);
+    float getRhythmogramScale() const { return rhythmogramScale; }
+    
+    // BPM control (tempo-relative frequency scaling)
+    void setBPM(float beatsPerMinute);
+    float getBPM() const { return bpm; }
     
     // Getters
     bool isEnabled() const { return enabled; }

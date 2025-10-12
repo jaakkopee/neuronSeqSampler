@@ -41,12 +41,27 @@ Filter Gain Controls: 0.0x─────●─────5.0x (per frequency b
 - **Tooltip Info**: Shows Todd frequency band and target neuron details
 - **Persistence**: Toggle states maintained during all GUI operations and filter adjustments
 
-### Filter Gain Controls (0x-5x Range)
+### Enhanced Filter Gains (0x-5x Range)
 - **Location**: Horizontal sliders below frequency band labels
 - **Range**: 0.0x to 5.0x multiplicative gain (1.0x = unity)
 - **Precision**: 0.1x step increments for fine control
 - **Real-time**: Immediate effect on rhythmogram analysis strength
 - **Per-band Control**: Each Todd frequency has independent gain adjustment
+
+### Rhythmogram Scale Control (0.0-20.0 Range)
+- **Location**: Vertical slider at right end of matrix interface
+- **Purpose**: Global scaling factor for rhythmogram-to-neural activation
+- **Range**: 0.0 to 20.0 with 0.1 step precision (default: 5.0)
+- **Real-time Display**: Numeric value shown below slider
+- **Impact**: Higher values = stronger neural response to rhythmic patterns
+
+### BPM Control (30.0-260.0 Range)
+- **Location**: Vertical slider next to Scale slider at right end of matrix
+- **Purpose**: Tempo-relative scaling of Todd (1994) frequency bands
+- **Range**: 30.0 to 260.0 BPM with 0.1 step precision (default: 120.0)
+- **Real-time Display**: Numeric BPM value shown below slider
+- **Tempo Scaling**: All frequencies scale proportionally (frequency = default × bpm/120)
+- **Musical Impact**: Adapts rhythmic hierarchy analysis to current tempo context
 
 ### Quick Actions
 - **Clear All**: Disconnects all frequency bands from all neurons

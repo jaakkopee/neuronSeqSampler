@@ -57,10 +57,12 @@ Each Todd frequency band has independent gain control:
 - **Multiplicative Processing**: Applied to rhythmogram envelope/biquad outputs before neural scaling
 - **Default State**: All Todd filters start at 1.0x (unity gain)
 - **Scrollable Interface**: Accessible through TGUI ScrollablePanel with optimized spacing
+- **Tempo-Relative Frequencies**: BPM slider (30-260) scales all frequencies proportionally (f = f₀ × bpm/120)
+- **Adaptive Filtering**: Filter bank automatically updates frequencies, bandwidths when BPM changes
 
 ### Todd Rhythmogram Signal Flow
 ```
-Audio Input → Todd Analysis → Envelope/Biquad → Individual Gain (0x-5x) → 500x Neural Scaling → Matrix Toggle → Direct Neural Input
+Audio Input → BPM-Scaled Frequencies → Todd Analysis → Envelope/Biquad → Individual Gain (0x-5x) → User Scale (0.0-20.0) → Matrix Toggle → Direct Neural Input
 ```
 
 ### Memory
