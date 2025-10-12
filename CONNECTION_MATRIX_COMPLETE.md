@@ -30,7 +30,7 @@ The Todd (1994) rhythmogram connection matrix is now **fully implemented with ad
 
 ### Launch and Verify
 ```bash
-./demo_connection_matrix_verification.sh
+./NeuronSeqSampler --testing
 ```
 
 ### Manual Launch

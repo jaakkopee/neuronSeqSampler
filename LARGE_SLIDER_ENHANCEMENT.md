@@ -142,11 +142,6 @@ Total Used: 590px < 600px ✓ (Fits within panel)
 
 ### 🚀 **Ready for Use**
 
-#### **Demo Available**
-```bash
-./demo_large_sliders.sh  # Interactive demonstration
-```
-
 #### **Key Benefits Delivered**
 1. **🎯 No Scrolling**: Full BPM range (30-260) visible at once
 2. **🎚️ Precision**: 60% larger slider = 2.7× better control resolution  

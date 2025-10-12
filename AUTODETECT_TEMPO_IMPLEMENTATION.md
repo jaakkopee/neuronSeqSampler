@@ -76,10 +76,9 @@
 4. **Test**: Play samples and watch BPM auto-adjust when ON
 
 ### For Developers
-1. **Demo Script**: `./demo_autodetect_tempo.sh`
-2. **Console Output**: Watch for "🎵 Autodetect Tempo: ON/OFF" messages
-3. **BPM Changes**: Monitor filter frequency scaling debug output
-4. **Integration**: Feature works with existing rhythmogram system
+1. **Console Output**: Watch for "🎵 Autodetect Tempo: ON/OFF" messages
+2. **BPM Changes**: Monitor filter frequency scaling debug output
+3. **Integration**: Feature works with existing rhythmogram system
 
 ## 📋 **Technical Specifications**
 

@@ -132,20 +132,11 @@ rhythmogramScaleLabel->setSize(60, 30);  // Consistent sizing across all display
 
 ## Demo Scripts
 
-Try the new features with guided demonstrations:
+The new features can be explored through direct interaction with the application:
 
-```bash
-# Test dynamic frequency labels
-./demo_frequency_labels.sh
-
-# Experience autodetect tempo
-./demo_autodetect_tempo.sh  
-
-# See enhanced value displays
-./demo_large_sliders.sh
-```
-
-Each demo provides specific instructions and expected behaviors for the new features.
+- **Dynamic Frequency Labels**: Open connection matrix (M key) and change BPM to see labels update
+- **Autodetect Tempo**: Use the toggle button below BPM controls to enable automatic tempo detection  
+- **Enhanced Value Displays**: Observe the large, readable parameter displays throughout the interface
 
 ---
 
