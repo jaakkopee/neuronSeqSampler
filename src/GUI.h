@@ -40,8 +40,10 @@ private:
     // Control elements
     std::vector<tgui::Slider::Ptr> connectionSliders;
     std::vector<tgui::Label::Ptr> connectionLabels;
+    std::vector<tgui::Label::Ptr> connectionValueLabels;
     std::vector<tgui::Slider::Ptr> neuronSliders;
     std::vector<tgui::Label::Ptr> neuronLabels;
+    std::vector<tgui::Label::Ptr> neuronValueLabels;
     std::vector<tgui::ComboBox::Ptr> activationFunctionCombos;
     tgui::Slider::Ptr activationIntervalSlider;
     tgui::Label::Ptr activationIntervalLabel;

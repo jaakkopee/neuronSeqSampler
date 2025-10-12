@@ -152,6 +152,7 @@ void GUI::createConnectionSliders() {
     
     connectionSliders.clear();
     connectionLabels.clear();
+    connectionValueLabels.clear();
     
     const auto& connections = network->getConnections();
     float yPos = 5.0f;
@@ -190,6 +191,7 @@ void GUI::createConnectionSliders() {
         valueLabel->setTextSize(9);
         valueLabel->getRenderer()->setTextColor(tgui::Color::Yellow);
         slidersPanel->add(valueLabel);
+        connectionValueLabels.push_back(valueLabel);
         
         yPos += 22.0f;
     }
@@ -202,6 +204,7 @@ void GUI::createNeuronSliders() {
     
     neuronSliders.clear();
     neuronLabels.clear();
+    neuronValueLabels.clear();
     activationFunctionCombos.clear();
     slidersPanel->removeAllWidgets();
     
@@ -242,6 +245,7 @@ void GUI::createNeuronSliders() {
         valueLabel->setTextSize(9);
         valueLabel->getRenderer()->setTextColor(tgui::Color::Cyan);
         slidersPanel->add(valueLabel);
+        neuronValueLabels.push_back(valueLabel);
         
         yPos += 22.0f;
         
@@ -299,20 +303,9 @@ void GUI::onNeuronSliderChanged(size_t neuronIndex, float value) {
         neuron->setActivationIncreasePerIteration(value);
         std::cout << "Updated neuron " << neuronIndex << " activation increase per iteration to " << value << std::endl;
         
-        // Update the value label - find the associated value label
-        if (neuronIndex < neuronLabels.size()) {
-            // The value label is positioned after the neuron slider widgets
-            // Each neuron now takes 44 pixels (22 for slider + 22 for dropdown)
-            float expectedY = 5.0f + neuronIndex * 44.0f;
-            auto widgets = slidersPanel->getWidgets();
-            for (auto& widget : widgets) {
-                auto label = std::dynamic_pointer_cast<tgui::Label>(widget);
-                if (label && label->getPosition().x == 170 && 
-                    std::abs(label->getPosition().y - expectedY) < 1.0f) {
-                    label->setText(std::to_string(value));
-                    break;
-                }
-            }
+        // Update the value label using the proper container
+        if (neuronIndex < neuronValueLabels.size()) {
+            neuronValueLabels[neuronIndex]->setText(std::to_string(value));
         }
     }
 }
@@ -347,17 +340,9 @@ void GUI::onSliderChanged(size_t connectionIndex, float value) {
         conn->setWeight(value);
         std::cout << "Updated connection " << connectionIndex << " weight to " << value << std::endl;
         
-        // Update the value label
-        if (connectionIndex < connectionLabels.size()) {
-            auto children = slidersPanel->getWidgets();
-            // Find the value label (it's the 3rd widget for each connection: label, slider, value)
-            size_t valueLabelIndex = connectionIndex * 3 + 2;
-            if (valueLabelIndex < children.size()) {
-                auto valueLabel = std::dynamic_pointer_cast<tgui::Label>(children[valueLabelIndex]);
-                if (valueLabel) {
-                    valueLabel->setText(std::to_string(value));
-                }
-            }
+        // Update the value label using the proper container
+        if (connectionIndex < connectionValueLabels.size()) {
+            connectionValueLabels[connectionIndex]->setText(std::to_string(value));
         }
     }
 }
