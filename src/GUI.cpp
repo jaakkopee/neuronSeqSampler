@@ -2173,7 +2173,7 @@ void GUI::toggleMatrixVisibility() {
 void GUI::forceMatrixUpdate() {
     allowMatrixUpdates = true;
     updateConnectionMatrix();
-    allowMatrixUpdates = false;
+    // Keep allowMatrixUpdates = true to allow future automatic updates
 }
 
 void GUI::updateFrequencyLabels() {
