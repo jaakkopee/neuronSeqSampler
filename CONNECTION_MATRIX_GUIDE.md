@@ -1,16 +1,26 @@
 # 🎛️ Rhythmogram Connection Matrix User Guide
 
 ## Overview
-The **Rhythmogram Connection ### Rhythmogram Analysis Flow
+The **Rhythmogram Connection Matrix** provides visual, interactive control over how Todd (1994) rhythmogram frequency analysis connects to your neural network. This revolutionary system implements Neil Todd's rhythmic hierarchy principles with 8 logarithmically-distributed frequency bands that scale dynamically with tempo and directly drive neural activation through a scrollable 8×N interface.
 
-### Todd (1994) Processing Pipeline
-1. **Audio Capture**: Network-generated audio sampled in real-time
-2. **Rhythmogram Analysis**: Todd frequency bands extract rhythmic hierarchy
-3. **Envelope/Biquad Processing**: Hybrid filtering optimized for each frequency range
-4. **Per Decamille Display**: Precise measurement in ‰ units for scientific accuracy
-5. **Neural Scaling**: 500x scaling factor transforms analysis to meaningful neural activation
-6. **Matrix Routing**: Toggle-controlled connections route rhythmogram→neurons
-7. **External Input**: Direct `neuron->addExternalInput()` bypasses audio processing provides visual, interactive control over how Todd (1994) rhythmogram frequency analysis connects to your neural network. This revolutionary system implements Neil Todd's rhythmic hierarchy principles with 8 logarithmically-distributed frequency bands (0.125Hz-16Hz) that directly drive neural activation through a scrollable 8×N interface.
+## 🆕 New Features (October 2025)
+
+### **Dynamic Frequency Labels**
+- **Real-time Updates**: Frequency labels now show actual tempo-scaled frequencies
+- **Musical Accuracy**: Labels reflect the frequency values being analyzed, not static defaults
+- **Automatic Scaling**: All Todd frequencies scale proportionally with BPM (factor = currentBPM/120)
+- **Enhanced Understanding**: See exactly what frequencies are driving which neurons
+
+### **Autodetect Tempo Integration**
+- **Automatic BPM Detection**: Toggle autodetect mode for hands-free tempo tracking
+- **RhythmDetector Integration**: Uses sophisticated tempo analysis algorithms
+- **Dynamic Scaling**: Detected tempo automatically scales all frequency labels and analysis
+- **Visual Indication**: BPM display shows 🎵 when autodetect is active
+
+### **Enhanced UI Elements**
+- **Large Value Displays**: All parameter displays enlarged to 60×30px for better readability
+- **No Scrolling**: Proper sizing prevents unwanted scroll handles on 3-digit values
+- **Consistent Design**: Enhanced displays across BPM, Rhythmogram Scale, and all matrix controls
 
 ## Scrollable Interface Layout
 
@@ -18,15 +28,17 @@ The **Rhythmogram Connection ### Rhythmogram Analysis Flow
 🎛️ Rhythmogram Matrix (8×N) - Scrollable Panel
 [Clear All] [Random]           <- Quick Actions
 
-Todd (1994) Frequencies    N1    N2    N3    [Scroll→]
-0.125Hz (Ultra-slow)      [○]   [○]   [●]——|  0.5‰ 
-0.25Hz  (Very slow)       [○]   [●]   [○]  |  1.2‰
-0.5Hz   (Slow rhythm)     [●]   [○]   [○]  |  2.3‰
-1.0Hz   (Basic pulse)     [○]   [○]   [●]——|  3.1‰
-2.0Hz   (Fast rhythm)     [○]   [●]   [○]  |  1.8‰
-4.0Hz   (Sub-syllable)    [●]   [○]   [○]  |  2.7‰
-8.0Hz   (Syllable rate)   [○]   [○]   [●]——|  1.5‰
-16.0Hz  (Formant rate)    [○]   [●]   [○]    0.9‰
+Todd (1994) Frequencies*   N1    N2    N3    [Scroll→]
+Phrase (0.104Hz)         [○]   [○]   [●]——|  0.5‰ 
+Whole  (0.208Hz)         [○]   [●]   [○]  |  1.2‰
+Half   (0.417Hz)         [●]   [○]   [○]  |  2.3‰
+Quarter (0.833Hz)        [○]   [○]   [●]——|  3.1‰
+Eighth (1.67Hz)          [○]   [●]   [○]  |  1.8‰
+16th   (3.33Hz)          [●]   [○]   [○]  |  2.7‰
+32nd   (6.67Hz)          [○]   [○]   [●]——|  1.5‰
+Onset  (13.3Hz)          [○]   [●]   [○]    0.9‰
+
+*Example at 100 BPM (scaling factor: 0.833x)
 
 Filter Gain Controls: 0.0x─────●─────5.0x (per frequency band)
 ```
@@ -80,10 +92,22 @@ Filter Gain Controls: 0.0x─────●─────5.0x (per frequency b
 | **8.0Hz** | Syllable rate | 125ms attacks, consonants | Attack/transient neurons |
 | **16.0Hz** | Formant rate | 62.5ms micro-timing, tremolo | Micro-timing neurons |
 
+***Note:** Frequencies shown are base values at 120 BPM. All frequencies scale proportionally with tempo.*
+
+### Dynamic Tempo Scaling
+- **Scaling Factor**: All frequencies multiply by (currentBPM / 120)
+- **Musical Relationships Preserved**: Frequency ratios remain constant across tempos
+- **Real-time Updates**: Labels show actual scaled frequencies automatically
+- **Examples**:
+  - At 60 BPM: Quarter note = 0.5Hz, Half note = 0.25Hz
+  - At 180 BPM: Quarter note = 1.5Hz, Half note = 0.75Hz
+  - At 240 BPM: Quarter note = 2Hz, Half note = 1Hz
+
 ### Logarithmic Distribution Benefits
 - **Perceptually Uniform**: Each octave represents equal perceptual distance
 - **Rhythmic Hierarchy**: Matches Todd's nested temporal structure theory
 - **Musical Relevance**: Covers complete range from macro-form to micro-timing
+- **Tempo Independence**: Relationships maintain across all BPM ranges
 
 ## Usage Strategies
 

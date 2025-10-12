@@ -1,12 +1,31 @@
 # NeuronSeqSampler
 
-**A real-time neural network audio sampler that creates music through artificial neurons**
+**A real-time neural network audio sampler that creates musExplore specific features with guided demonstrations:
+
+```bash
+./demo_frequency_labels.sh     # NEW: Dynamic frequency labels that update with tempo changes
+./demo_large_sliders.sh        # Large BPM & Rhythmogram value displays (enhanced readability) 
+./demo_autodetect_tempo.sh     # Automatic tempo detection with RhythmDetector integration
+./demo_bpm_slider.sh           # BPM control and tempo-relative frequency scaling
+./demo_rhythmogram_scale.sh    # Rhythmogram intensity scaling
+./demo_connection_matrix.sh    # Connection matrix interface
+./demo_rhythm_interpreter.sh   # Complete Todd (1994) rhythmogram system
+``` artificial neurons**
 
 NeuronSeqSampler is an experimental audio application that uses interconnected artificial neurons to trigger audio samples. Each neuron can be connected to others, creating complex cascading patterns of rhythms and melodies.
 
 ![Neural Network Visualization](https://img.shields.io/badge/Interface-Real--time%20Neural%20Visualization-blue)
 ![Audio Engine](https://img.shields.io/badge/Audio-SFML%20Based-green)
 ![Build Status](https://img.shields.io/badge/Build-CMake%20%2B%20C%2B%2B17-orange)
+
+## 🆕 Recent Updates (October 2025)
+
+- **🔄 Dynamic Frequency Labels**: Connection matrix labels now show actual tempo-scaled frequencies in real-time
+- **🤖 Autodetect Tempo**: Automatic BPM detection with RhythmDetector integration - toggle ON/OFF for hands-free tempo tracking
+- **📊 Enhanced UI**: Large, readable value displays (60×30px) prevent scrolling and improve parameter visibility
+- **🎵 Musical Intelligence**: Interface reflects actual Todd (1994) frequency scaling, not static default values
+
+See [RECENT_UPDATES.md](RECENT_UPDATES.md) for detailed technical information and migration guide.
 
 ## What Makes It Special
 
@@ -21,6 +40,9 @@ NeuronSeqSampler is an experimental audio application that uses interconnected a
 - **🎚️ Live Patching**: Modify connections, functions, and parameters during performance
 - **📹 Dual Recording**: Capture both external input and internal network output
 - **🚀 Testing Mode**: Pre-configured drum network for immediate experimentation
+- **🤖 Autodetect Tempo**: Automatic BPM detection with RhythmDetector integration for hands-free tempo tracking
+- **🔄 Dynamic Frequency Labels**: Real-time frequency label updates showing actual tempo-scaled Todd frequencies  
+- **📊 Enhanced UI**: Large, readable value displays (60×30px) prevent scrolling and improve parameter visibility
 
 ## Quick Start
 
@@ -101,9 +123,11 @@ Explore specific features with guided demonstrations:
 - **🎚️ Dual Gain System**: Filter sensitivity (0x-5x) + connection strength (0-100%) per route
 - **⚡ Instant Response**: Toggle changes immediately stop/start rhythmogram feedback to neurons
 - **🎛️ Quick Actions**: "Clear All" and "Random" buttons for rapid matrix reconfiguration
-- **🎵 Rhythmogram Scale Slider**: Vertical control (0.0-20.0) with large, easy-to-read value display
-- **🎼 BPM Control**: Tempo slider (30-260 BPM) with large, clear value display for precise readings
+- **🎵 Rhythmogram Scale Slider**: Vertical control (0.0-20.0) with large, easy-to-read value display (60×30px)
+- **🎼 BPM Control**: Tempo slider (30-260 BPM) with large, clear value display for precise readings (60×30px)
 - **🤖 Autodetect Tempo**: Automatic BPM detection from RhythmDetector analysis (toggle ON/OFF)
+- **🔄 Dynamic Frequency Labels**: Frequency labels update automatically to show tempo-scaled frequencies
+- **📊 Enhanced Value Displays**: Enlarged, non-scrollable value displays under all sliders for better readability
 
 ### Sample Organization
 
@@ -193,10 +217,10 @@ Audio Output → Rhythmogram Analysis → Connection Matrix → Direct Neuron Ac
 
 ### Todd (1994) Frequency Bands
 
-**8-band logarithmic distribution (0.125Hz - 16Hz) covering musical time structures:**
+**8-band logarithmic distribution with dynamic tempo scaling:**
 
-| Band | Frequency | Musical Function | Neural Applications |
-|------|-----------|------------------|-------------------|
+| Band | Base Frequency* | Musical Function | Neural Applications |
+|------|----------------|------------------|-------------------|
 | **Phrase** | 0.125Hz | 8-beat phrases, long-term structure | Compositional/tempo neurons |
 | **Whole** | 0.25Hz | 4-beat units, measure-level rhythm | Foundation/anchor neurons |
 | **Half** | 0.5Hz | 2-beat units, strong-weak patterns | Backbeat/emphasis neurons |
@@ -205,6 +229,8 @@ Audio Output → Rhythmogram Analysis → Connection Matrix → Direct Neuron Ac
 | **16th** | 4Hz | Fast subdivisions, hi-hat patterns | Texture/fill neurons |
 | **32nd** | 8Hz | Very fast subdivisions, rolls | Ornament/decoration neurons |
 | **Onset** | 16Hz | Micro-timing, attack transients | Percussive/transient neurons |
+
+***Base frequencies at 120 BPM.** All frequencies scale proportionally with tempo (scaling factor = currentBPM/120). Frequency labels in the connection matrix update dynamically to show actual scaled values.
 
 ### Core Features
 
@@ -230,6 +256,8 @@ Audio Output → Rhythmogram Analysis → Connection Matrix → Direct Neuron Ac
 - **Tempo Awareness**: BPM control scales Todd frequencies relative to musical tempo (120 BPM baseline)
 - **Adaptive Detection**: Autodetect mode uses RhythmDetector analysis for automatic tempo tracking
 - **Musical Scaling**: All frequency bands maintain proportional relationships across tempo changes
+- **Dynamic Labeling**: Frequency labels automatically update to show actual scaled frequencies
+- **Enhanced Readability**: Large, non-scrollable value displays (60×30px) for precise parameter monitoring
 
 ### Technical Specifications
 
