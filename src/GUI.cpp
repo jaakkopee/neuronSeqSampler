@@ -1934,7 +1934,7 @@ void GUI::createConnectionMatrixPanel() {
     autodetectTempoToggle->getRenderer()->setBorderColor(tgui::Color(80, 80, 80));
     autodetectTempoToggle->getRenderer()->setBorders(1);
     
-    // Set initial state (default is OFF)
+    // Set initial state (default is now ON)
     if (rhythmInterpreter->getAutodetectTempo()) {
         autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(80, 140, 80));
         autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));

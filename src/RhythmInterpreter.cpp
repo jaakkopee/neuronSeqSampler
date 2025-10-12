@@ -274,7 +274,7 @@ void RhythmDetector::analyzeTempo() {
     
     // Find peaks in onset buffer with adaptive threshold
     std::vector<size_t> peakIndices;
-    float dynamicThreshold = onsetThreshold * 0.5f; // More sensitive peak detection
+    float dynamicThreshold = onsetThreshold * 1.5f; // Less sensitive to avoid false positives
     
     for (size_t i = 1; i < onsetBuffer.size() - 1; ++i) {
         if (onsetBuffer[i] > onsetBuffer[i-1] && 
@@ -291,16 +291,29 @@ void RhythmDetector::analyzeTempo() {
     }
     
     if (!intervals.empty() && intervals.size() >= 3) { // Need at least 3 intervals for reliability
+        // Debug: Show intervals occasionally
+        static int debugCounter = 0;
+        debugCounter++;
+        if (debugCounter % 50 == 0) {
+            std::cout << "🎯 Found " << peakIndices.size() << " peaks, " << intervals.size() << " intervals" << std::endl;
+        }
+        
         // Use median instead of average to reduce outlier influence
         std::vector<float> sortedIntervals = intervals;
         std::sort(sortedIntervals.begin(), sortedIntervals.end());
         float medianInterval = sortedIntervals[sortedIntervals.size() / 2];
         
-        // Improved tempo calculation with configurable sample rate
-        // Assume 44.1kHz sample rate, processed in chunks (more realistic than 100Hz)
-        float sampleRate = 44100.0f;
-        float processingRate = sampleRate / 1024.0f; // Typical audio buffer size
-        float estimatedTempo = 60.0f / (medianInterval / processingRate);
+        // Filter out unrealistic intervals (too small = too fast tempo)
+        if (medianInterval < 4.0f) {
+            return; // Skip this tempo estimate - likely noise
+        }
+        
+        // Improved tempo calculation based on actual processing rate
+        // Each onset buffer element represents one audio analysis frame
+        // Based on observed processing: ~10-20 Hz rate (50-100ms per frame)
+        float framesPerSecond = 15.0f; // Realistic processing rate
+        float timePerFrame = 1.0f / framesPerSecond;
+        float estimatedTempo = 60.0f / (medianInterval * timePerFrame);
         
         // Handle tempo doubling/halving detection
         std::vector<float> candidates = {estimatedTempo, estimatedTempo * 2.0f, estimatedTempo * 0.5f};
@@ -466,7 +479,7 @@ RhythmInterpreter::RhythmInterpreter(NeuronNetwork* network, AudioManager* audio
       enabled(true), globalGain(0.0f), // Set to 0 for analysis-only mode
       rhythmogramScale(5.0f), // Default rhythmogram scale of 5.0
       bpm(120.0f), // Default BPM of 120
-      autodetectTempo(false) { // Default autodetect off
+      autodetectTempo(true) { // Default autodetect ON for better user experience
     
     initializeFilterBank();
     updateFilterBankForBPM(); // Apply initial BPM scaling to filters
@@ -536,11 +549,23 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     // Update BPM from rhythm detector if autodetect is enabled
     if (autodetectTempo && rhythmDetector) {
         float detectedTempo = rhythmDetector->getCurrentTempo();
-        if (detectedTempo >= 30.0f && detectedTempo <= 260.0f) { // Within valid BPM range
+        
+        static int tempoDebugCounter = 0;
+        tempoDebugCounter++;
+        if (tempoDebugCounter % 20 == 0) {  // More frequent debug output
+            std::cout << "🎵 Autodetect: detected=" << detectedTempo << " BPM, current=" << bpm << " BPM" << std::endl;
+        }
+        
+        if (detectedTempo >= 30.0f && detectedTempo <= 300.0f) { // Expanded valid BPM range
             // Only update if the detected tempo is significantly different to avoid jitter
             if (std::abs(detectedTempo - bpm) > 0.5f) {
+                std::cout << "🎵 Updating BPM: " << bpm << " → " << detectedTempo << std::endl;
                 bpm = detectedTempo;
                 updateFilterBankForBPM(); // Update filter frequencies when BPM changes
+            }
+        } else {
+            if (tempoDebugCounter % 20 == 0) {  // More frequent debug output
+                std::cout << "🎵 Rejected tempo " << detectedTempo << " BPM (out of range 30-300)" << std::endl;
             }
         }
     }
