@@ -169,16 +169,8 @@ void Visualizer::drawNeuron(const Neuron* neuron, const sf::Vector2f& position, 
     circle.setOrigin(neuronRadius, neuronRadius);
     circle.setPosition(position);
     
-    // Choose color based on whether the neuron has fired
-    sf::Color color = neuron->getHasFired() ? firedNeuronColor : normalNeuronColor;
-    
-    // Add intensity based on activation level
-    float activation = std::abs(neuron->getActivation());
-    float intensity = std::min(1.0f, activation / 2.0f); // Scale activation to 0-1
-    
-    color.r = static_cast<sf::Uint8>(color.r * intensity + (255 - color.r) * (1.0f - intensity));
-    color.g = static_cast<sf::Uint8>(color.g * intensity + (255 - color.g) * (1.0f - intensity));
-    color.b = static_cast<sf::Uint8>(color.b * intensity + (255 - color.b) * (1.0f - intensity));
+    // Use rainbow color based on activation level and firing state
+    sf::Color color = getRainbowColor(neuron->getActivation(), neuron->getHasFired());
     
     circle.setFillColor(color);
     circle.setOutlineThickness(2.0f);
@@ -511,4 +503,41 @@ bool Visualizer::loadFont(const std::string& fontPath) {
     
     std::cout << "Warning: Could not load any font. Text rendering will be disabled." << std::endl;
     return false;
+}
+
+sf::Color Visualizer::getRainbowColor(float activation, bool hasFired) const {
+    // Map activation to rainbow spectrum: 0 = violet/blue, 1+ = red
+    float normalizedActivation = std::min(2.0f, std::abs(activation)); // Cap at 2.0 for color mapping
+    float hue = (1.0f - normalizedActivation / 2.0f) * 240.0f; // 240° (blue) to 0° (red)
+    
+    // Convert HSV to RGB
+    float saturation = hasFired ? 1.0f : 0.7f; // More saturated when fired
+    float value = 0.8f + (normalizedActivation / 2.0f) * 0.2f; // Brighter with higher activation
+    
+    // HSV to RGB conversion
+    float c = value * saturation;
+    float x = c * (1.0f - std::abs(std::fmod(hue / 60.0f, 2.0f) - 1.0f));
+    float m = value - c;
+    
+    float r, g, b;
+    
+    if (hue >= 0 && hue < 60) {
+        r = c; g = x; b = 0;
+    } else if (hue >= 60 && hue < 120) {
+        r = x; g = c; b = 0;
+    } else if (hue >= 120 && hue < 180) {
+        r = 0; g = c; b = x;
+    } else if (hue >= 180 && hue < 240) {
+        r = 0; g = x; b = c;
+    } else if (hue >= 240 && hue < 300) {
+        r = x; g = 0; b = c;
+    } else {
+        r = c; g = 0; b = x;
+    }
+    
+    return sf::Color(
+        static_cast<sf::Uint8>((r + m) * 255),
+        static_cast<sf::Uint8>((g + m) * 255),
+        static_cast<sf::Uint8>((b + m) * 255)
+    );
 }

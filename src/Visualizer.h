@@ -43,6 +43,7 @@ private:
     void calculateNeuronPositions();
     void calculateGridPositions();
     void calculateCircularPositions();
+    sf::Color getRainbowColor(float activation, bool hasFired) const;
     void drawNeuron(const Neuron* neuron, const sf::Vector2f& position, size_t neuronIndex);
     void drawConnection(const Connection* connection, 
                        const sf::Vector2f& sourcePos, 
