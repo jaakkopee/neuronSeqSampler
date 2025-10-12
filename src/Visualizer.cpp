@@ -289,7 +289,7 @@ void Visualizer::drawConnection(const Connection* connection,
         // Calculate composite sine wave modulation
         float modulation = 0.0f;
         for (float freq : frequencies) {
-            float amplitude = totalActivation * (1.0f / freq) * 2.0f; // Higher frequencies get lower amplitude
+            float amplitude = totalActivation * (1.0f / freq) * 8.0f; // Dramatic amplitude for striking visual effect
             modulation += amplitude * std::sin(2.0f * M_PI * freq * currentTime);
         }
         
@@ -408,7 +408,7 @@ void Visualizer::drawCurvedConnection(const Connection* connection,
         
         // Calculate composite sine wave modulation for curve offset
         for (float freq : frequencies) {
-            float amplitude = totalActivation * (1.0f / freq) * 1.5f; // Scaled for curves
+            float amplitude = totalActivation * (1.0f / freq) * 6.0f; // Dramatic amplitude for striking curve movement
             vibrationOffset += amplitude * std::sin(2.0f * M_PI * freq * currentTime);
         }
     }
@@ -438,7 +438,7 @@ void Visualizer::drawCurvedConnection(const Connection* connection,
                 
                 float vibrationX = 0.0f, vibrationY = 0.0f;
                 for (float freq : frequencies) {
-                    float amplitude = totalActivation * (1.0f / freq) * 0.1f; // Very subtle for per-vertex
+                    float amplitude = totalActivation * (1.0f / freq) * 0.5f; // More dramatic per-vertex movement
                     vibrationX += amplitude * std::sin(2.0f * M_PI * freq * currentTime + t * 5.0f);
                     vibrationY += amplitude * std::cos(2.0f * M_PI * freq * currentTime + t * 3.0f);
                 }
