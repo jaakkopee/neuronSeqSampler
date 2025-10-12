@@ -1591,6 +1591,29 @@ void GUI::createConnectionMatrixPanel() {
     });
     connectionMatrixPanel->add(randomizeButton);
     
+    auto connectAllButton = tgui::Button::create("Connect All");
+    connectAllButton->setPosition(155, matrixTitleLabel->getPosition().y + 20);
+    connectAllButton->setSize(70, 20);
+    connectAllButton->setTextSize(10);
+    connectAllButton->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 80));
+    connectAllButton->onPress([=, this]() {
+        if (network && network->getRhythmInterpreter()) {
+            auto connectionMatrix = network->getRhythmInterpreter()->getConnectionMatrix();
+            size_t numFilters = network->getRhythmInterpreter()->getNumFilters();
+            size_t numNeurons = network->getNeuronCount();
+            
+            // Set all connections to a default value of 0.3 (30%)
+            for (size_t f = 0; f < numFilters; ++f) {
+                for (size_t n = 0; n < numNeurons; ++n) {
+                    connectionMatrix->setWeight(f, n, 0.3f);
+                }
+            }
+            // Force manual matrix update for Connect All
+            forceMatrixUpdate();
+        }
+    });
+    connectionMatrixPanel->add(connectAllButton);
+    
     // Rhythmogram frequency bands (Todd, 1994) - Logarithmic distribution for rhythmic hierarchy
     const std::vector<std::string> filterNames = {
         "Phrase (0.125Hz)", "Whole (0.25Hz)", "Half (0.5Hz)", "Quarter (1Hz)",
