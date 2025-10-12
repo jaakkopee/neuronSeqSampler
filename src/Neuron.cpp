@@ -31,24 +31,27 @@ float Neuron::activate(float inputValue) {
     // Reset external input after use (it accumulates between calls)
     externalInput = 0.0f;
     
-    if (activation > threshold) {
+    // Use processed activation for threshold comparisons
+    float processedActivation = applyActivationFunction(activation);
+    
+    if (processedActivation > threshold) {
         playSample();
         hasFired = true;
         activation -= decayRate;
     }
     
-    if (activation < -threshold) {
+    if (processedActivation < -threshold) {
         activation += threshold;
     }
     
-    // Maintain activation history
+    // Maintain activation history (store raw activation for visualization)
     if (activationHistory.size() >= maxHistoryLength) {
         activationHistory.erase(activationHistory.begin());
     }
     activationHistory.push_back(activation);
     
-    // Apply activation function and return
-    return applyActivationFunction(activation);
+    // Return processed activation value for neural network use
+    return processedActivation;
 }
 
 void Neuron::update() {
@@ -59,17 +62,20 @@ void Neuron::update() {
     activation += externalInput;
     externalInput = 0.0f; // Reset external input after use
     
-    if (activation > threshold) {
+    // Use processed activation for threshold comparisons to affect self-oscillating behavior
+    float processedActivation = applyActivationFunction(activation);
+    
+    if (processedActivation > threshold) {
         playSample();
         hasFired = true;
         activation -= decayRate;
     }
     
-    if (activation < -threshold) {
+    if (processedActivation < -threshold) {
         activation += threshold;
     }
     
-    // Maintain activation history
+    // Maintain activation history (store raw activation for visualization)
     if (activationHistory.size() >= maxHistoryLength) {
         activationHistory.erase(activationHistory.begin());
     }
@@ -94,14 +100,22 @@ void Neuron::playSample(float offsetSeconds) {
     }
 }
 
-float Neuron::applyActivationFunction(float value) {
+void Neuron::playSampleWithVolume(float volume) {
+    if (audioManager) {
+        audioManager->playSample(sampleIndex, 0.0f, volume);
+    }
+}
+
+float Neuron::applyActivationFunction(float value) const {
     switch (activationFunc) {
         case ActivationFunction::Sigmoid:
-            return 1.0f / (1.0f + std::exp(-value));
+            // Scale sigmoid to match linear range: sigmoid * 2 - 1 maps [0,1] to [-1,1], then scale by input magnitude
+            return (2.0f / (1.0f + std::exp(-value)) - 1.0f) * std::abs(value) * 2.0f;
         case ActivationFunction::ReLU:
             return std::max(0.0f, value);
         case ActivationFunction::Tanh:
-            return std::tanh(value);
+            // Scale tanh output to match input magnitude while preserving shape
+            return std::tanh(value) * std::abs(value) * 2.0f;
         case ActivationFunction::Linear:
         default:
             return value;

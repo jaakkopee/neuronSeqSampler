@@ -47,15 +47,23 @@ bool AudioManager::playSample(int sampleIndex) {
 }
 
 bool AudioManager::playSample(int sampleIndex, float offsetSeconds) {
+    return playSample(sampleIndex, offsetSeconds, 100.0f); // Default to full volume
+}
+
+bool AudioManager::playSample(int sampleIndex, float offsetSeconds, float volume) {
     auto it = sounds.find(sampleIndex);
     if (it != sounds.end()) {
         // Stop any previous instance of this specific sample (neuron offset behavior)
         it->second->stop();
         
+        // Set volume based on activation function result
+        float clampedVolume = std::max(0.0f, std::min(100.0f, volume));
+        it->second->setVolume(clampedVolume);
+        
         // Always play audio directly (no filtering)
         it->second->setPlayingOffset(sf::Time::Zero);
         it->second->play();
-        std::cout << "🔊 Playing sample " << sampleIndex << " directly" << std::endl;
+        std::cout << "🔊 Playing sample " << sampleIndex << " directly (volume: " << clampedVolume << "%)" << std::endl;
         
         // Run rhythmogram analysis separately (if enabled) without affecting audio playback
         if (rhythmInterpreter) {

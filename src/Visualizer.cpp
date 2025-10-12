@@ -166,7 +166,7 @@ void Visualizer::render() {
     // Check for newly fired neurons and update animations
     for (size_t i = 0; i < neurons.size(); ++i) {
         bool currentlyFired = neurons[i]->getHasFired();
-        float activation = neurons[i]->getActivation();
+        float activation = neurons[i]->getActivation(); // Use processed activation for visualization
         float threshold = neurons[i]->getThreshold();
         
         // Detect firing: either hasFired flag is set, or activation exceeds threshold
@@ -201,7 +201,7 @@ void Visualizer::drawNeuron(const Neuron* neuron, const sf::Vector2f& position, 
     circle.setPosition(position);
     
     // Use rainbow color based on activation level and firing state
-    sf::Color color = getRainbowColor(neuron->getActivation(), neuron->getHasFired());
+    sf::Color color = getRainbowColor(neuron->getActivation(), neuron->getHasFired()); // Use processed activation for color
     
     circle.setFillColor(color);
     circle.setOutlineThickness(2.0f);

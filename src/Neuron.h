@@ -38,9 +38,11 @@ public:
     void addExternalInput(float input); // Add external input (e.g., from rhythm interpreter)
     void playSample();
     void playSample(float offsetSeconds); // Play sample starting from the beginning with optional time offset
+    void playSampleWithVolume(float volume); // Play sample with specific volume based on activation function
     
     // Getters
-    float getActivation() const { return activation; }
+    float getActivation() const { return applyActivationFunction(activation); } // Processed output for neural network and visualization
+    float getRawActivation() const { return activation; } // Raw activation level for debugging
     float getThreshold() const { return threshold; }
     float getDecayRate() const { return decayRate; }
     float getActivationIncreasePerIteration() const { return activationIncreasePerIteration; }
@@ -59,5 +61,5 @@ public:
     void resetFiredFlag() { hasFired = false; }
 
 private:
-    float applyActivationFunction(float value);
+    float applyActivationFunction(float value) const;
 };
