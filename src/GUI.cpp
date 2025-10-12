@@ -1877,8 +1877,8 @@ void GUI::createConnectionMatrixPanel() {
     bpmLabelTitle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
     connectionMatrixPanel->add(bpmLabelTitle);
     
-    // Vertical BPM slider (30.0 - 260.0, default 120.0, step 0.1)
-    bpmSlider = tgui::Slider::create(30.0f, 260.0f);
+    // Vertical BPM slider (30.0 - 300.0, default 120.0, step 0.1) - expanded range for better autodetect
+    bpmSlider = tgui::Slider::create(30.0f, 300.0f);
     bpmSlider->setValue(rhythmInterpreter->getBPM());
     bpmSlider->setStep(0.1f);
     bpmSlider->setPosition(bpmSliderX, 70);

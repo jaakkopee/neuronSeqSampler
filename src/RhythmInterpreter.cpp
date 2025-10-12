@@ -269,15 +269,17 @@ void RhythmDetector::detectOnsets() {
 }
 
 void RhythmDetector::analyzeTempo() {
-    // Simple tempo estimation using onset intervals
+    // Enhanced tempo estimation using multiple detection methods
     std::vector<float> intervals;
     
-    // Find peaks in onset buffer
+    // Find peaks in onset buffer with adaptive threshold
     std::vector<size_t> peakIndices;
+    float dynamicThreshold = onsetThreshold * 0.5f; // More sensitive peak detection
+    
     for (size_t i = 1; i < onsetBuffer.size() - 1; ++i) {
         if (onsetBuffer[i] > onsetBuffer[i-1] && 
             onsetBuffer[i] > onsetBuffer[i+1] && 
-            onsetBuffer[i] > onsetThreshold) {
+            onsetBuffer[i] > dynamicThreshold) {
             peakIndices.push_back(i);
         }
     }
@@ -288,14 +290,40 @@ void RhythmDetector::analyzeTempo() {
         intervals.push_back(interval);
     }
     
-    if (!intervals.empty()) {
-        // Estimate tempo from average interval
-        float avgInterval = std::accumulate(intervals.begin(), intervals.end(), 0.0f) / intervals.size();
-        float estimatedTempo = 60.0f / (avgInterval * 0.01f); // Assuming 100Hz update rate
+    if (!intervals.empty() && intervals.size() >= 3) { // Need at least 3 intervals for reliability
+        // Use median instead of average to reduce outlier influence
+        std::vector<float> sortedIntervals = intervals;
+        std::sort(sortedIntervals.begin(), sortedIntervals.end());
+        float medianInterval = sortedIntervals[sortedIntervals.size() / 2];
         
-        // Smooth tempo estimate
-        currentTempo += tempoSmoothingFactor * (estimatedTempo - currentTempo);
-        currentTempo = std::clamp(currentTempo, 60.0f, 200.0f);
+        // Improved tempo calculation with configurable sample rate
+        // Assume 44.1kHz sample rate, processed in chunks (more realistic than 100Hz)
+        float sampleRate = 44100.0f;
+        float processingRate = sampleRate / 1024.0f; // Typical audio buffer size
+        float estimatedTempo = 60.0f / (medianInterval / processingRate);
+        
+        // Handle tempo doubling/halving detection
+        std::vector<float> candidates = {estimatedTempo, estimatedTempo * 2.0f, estimatedTempo * 0.5f};
+        float bestTempo = estimatedTempo;
+        float minDistance = std::abs(estimatedTempo - currentTempo);
+        
+        for (float candidate : candidates) {
+            if (candidate >= 60.0f && candidate <= 300.0f) { // Expanded tempo range
+                float distance = std::abs(candidate - currentTempo);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    bestTempo = candidate;
+                }
+            }
+        }
+        
+        // Adaptive smoothing - faster when confidence is high
+        float confidence = 1.0f / (1.0f + minDistance / 20.0f); // Higher confidence when closer to current tempo
+        float adaptiveSmoothingFactor = tempoSmoothingFactor * (1.0f + confidence * 3.0f); // Up to 4x faster smoothing
+        
+        // Smooth tempo estimate with adaptive rate
+        currentTempo += adaptiveSmoothingFactor * (bestTempo - currentTempo);
+        currentTempo = std::clamp(currentTempo, 60.0f, 300.0f); // Expanded range to 300 BPM
     }
     
     // Update tempo history
