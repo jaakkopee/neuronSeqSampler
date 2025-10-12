@@ -1539,6 +1539,7 @@ void GUI::createConnectionMatrixPanel() {
         rhythmogramScaleLabel = nullptr;
         bpmSlider = nullptr;
         bpmLabel = nullptr;
+        autodetectTempoToggle = nullptr;
     }
     
     if (!network || !network->getRhythmInterpreter()) {
@@ -1849,7 +1850,7 @@ void GUI::createConnectionMatrixPanel() {
     rhythmogramScaleSlider->setValue(rhythmInterpreter->getRhythmogramScale());
     rhythmogramScaleSlider->setStep(0.1f);
     rhythmogramScaleSlider->setPosition(scaleSliderX, 70);
-    rhythmogramScaleSlider->setSize(20, 300); // Vertical slider
+    rhythmogramScaleSlider->setSize(20, 300); // Original slider size
     rhythmogramScaleSlider->setOrientation(tgui::Orientation::Vertical);
     rhythmogramScaleSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
     rhythmogramScaleSlider->getRenderer()->setThumbColor(tgui::Color(140, 100, 100));
@@ -1867,11 +1868,11 @@ void GUI::createConnectionMatrixPanel() {
     
     connectionMatrixPanel->add(rhythmogramScaleSlider);
     
-    // Scale value display
+    // Scale value display - LARGE for easy reading
     rhythmogramScaleLabel = tgui::Label::create("5.0");
-    rhythmogramScaleLabel->setPosition(scaleSliderX - 5, 375);
-    rhythmogramScaleLabel->setSize(30, 20);
-    rhythmogramScaleLabel->setTextSize(9);
+    rhythmogramScaleLabel->setPosition(scaleSliderX - 20, 375); // Centered under original slider position  
+    rhythmogramScaleLabel->setSize(60, 30); // Match BPM label dimensions for consistency
+    rhythmogramScaleLabel->setTextSize(13); // Match BPM label text size
     rhythmogramScaleLabel->getRenderer()->setTextColor(tgui::Color(200, 140, 140));
     rhythmogramScaleLabel->getRenderer()->setBackgroundColor(tgui::Color(25, 15, 15));
     rhythmogramScaleLabel->getRenderer()->setBorderColor(tgui::Color(60, 40, 40));
@@ -1896,29 +1897,36 @@ void GUI::createConnectionMatrixPanel() {
     bpmSlider->setValue(rhythmInterpreter->getBPM());
     bpmSlider->setStep(0.1f);
     bpmSlider->setPosition(bpmSliderX, 70);
-    bpmSlider->setSize(20, 300); // Vertical slider
+    bpmSlider->setSize(20, 300); // Original slider size
     bpmSlider->setOrientation(tgui::Orientation::Vertical);
     bpmSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
     bpmSlider->getRenderer()->setThumbColor(tgui::Color(100, 140, 100));
     
-    // Connect BPM slider to BPM control
+    // Connect BPM slider to BPM control (only when autodetect is disabled)
     bpmSlider->onValueChange([this](float value) {
         if (network && network->getRhythmInterpreter()) {
-            network->getRhythmInterpreter()->setBPM(value);
-            // Update BPM display with proper formatting (one decimal place)
-            std::ostringstream stream;
-            stream << std::fixed << std::setprecision(1) << value;
-            bpmLabel->setText(stream.str());
+            auto rhythmInterpreter = network->getRhythmInterpreter();
+            
+            // Only allow manual BPM changes when autodetect is disabled
+            if (!rhythmInterpreter->getAutodetectTempo()) {
+                rhythmInterpreter->setBPM(value);
+                // Update BPM display with proper formatting (one decimal place)
+                std::ostringstream stream;
+                stream << std::fixed << std::setprecision(1) << value;
+                bpmLabel->setText(stream.str());
+                // Update frequency labels to reflect new tempo scaling
+                updateFrequencyLabels();
+            }
         }
     });
     
     connectionMatrixPanel->add(bpmSlider);
     
-    // BPM value display
+    // BPM value display - LARGE for easy reading
     bpmLabel = tgui::Label::create("120.0");
-    bpmLabel->setPosition(bpmSliderX - 5, 375);
-    bpmLabel->setSize(30, 20);
-    bpmLabel->setTextSize(9);
+    bpmLabel->setPosition(bpmSliderX - 20, 375); // Centered under original slider position
+    bpmLabel->setSize(60, 30); // Wider to fit 3-digit numbers, slightly shorter
+    bpmLabel->setTextSize(13); // Reduced text size to fit better
     bpmLabel->getRenderer()->setTextColor(tgui::Color(140, 200, 140));
     bpmLabel->getRenderer()->setBackgroundColor(tgui::Color(15, 25, 15));
     bpmLabel->getRenderer()->setBorderColor(tgui::Color(40, 60, 40));
@@ -1930,6 +1938,57 @@ void GUI::createConnectionMatrixPanel() {
     bpmLabel->setText(bpmInitStream.str());
     
     connectionMatrixPanel->add(bpmLabel);
+    
+    // Add Autodetect Tempo toggle button positioned below BPM slider
+    autodetectTempoToggle = tgui::Button::create("Autodetect Tempo");
+    autodetectTempoToggle->setPosition(bpmSliderX - 25, 420); // Below enlarged value displays
+    autodetectTempoToggle->setSize(70, 25);
+    autodetectTempoToggle->setTextSize(9);
+    autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+    autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+    autodetectTempoToggle->getRenderer()->setBorderColor(tgui::Color(80, 80, 80));
+    autodetectTempoToggle->getRenderer()->setBorders(1);
+    
+    // Set initial state (default is OFF)
+    if (rhythmInterpreter->getAutodetectTempo()) {
+        autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(80, 140, 80));
+        autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
+    }
+    
+    // Connect autodetect toggle to tempo control
+    autodetectTempoToggle->onPress([this]() {
+        if (network && network->getRhythmInterpreter()) {
+            auto rhythmInterpreter = network->getRhythmInterpreter();
+            bool currentState = rhythmInterpreter->getAutodetectTempo();
+            bool newState = !currentState;
+            
+            rhythmInterpreter->setAutodetectTempo(newState);
+            
+            // Update toggle appearance
+            if (newState) {
+                autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(80, 140, 80));
+                autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
+                
+                // Disable BPM slider when autodetect is ON
+                if (bpmSlider) {
+                    bpmSlider->getRenderer()->setThumbColor(tgui::Color(60, 60, 60)); // Grayed out
+                }
+            } else {
+                autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+                autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+                
+                // Re-enable BPM slider when autodetect is OFF
+                if (bpmSlider) {
+                    bpmSlider->getRenderer()->setThumbColor(tgui::Color(100, 140, 100)); // Normal color
+                }
+            }
+        }
+    });
+    
+    connectionMatrixPanel->add(autodetectTempoToggle);
+    
+    // Initialize frequency labels with current BPM scaling
+    updateFrequencyLabels();
 }
 
 void GUI::updateConnectionMatrix() {
@@ -2045,10 +2104,47 @@ void GUI::updateConnectionMatrix() {
     // Update BPM slider and display
     if (bpmSlider && bpmLabel) {
         float currentBPM = rhythmInterpreter->getBPM();
+        bool autodetectActive = rhythmInterpreter->getAutodetectTempo();
+        
+        // Check if BPM has changed (for frequency label updates)
+        static float lastBPM = currentBPM;
+        bool bpmChanged = (std::abs(currentBPM - lastBPM) > 0.1f);
+        
+        // Always update the slider position to show current BPM
         bpmSlider->setValue(currentBPM);
+        
+        // Format BPM display with autodetect indicator
         std::ostringstream bpmStream;
         bpmStream << std::fixed << std::setprecision(1) << currentBPM;
+        if (autodetectActive) {
+            bpmStream << "🎵"; // Musical note to indicate autodetection
+        }
         bpmLabel->setText(bpmStream.str());
+        
+        // Update frequency labels when BPM changes
+        if (bpmChanged) {
+            updateFrequencyLabels();
+            lastBPM = currentBPM;
+        }
+        
+        // Update slider visual state based on autodetect status
+        if (autodetectActive) {
+            bpmSlider->getRenderer()->setThumbColor(tgui::Color(60, 60, 60)); // Grayed out when autodetecting
+        } else {
+            bpmSlider->getRenderer()->setThumbColor(tgui::Color(100, 140, 100)); // Normal green when manual
+        }
+    }
+    
+    // Update autodetect toggle button appearance
+    if (autodetectTempoToggle) {
+        bool autodetectActive = rhythmInterpreter->getAutodetectTempo();
+        if (autodetectActive) {
+            autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(80, 140, 80));
+            autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
+        } else {
+            autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+            autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+        }
     }
     
     isUpdatingMatrix = false; // Reset the flag
@@ -2070,6 +2166,45 @@ void GUI::forceMatrixUpdate() {
     allowMatrixUpdates = true;
     updateConnectionMatrix();
     allowMatrixUpdates = false;
+}
+
+void GUI::updateFrequencyLabels() {
+    if (!network || !network->getRhythmInterpreter()) {
+        return;
+    }
+    
+    // Get current BPM and calculate scaling factor
+    auto rhythmInterpreter = network->getRhythmInterpreter();
+    float currentBPM = rhythmInterpreter->getBPM();
+    float tempoScale = currentBPM / 120.0f;
+    
+    // Base frequencies from Todd (1994) rhythmogram
+    const std::vector<float> baseFrequencies = {
+        0.125f, 0.25f, 0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f
+    };
+    
+    const std::vector<std::string> filterNames = {
+        "Phrase", "Whole", "Half", "Quarter", "Eighth", "16th", "32nd", "Onset"
+    };
+    
+    // Update each label with scaled frequency
+    for (size_t i = 0; i < filterLabels.size() && i < baseFrequencies.size(); ++i) {
+        float scaledFrequency = baseFrequencies[i] * tempoScale;
+        
+        // Format frequency display (1 decimal place for small values, integer for large)
+        std::string freqText;
+        if (scaledFrequency < 1.0f) {
+            freqText = std::to_string(scaledFrequency);
+            // Remove trailing zeros
+            freqText = freqText.substr(0, freqText.find_last_not_of('0') + 1);
+            if (freqText.back() == '.') freqText.pop_back();
+        } else {
+            freqText = std::to_string(static_cast<int>(scaledFrequency + 0.5f));
+        }
+        
+        std::string labelText = filterNames[i] + " (" + freqText + "Hz)";
+        filterLabels[i]->setText(labelText);
+    }
 }
 
 // Frequency response visualization method temporarily removed due to TGUI widget limitations

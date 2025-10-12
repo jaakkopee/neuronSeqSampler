@@ -63,6 +63,19 @@ make
 3. **Interaction**: Click neurons to activate them, use spacebar for random activation
 4. **Recording**: Press 'R' to record the neural network's audio output
 
+### Demo Scripts
+
+Explore specific features with guided demonstrations:
+
+```bash
+./demo_large_sliders.sh        # NEW: Large BPM & Rhythmogram value displays (easy reading)
+./demo_autodetect_tempo.sh     # Automatic tempo detection feature
+./demo_bpm_slider.sh           # BPM control and tempo-relative frequency scaling
+./demo_rhythmogram_scale.sh    # Rhythmogram intensity scaling
+./demo_connection_matrix.sh    # Connection matrix interface
+./demo_rhythm_interpreter.sh   # Complete Todd (1994) rhythmogram system
+```
+
 ### GUI Controls
 
 **Main Interface:**
@@ -88,6 +101,9 @@ make
 - **🎚️ Dual Gain System**: Filter sensitivity (0x-5x) + connection strength (0-100%) per route
 - **⚡ Instant Response**: Toggle changes immediately stop/start rhythmogram feedback to neurons
 - **🎛️ Quick Actions**: "Clear All" and "Random" buttons for rapid matrix reconfiguration
+- **🎵 Rhythmogram Scale Slider**: Vertical control (0.0-20.0) with large, easy-to-read value display
+- **🎼 BPM Control**: Tempo slider (30-260 BPM) with large, clear value display for precise readings
+- **🤖 Autodetect Tempo**: Automatic BPM detection from RhythmDetector analysis (toggle ON/OFF)
 
 ### Sample Organization
 
@@ -211,6 +227,9 @@ Audio Output → Rhythmogram Analysis → Connection Matrix → Direct Neuron Ac
 - **Spectral Mapping**: Low frequencies → percussion, high frequencies → texture
 - **Self-Organization**: Optimal frequency-to-neuron mappings emerge over time
 - **Polyrhythmic Patterns**: Complex interactions between frequency bands
+- **Tempo Awareness**: BPM control scales Todd frequencies relative to musical tempo (120 BPM baseline)
+- **Adaptive Detection**: Autodetect mode uses RhythmDetector analysis for automatic tempo tracking
+- **Musical Scaling**: All frequency bands maintain proportional relationships across tempo changes
 
 ### Technical Specifications
 

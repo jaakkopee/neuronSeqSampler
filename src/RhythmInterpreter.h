@@ -162,6 +162,7 @@ private:
     bool audioOutputEnabled; // Enable filtered audio output
     float rhythmogramScale; // Scaling factor for rhythmogram to neural activation (0.0-20.0, default 5.0)
     float bpm; // Beats per minute for tempo-relative frequency scaling (30.0-260.0, default 120.0)
+    bool autodetectTempo; // Enable automatic tempo detection from RhythmDetector (default false)
     
     // Frequency bands for filterbank (in Hz)
     static const std::vector<float> DEFAULT_FREQUENCIES;
@@ -227,6 +228,10 @@ public:
     // BPM control (tempo-relative frequency scaling)
     void setBPM(float beatsPerMinute);
     float getBPM() const { return bpm; }
+    
+    // Autodetect tempo control
+    void setAutodetectTempo(bool enable);
+    bool getAutodetectTempo() const { return autodetectTempo; }
     
     // Getters
     bool isEnabled() const { return enabled; }

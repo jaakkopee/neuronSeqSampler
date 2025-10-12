@@ -74,6 +74,7 @@ private:
     tgui::Label::Ptr rhythmogramScaleLabel; // Label showing current rhythmogram scale value
     tgui::Slider::Ptr bpmSlider; // Vertical slider for BPM control (tempo-relative frequencies)
     tgui::Label::Ptr bpmLabel; // Label showing current BPM value
+    tgui::Button::Ptr autodetectTempoToggle; // Toggle for automatic tempo detection
     bool matrixVisible = true; // Connection matrix visibility state
     bool isUpdatingMatrix = false; // Flag to prevent recursive updates
     int matrixUpdateCounter = 0; // Counter to reduce update frequency
@@ -140,4 +141,7 @@ public:
     
     // Matrix visibility control
     void toggleMatrixVisibility();
+    
+    // Update frequency labels with current BPM scaling
+    void updateFrequencyLabels();
 };

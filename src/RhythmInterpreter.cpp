@@ -437,7 +437,8 @@ RhythmInterpreter::RhythmInterpreter(NeuronNetwork* network, AudioManager* audio
       sampleRate(sampleRate), bufferSize(bufferSize),
       enabled(true), globalGain(0.0f), // Set to 0 for analysis-only mode
       rhythmogramScale(5.0f), // Default rhythmogram scale of 5.0
-      bpm(120.0f) { // Default BPM of 120
+      bpm(120.0f), // Default BPM of 120
+      autodetectTempo(false) { // Default autodetect off
     
     initializeFilterBank();
     updateFilterBankForBPM(); // Apply initial BPM scaling to filters
@@ -503,6 +504,18 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     
     // Process audio through rhythm detector
     rhythmDetector->processAudioChunk(audioData);
+    
+    // Update BPM from rhythm detector if autodetect is enabled
+    if (autodetectTempo && rhythmDetector) {
+        float detectedTempo = rhythmDetector->getCurrentTempo();
+        if (detectedTempo >= 30.0f && detectedTempo <= 260.0f) { // Within valid BPM range
+            // Only update if the detected tempo is significantly different to avoid jitter
+            if (std::abs(detectedTempo - bpm) > 0.5f) {
+                bpm = detectedTempo;
+                updateFilterBankForBPM(); // Update filter frequencies when BPM changes
+            }
+        }
+    }
     
     // Process audio through filterbank and generate output
     std::fill(filterOutputs.begin(), filterOutputs.end(), 0.0f);
@@ -754,8 +767,16 @@ void RhythmInterpreter::setRhythmogramScale(float scale) {
 }
 
 void RhythmInterpreter::setBPM(float beatsPerMinute) {
-    bpm = std::max(30.0f, std::min(260.0f, beatsPerMinute)); // Clamp between 30.0 and 260.0 BPM
-    updateFilterBankForBPM(); // Update filter frequencies when BPM changes
+    // Only allow manual BPM setting if autodetect is disabled
+    if (!autodetectTempo) {
+        bpm = std::max(30.0f, std::min(260.0f, beatsPerMinute)); // Clamp between 30.0 and 260.0 BPM
+        updateFilterBankForBPM(); // Update filter frequencies when BPM changes
+    }
+}
+
+void RhythmInterpreter::setAutodetectTempo(bool enable) {
+    autodetectTempo = enable;
+    std::cout << "🎵 Autodetect Tempo: " << (enable ? "ON" : "OFF") << std::endl;
 }
 
 void RhythmInterpreter::updateFilterBankForBPM() {
