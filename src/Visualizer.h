@@ -32,6 +32,15 @@ private:
     // Animation timing
     sf::Clock animationClock;
     
+    // Firing animation state
+    struct FiringAnimation {
+        bool isActive = false;
+        sf::Clock timer;
+        float scaleFactor = 1.0f;
+        bool previouslyFired = false;
+    };
+    std::vector<FiringAnimation> firingAnimations;
+    
     // Layout settings
     sf::Vector2f canvasOffset;
     sf::Vector2f canvasSize;
@@ -44,6 +53,8 @@ private:
     void calculateGridPositions();
     void calculateCircularPositions();
     sf::Color getRainbowColor(float activation, bool hasFired) const;
+    void updateFiringAnimations();
+    void triggerFiringAnimation(size_t neuronIndex);
     void drawNeuron(const Neuron* neuron, const sf::Vector2f& position, size_t neuronIndex);
     void drawConnection(const Connection* connection, 
                        const sf::Vector2f& sourcePos, 

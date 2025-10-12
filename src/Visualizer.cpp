@@ -158,6 +158,33 @@ void Visualizer::render() {
         }
     }
     
+    // Ensure firing animations vector matches neuron count
+    if (firingAnimations.size() != neurons.size()) {
+        firingAnimations.resize(neurons.size());
+    }
+    
+    // Check for newly fired neurons and update animations
+    for (size_t i = 0; i < neurons.size(); ++i) {
+        bool currentlyFired = neurons[i]->getHasFired();
+        float activation = neurons[i]->getActivation();
+        float threshold = neurons[i]->getThreshold();
+        
+        // Detect firing: either hasFired flag is set, or activation exceeds threshold
+        bool isCurrentlyFiring = currentlyFired || (activation > threshold);
+        bool justFired = isCurrentlyFiring && !firingAnimations[i].previouslyFired;
+        
+        // Update previous state
+        firingAnimations[i].previouslyFired = isCurrentlyFiring;
+        
+        // Trigger animation if neuron just fired
+        if (justFired) {
+            triggerFiringAnimation(i);
+        }
+    }
+    
+    // Update firing animations
+    updateFiringAnimations();
+    
     // Draw neurons (reuse neurons variable from above)
     for (size_t i = 0; i < neurons.size() && i < neuronPositions.size(); ++i) {
         drawNeuron(neurons[i].get(), neuronPositions[i], i);
@@ -165,8 +192,12 @@ void Visualizer::render() {
 }
 
 void Visualizer::drawNeuron(const Neuron* neuron, const sf::Vector2f& position, size_t neuronIndex) {
-    sf::CircleShape circle(neuronRadius);
-    circle.setOrigin(neuronRadius, neuronRadius);
+    // Apply firing animation scaling
+    float scaleFactor = (neuronIndex < firingAnimations.size()) ? firingAnimations[neuronIndex].scaleFactor : 1.0f;
+    float scaledRadius = neuronRadius * scaleFactor;
+    
+    sf::CircleShape circle(scaledRadius);
+    circle.setOrigin(scaledRadius, scaledRadius);
     circle.setPosition(position);
     
     // Use rainbow color based on activation level and firing state
@@ -252,8 +283,8 @@ void Visualizer::drawConnection(const Connection* connection,
         // Get current time for sine wave calculations
         float currentTime = animationClock.getElapsedTime().asSeconds();
         
-        // Dance modulation frequencies: 1, 2, 4, 8, 16 Hz
-        std::vector<float> frequencies = {1.0f, 2.0f, 4.0f, 8.0f, 16.0f};
+        // Dance modulation frequencies: 4, 8, 16, 32, 64 Hz (higher frequencies for more dynamic movement)
+        std::vector<float> frequencies = {4.0f, 8.0f, 16.0f, 32.0f, 64.0f};
         
         // Calculate composite sine wave modulation
         float modulation = 0.0f;
@@ -372,8 +403,8 @@ void Visualizer::drawCurvedConnection(const Connection* connection,
         // Get current time for sine wave calculations
         float currentTime = animationClock.getElapsedTime().asSeconds();
         
-        // Dance modulation frequencies: 1, 2, 4, 8, 16 Hz
-        std::vector<float> frequencies = {1.0f, 2.0f, 4.0f, 8.0f, 16.0f};
+        // Dance modulation frequencies: 4, 8, 16, 32, 64 Hz (higher frequencies for more dynamic movement)
+        std::vector<float> frequencies = {4.0f, 8.0f, 16.0f, 32.0f, 64.0f};
         
         // Calculate composite sine wave modulation for curve offset
         for (float freq : frequencies) {
@@ -402,8 +433,8 @@ void Visualizer::drawCurvedConnection(const Connection* connection,
                 // Get current time for sine wave calculations
                 float currentTime = animationClock.getElapsedTime().asSeconds();
                 
-                // Dance modulation frequencies: 1, 2, 4, 8, 16 Hz
-                std::vector<float> frequencies = {1.0f, 2.0f, 4.0f, 8.0f, 16.0f};
+                // Dance modulation frequencies: 4, 8, 16, 32, 64 Hz (higher frequencies for more dynamic movement)
+                std::vector<float> frequencies = {4.0f, 8.0f, 16.0f, 32.0f, 64.0f};
                 
                 float vibrationX = 0.0f, vibrationY = 0.0f;
                 for (float freq : frequencies) {
@@ -503,6 +534,37 @@ bool Visualizer::loadFont(const std::string& fontPath) {
     
     std::cout << "Warning: Could not load any font. Text rendering will be disabled." << std::endl;
     return false;
+}
+
+void Visualizer::updateFiringAnimations() {
+    const float animationDuration = 0.3f; // 300ms animation
+    const float maxScale = 1.1f; // Scale up to 110% of original size
+    
+    for (auto& anim : firingAnimations) {
+        if (anim.isActive) {
+            float elapsed = anim.timer.getElapsedTime().asSeconds();
+            
+            if (elapsed >= animationDuration) {
+                // Animation complete
+                anim.isActive = false;
+                anim.scaleFactor = 1.0f;
+            } else {
+                // Calculate scale factor using a smooth ease-out curve
+                float progress = elapsed / animationDuration;
+                // Use sine wave for smooth scaling: grow fast, then shrink smoothly
+                float sineProgress = std::sin(progress * 3.14159f); // 0 to π for half sine wave
+                anim.scaleFactor = 1.0f + (maxScale - 1.0f) * sineProgress;
+            }
+        }
+    }
+}
+
+void Visualizer::triggerFiringAnimation(size_t neuronIndex) {
+    if (neuronIndex < firingAnimations.size()) {
+        firingAnimations[neuronIndex].isActive = true;
+        firingAnimations[neuronIndex].timer.restart();
+        firingAnimations[neuronIndex].scaleFactor = 1.0f;
+    }
 }
 
 sf::Color Visualizer::getRainbowColor(float activation, bool hasFired) const {
