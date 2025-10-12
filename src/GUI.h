@@ -77,6 +77,14 @@ private:
     tgui::Slider::Ptr bpmSlider; // Vertical slider for BPM control (tempo-relative frequencies)
     tgui::Label::Ptr bpmLabel; // Label showing current BPM value
     tgui::Button::Ptr autodetectTempoToggle; // Toggle for automatic tempo detection
+    
+    // BeatRoot controls
+    tgui::Button::Ptr beatRootToggle; // Toggle for BeatRoot system
+    tgui::Slider::Ptr beatRootSensitivitySlider; // BeatRoot sensitivity control
+    tgui::Label::Ptr beatRootSensitivityLabel; // Sensitivity value display
+    tgui::Label::Ptr beatRootStatusLabel; // Status display (agents, tempo strength, etc.)
+    tgui::Button::Ptr beatRootResetButton; // Manual reset button
+    tgui::Button::Ptr beatRootInitButton; // Manual initialization button
     bool matrixVisible = true; // Connection matrix visibility state
     bool isUpdatingMatrix = false; // Flag to prevent recursive updates
     int matrixUpdateCounter = 0; // Counter to reduce update frequency

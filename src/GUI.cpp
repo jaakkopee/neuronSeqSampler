@@ -5,6 +5,7 @@
 #include "Visualizer.h"
 #include "Recorder.h"
 #include "RhythmInterpreter.h"
+#include "BeatRoot.h"
 #include <iostream>
 #include <filesystem>
 #include <chrono>
@@ -1525,6 +1526,14 @@ void GUI::createConnectionMatrixPanel() {
         bpmSlider = nullptr;
         bpmLabel = nullptr;
         autodetectTempoToggle = nullptr;
+        
+        // BeatRoot controls
+        beatRootToggle = nullptr;
+        beatRootSensitivitySlider = nullptr;
+        beatRootSensitivityLabel = nullptr;
+        beatRootStatusLabel = nullptr;
+        beatRootResetButton = nullptr;
+        beatRootInitButton = nullptr;
     }
     
     if (!network || !network->getRhythmInterpreter()) {
@@ -1547,7 +1556,7 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixPanel->setVisible(matrixVisible);
     
     // Set content size to accommodate all filters, neurons, and control sliders (Scale + BPM)
-    float contentWidth = std::max(350.0f, static_cast<float>(270 + numNeurons * 80)); // Extra space for two sliders
+    float contentWidth = std::max(350.0f, static_cast<float>(270 + numNeurons * 80 + 120)); // Extra space for sliders and BeatRoot controls
     float contentHeight = std::max(400.0f, static_cast<float>(150 + numFilters * 60));
     static_cast<tgui::ScrollablePanel*>(connectionMatrixPanel.get())->setContentSize(tgui::Vector2f(contentWidth, contentHeight));
     
@@ -1995,6 +2004,139 @@ void GUI::createConnectionMatrixPanel() {
     
     connectionMatrixPanel->add(autodetectTempoToggle);
     
+    // ============================================================================
+    // BeatRoot Controls - Positioned to the left of Rhythmogram scale slider
+    // ============================================================================
+    
+    float beatRootControlsX = scaleSliderX - 40; // Position BeatRoot controls to the left of scale slider
+    
+    // BeatRoot toggle button - aligned with other controls
+    beatRootToggle = tgui::Button::create("BeatRoot");
+    beatRootToggle->setPosition(beatRootControlsX - 25, 70);
+    beatRootToggle->setSize(80, 30);
+    beatRootToggle->setTextSize(11);
+    beatRootToggle->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 80)); // Different color for BeatRoot
+    beatRootToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+    beatRootToggle->getRenderer()->setBorderColor(tgui::Color(80, 80, 120));
+    beatRootToggle->getRenderer()->setBorders(1);
+    
+    // Set initial state based on RhythmInterpreter
+    if (rhythmInterpreter && rhythmInterpreter->getUseBeatRoot()) {
+        beatRootToggle->getRenderer()->setBackgroundColor(tgui::Color(80, 80, 140));
+        beatRootToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
+    }
+    
+    beatRootToggle->onPress([this]() {
+        if (network && network->getRhythmInterpreter()) {
+            auto rhythmInterpreter = network->getRhythmInterpreter();
+            bool newState = !rhythmInterpreter->getUseBeatRoot();
+            rhythmInterpreter->setUseBeatRoot(newState);
+            
+            if (newState) {
+                std::cout << "🎯 BeatRoot enabled via GUI" << std::endl;
+                beatRootToggle->getRenderer()->setBackgroundColor(tgui::Color(80, 80, 140));
+                beatRootToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
+            } else {
+                std::cout << "🎯 BeatRoot disabled via GUI" << std::endl;
+                beatRootToggle->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 80));
+                beatRootToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+            }
+        }
+    });
+    
+    connectionMatrixPanel->add(beatRootToggle);
+    
+    // BeatRoot sensitivity slider
+    auto beatRootSensitivityTitle = tgui::Label::create("Sens");
+    beatRootSensitivityTitle->setPosition(beatRootControlsX - 10, 105);
+    beatRootSensitivityTitle->setTextSize(10);
+    beatRootSensitivityTitle->getRenderer()->setTextColor(tgui::Color(180, 180, 200));
+    connectionMatrixPanel->add(beatRootSensitivityTitle);
+    
+    beatRootSensitivitySlider = tgui::Slider::create(0.1f, 2.0f);
+    beatRootSensitivitySlider->setValue(rhythmInterpreter ? rhythmInterpreter->getBeatRootSensitivity() : 1.0f);
+    beatRootSensitivitySlider->setStep(0.1f);
+    beatRootSensitivitySlider->setSize(20, 300);
+    beatRootSensitivitySlider->setPosition(beatRootControlsX, 125);
+    beatRootSensitivitySlider->setOrientation(tgui::Orientation::Vertical);
+    beatRootSensitivitySlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 100));
+    beatRootSensitivitySlider->getRenderer()->setThumbColor(tgui::Color(120, 120, 180));
+    beatRootSensitivitySlider->getRenderer()->setBorderColor(tgui::Color(80, 80, 120));
+    beatRootSensitivitySlider->getRenderer()->setBorders(1);
+    
+    beatRootSensitivitySlider->onValueChange([this](float value) {
+        if (network && network->getRhythmInterpreter()) {
+            network->getRhythmInterpreter()->setBeatRootSensitivity(value);
+            if (beatRootSensitivityLabel) {
+                beatRootSensitivityLabel->setText(tgui::String::fromNumber(value));
+            }
+        }
+    });
+    
+    connectionMatrixPanel->add(beatRootSensitivitySlider);
+    
+    // BeatRoot sensitivity value display
+    beatRootSensitivityLabel = tgui::Label::create(tgui::String::fromNumber(beatRootSensitivitySlider->getValue()));
+    beatRootSensitivityLabel->setPosition(beatRootControlsX - 15, 435);
+    beatRootSensitivityLabel->setSize(50, 20);
+    beatRootSensitivityLabel->setTextSize(11);
+    beatRootSensitivityLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+    beatRootSensitivityLabel->getRenderer()->setBackgroundColor(tgui::Color(30, 30, 60));
+    beatRootSensitivityLabel->getRenderer()->setBorderColor(tgui::Color(80, 80, 120));
+    beatRootSensitivityLabel->getRenderer()->setBorders(1);
+    connectionMatrixPanel->add(beatRootSensitivityLabel);
+    
+    // BeatRoot status display
+    beatRootStatusLabel = tgui::Label::create("BeatRoot: OFF");
+    beatRootStatusLabel->setPosition(beatRootControlsX - 25, 470);
+    beatRootStatusLabel->setSize(90, 40);
+    beatRootStatusLabel->setTextSize(9);
+    beatRootStatusLabel->getRenderer()->setTextColor(tgui::Color(150, 150, 200));
+    beatRootStatusLabel->getRenderer()->setBackgroundColor(tgui::Color(25, 25, 50));
+    beatRootStatusLabel->getRenderer()->setBorderColor(tgui::Color(60, 60, 100));
+    beatRootStatusLabel->getRenderer()->setBorders(1);
+    connectionMatrixPanel->add(beatRootStatusLabel);
+    
+    // BeatRoot reset button
+    beatRootResetButton = tgui::Button::create("Reset");
+    beatRootResetButton->setPosition(beatRootControlsX - 25, 520);
+    beatRootResetButton->setSize(38, 22);
+    beatRootResetButton->setTextSize(9);
+    beatRootResetButton->getRenderer()->setBackgroundColor(tgui::Color(80, 40, 40));
+    beatRootResetButton->getRenderer()->setTextColor(tgui::Color(200, 180, 180));
+    beatRootResetButton->getRenderer()->setBorderColor(tgui::Color(120, 80, 80));
+    beatRootResetButton->getRenderer()->setBorders(1);
+    
+    beatRootResetButton->onPress([this]() {
+        if (network && network->getRhythmInterpreter()) {
+            network->getRhythmInterpreter()->resetBeatRoot();
+            std::cout << "🎯 BeatRoot reset via GUI" << std::endl;
+        }
+    });
+    
+    connectionMatrixPanel->add(beatRootResetButton);
+    
+    // BeatRoot initialization button
+    beatRootInitButton = tgui::Button::create("Init");
+    beatRootInitButton->setPosition(beatRootControlsX + 18, 520);
+    beatRootInitButton->setSize(38, 22);
+    beatRootInitButton->setTextSize(9);
+    beatRootInitButton->getRenderer()->setBackgroundColor(tgui::Color(40, 80, 40));
+    beatRootInitButton->getRenderer()->setTextColor(tgui::Color(180, 200, 180));
+    beatRootInitButton->getRenderer()->setBorderColor(tgui::Color(80, 120, 80));
+    beatRootInitButton->getRenderer()->setBorders(1);
+    
+    beatRootInitButton->onPress([this]() {
+        if (network && network->getRhythmInterpreter()) {
+            // Initialize with current BPM or auto-detect
+            float currentBPM = network->getRhythmInterpreter()->getBPM();
+            network->getRhythmInterpreter()->initializeBeatRoot(currentBPM);
+            std::cout << "🎯 BeatRoot manually initialized with BPM: " << currentBPM << std::endl;
+        }
+    });
+    
+    connectionMatrixPanel->add(beatRootInitButton);
+    
     // Initialize frequency labels with current BPM scaling
     updateFrequencyLabels();
 }
@@ -2162,6 +2304,47 @@ void GUI::updateConnectionMatrix() {
             autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
             autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
         }
+    }
+    
+    // Update BeatRoot controls
+    if (beatRootToggle && beatRootStatusLabel && beatRootSensitivityLabel) {
+        bool beatRootActive = rhythmInterpreter->getUseBeatRoot();
+        
+        // Update toggle button appearance
+        if (beatRootActive) {
+            beatRootToggle->getRenderer()->setBackgroundColor(tgui::Color(80, 80, 140));
+            beatRootToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
+        } else {
+            beatRootToggle->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 80));
+            beatRootToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+        }
+        
+        // Update status display
+        if (beatRootActive) {
+            size_t numAgents = rhythmInterpreter->getBeatRootNumAgents();
+            float onsetStrength = rhythmInterpreter->getBeatRootOnsetStrength();
+            bool stableTempo = rhythmInterpreter->hasBeatRootStableTempo();
+            bool beatDetected = rhythmInterpreter->isBeatRootBeatDetected();
+            
+            std::ostringstream statusStream;
+            statusStream << "Agents: " << numAgents << "\\n";
+            statusStream << "Onset: " << std::fixed << std::setprecision(2) << onsetStrength << "\\n";
+            statusStream << (stableTempo ? "STABLE" : "Learning");
+            if (beatDetected) statusStream << " ♪";
+            
+            beatRootStatusLabel->setText(statusStream.str());
+            beatRootStatusLabel->getRenderer()->setTextColor(
+                stableTempo ? tgui::Color(150, 200, 150) : tgui::Color(200, 200, 150)
+            );
+        } else {
+            beatRootStatusLabel->setText("BeatRoot: OFF");
+            beatRootStatusLabel->getRenderer()->setTextColor(tgui::Color(150, 150, 200));
+        }
+        
+        // Update sensitivity display
+        float currentSensitivity = rhythmInterpreter->getBeatRootSensitivity();
+        beatRootSensitivitySlider->setValue(currentSensitivity);
+        beatRootSensitivityLabel->setText(tgui::String::fromNumber(currentSensitivity));
     }
     
     isUpdatingMatrix = false; // Reset the flag

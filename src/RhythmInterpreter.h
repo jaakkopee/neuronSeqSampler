@@ -7,6 +7,7 @@
 // Forward declarations
 class NeuronNetwork;
 class AudioManager;
+class BeatRoot;
 
 /**
  * Adaptive filterbank for rhythm analysis
@@ -140,6 +141,7 @@ private:
     std::vector<std::unique_ptr<AdaptiveFilter>> filterBank;
     std::unique_ptr<RhythmDetector> rhythmDetector;
     std::unique_ptr<ConnectionMatrix> connectionMatrix;
+    std::unique_ptr<BeatRoot> beatRoot; // BeatRoot beat tracking system
     
     // Network integration
     NeuronNetwork* neuronNetwork;
@@ -163,6 +165,8 @@ private:
     float rhythmogramScale; // Scaling factor for rhythmogram to neural activation (0.0-20.0, default 5.0)
     float bpm; // Beats per minute for tempo-relative frequency scaling (30.0-260.0, default 120.0)
     bool autodetectTempo; // Enable automatic tempo detection from RhythmDetector (default false)
+    bool useBeatRoot; // Use BeatRoot system instead of simple RhythmDetector (default true)
+    float beatRootSensitivity; // BeatRoot sensitivity (0.1-2.0, default 1.0)
     
     // Frequency bands for filterbank (in Hz)
     static const std::vector<float> DEFAULT_FREQUENCIES;
@@ -177,7 +181,7 @@ private:
 public:
     RhythmInterpreter(NeuronNetwork* network, AudioManager* audioMgr, 
                      size_t sampleRate = 44100, size_t bufferSize = 512);
-    ~RhythmInterpreter() = default;
+    ~RhythmInterpreter(); // Custom destructor declared here, defined in .cpp
     
     // Main processing
     void processAudioFrame(const std::vector<float>& audioData);
@@ -232,6 +236,20 @@ public:
     // Autodetect tempo control
     void setAutodetectTempo(bool enable);
     bool getAutodetectTempo() const { return autodetectTempo; }
+    
+    // BeatRoot control
+    void setUseBeatRoot(bool enable);
+    bool getUseBeatRoot() const { return useBeatRoot; }
+    void setBeatRootSensitivity(float sensitivity);
+    float getBeatRootSensitivity() const { return beatRootSensitivity; }
+    void initializeBeatRoot(float tempo = 0.0f); // Initialize with specific tempo or auto-detect
+    void resetBeatRoot();
+    
+    // BeatRoot information access
+    bool isBeatRootBeatDetected() const;
+    float getBeatRootOnsetStrength() const;
+    size_t getBeatRootNumAgents() const;
+    bool hasBeatRootStableTempo() const;
     
     // Getters
     bool isEnabled() const { return enabled; }

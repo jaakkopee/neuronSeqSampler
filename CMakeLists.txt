@@ -43,6 +43,7 @@ set(SOURCES
     src/AudioManager.cpp
     src/Recorder.cpp
     src/RhythmInterpreter.cpp
+    src/BeatRoot.cpp
 )
 
 set(HEADERS
@@ -53,6 +54,7 @@ set(HEADERS
     src/AudioManager.h
     src/Recorder.h
     src/RhythmInterpreter.h
+    src/BeatRoot.h
 )
 
 # Add GUI files only if TGUI is available
