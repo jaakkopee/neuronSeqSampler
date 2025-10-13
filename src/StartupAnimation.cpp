@@ -6,8 +6,8 @@ void StartupAnimation::playAnimation() {
     clearScreen();
     
     auto asciiText = getASCIIText();
-    const int totalFrames = 120; // Animation duration
-    const int fps = 20; // Frames per second
+    const int totalFrames = 180; // Animation duration (longer)
+    const int fps = 15; // Frames per second (slower)
     const int frameDelay = 1000 / fps; // Milliseconds per frame
     
     for (int frame = 0; frame < totalFrames; ++frame) {
@@ -55,8 +55,8 @@ std::vector<std::string> StartupAnimation::getASCIIText() {
 void StartupAnimation::renderFrame(const std::vector<std::string>& asciiText, int frameNumber) {
     const int screenWidth = 80;  // Terminal width
     const int textWidth = 50;    // Text width
-    const double sinePhase = frameNumber * 0.2; // Sine wave speed
-    const double scrollSpeed = 2.0; // Horizontal scroll speed
+    const double sinePhase = frameNumber * 0.12; // Sine wave speed (slower)
+    const double scrollSpeed = 1.2; // Horizontal scroll speed (slower)
     
     // Calculate base horizontal position (scrolling from right to left)
     int baseX = screenWidth - static_cast<int>(frameNumber * scrollSpeed);
@@ -91,15 +91,15 @@ void StartupAnimation::renderFrame(const std::vector<std::string>& asciiText, in
                 }
             }
             
-            // Add some color effects
-            if (frameNumber % 40 < 20) {
+            // Add some color effects (slower cycling)
+            if (frameNumber % 60 < 30) {
                 std::cout << "\033[36m"; // Cyan
             } else {
                 std::cout << "\033[35m"; // Magenta
             }
             
-            // Add brightness effect based on sine wave
-            double brightness = (std::sin(sinePhase * 1.5 + row * 0.5) + 1.0) / 2.0;
+            // Add brightness effect based on sine wave (slower)
+            double brightness = (std::sin(sinePhase * 1.0 + row * 0.4) + 1.0) / 2.0;
             if (brightness > 0.7) {
                 std::cout << "\033[1m"; // Bold/bright
             }
@@ -114,7 +114,7 @@ void StartupAnimation::renderFrame(const std::vector<std::string>& asciiText, in
     std::cout << "\033[K"; // Clear line
     std::string sparkles = "    ";
     for (int i = 0; i < 10; ++i) {
-        double sparklePhase = sinePhase * 2.0 + i * 0.8;
+        double sparklePhase = sinePhase * 1.5 + i * 0.6; // Slower sparkles
         if (std::sin(sparklePhase) > 0.6) {
             sparkles += "✦ ";
         } else if (std::sin(sparklePhase) > 0.0) {
