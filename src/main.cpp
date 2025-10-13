@@ -8,11 +8,16 @@
 #include "NeuronNetwork.h"
 #include "AudioManager.h"
 #include "Visualizer.h"
+#include "Debug.h"
 #include "Recorder.h"
+#include "StartupAnimation.h"
 #ifdef USE_TGUI
 #include "GUI.h"
 #endif
 #include "RhythmInterpreter.h" // Ensure this is included after its dependencies
+
+// Global debug flag definition
+bool g_debugMode = false;
 
 class NeuronSeqSampler {
 private:
@@ -81,26 +86,26 @@ public:
         guiManager.setGUIArea(700.0f, 0.0f, 1024.0f, 800.0f);
 #endif
         
-        std::cout << "\nAll changes to code by GitHub Copilot. The prompts were either feature additions or bug fixes for most cases.\n" << std::endl;
+        DEBUG_PRINT("\nAll changes to code by GitHub Copilot. The prompts were either feature additions or bug fixes for most cases.");
         
-        std::cout << "Neuron Sequence Sampler initialized with empty network." << std::endl;
-        std::cout << "Use the 'Network' menu to add neurons and connections." << std::endl;
+        ESSENTIAL_PRINT("Neuron Sequence Sampler initialized with empty network.");
+        ESSENTIAL_PRINT("Use the 'Network' menu to add neurons and connections.");
         
-        std::cout << "Controls:" << std::endl;
-        std::cout << "  - Mouse: Click to activate neurons" << std::endl;
-        std::cout << "  - Number keys: Activate specific neurons (when available)" << std::endl;
-        std::cout << "  - Spacebar: Manual network activation" << std::endl;
-        std::cout << "  - F key: Toggle filtered audio output (hearing filtered vs original)" << std::endl;
-        std::cout << "  - M key: Toggle rhythmogram matrix visibility 🎛️" << std::endl;
-        std::cout << "  - L buttons: Solo individual filter bands 🎚️" << std::endl;
-        std::cout << "  - Number keys: Play samples (1-9)" << std::endl;
-        std::cout << "\n🎛️ Rhythmogram analysis is always active - use gain sliders to control mapping!" << std::endl;
-        std::cout << "  - GUI sliders: Adjust filter gains and connection weights" << std::endl;
-        std::cout << "  - Menu: Add/remove neurons and connections" << std::endl;
+        ESSENTIAL_PRINT("Controls:");
+        ESSENTIAL_PRINT("  - Mouse: Click to activate neurons");
+        ESSENTIAL_PRINT("  - Number keys: Activate specific neurons (when available)");
+        ESSENTIAL_PRINT("  - Spacebar: Manual network activation");
+        ESSENTIAL_PRINT("  - F key: Toggle filtered audio output (hearing filtered vs original)");
+        ESSENTIAL_PRINT("  - M key: Toggle rhythmogram matrix visibility 🎛️");
+        ESSENTIAL_PRINT("  - L buttons: Solo individual filter bands 🎚️");
+        ESSENTIAL_PRINT("  - Number keys: Play samples (1-9)");
+        ESSENTIAL_PRINT("\n🎛️ Rhythmogram analysis is always active - use gain sliders to control mapping!");
+        ESSENTIAL_PRINT("  - GUI sliders: Adjust filter gains and connection weights");
+        ESSENTIAL_PRINT("  - Menu: Add/remove neurons and connections");
     }
     
     void setupTestingNetwork() {
-        std::cout << "Setting up testing network with 3 fully connected neurons..." << std::endl;
+        ESSENTIAL_PRINT("Setting up testing network with 3 fully connected neurons...");
         
         // Load samples for testing
         bool kickLoaded = audioManager.loadSampleFromPath(1, "samples/kick/kick (ghost).wav");
@@ -108,13 +113,13 @@ public:
         bool bassLoaded = audioManager.loadSampleFromPath(3, "samples/808/ROBBERY 808 @prodopus.wav");
         
         if (!kickLoaded) {
-            std::cout << "Warning: Could not load kick sample" << std::endl;
+            ESSENTIAL_PRINT("Warning: Could not load kick sample");
         }
         if (!clapLoaded) {
-            std::cout << "Warning: Could not load clap sample" << std::endl;
+            ESSENTIAL_PRINT("Warning: Could not load clap sample");
         }
         if (!bassLoaded) {
-            std::cout << "Warning: Could not load 808 sample" << std::endl;
+            ESSENTIAL_PRINT("Warning: Could not load 808 sample");
         }
         
         // Create three neurons
@@ -131,11 +136,11 @@ public:
             network.connect(bassNeuron, kickNeuron, 0.4f);
             network.connect(bassNeuron, clapNeuron, 0.6f);
             
-            std::cout << "Testing network created successfully!" << std::endl;
-            std::cout << "- Kick neuron (sample 1): " << (kickLoaded ? "✓" : "✗") << std::endl;
-            std::cout << "- Clap neuron (sample 2): " << (clapLoaded ? "✓" : "✗") << std::endl;
-            std::cout << "- 808 neuron (sample 3): " << (bassLoaded ? "✓" : "✗") << std::endl;
-            std::cout << "- 6 connections created (fully connected)" << std::endl;
+            ESSENTIAL_PRINT("Testing network created successfully!");
+            ESSENTIAL_PRINT_STREAM("- Kick neuron (sample 1): " << (kickLoaded ? "✓" : "✗"));
+            ESSENTIAL_PRINT_STREAM("- Clap neuron (sample 2): " << (clapLoaded ? "✓" : "✗"));
+            ESSENTIAL_PRINT_STREAM("- 808 neuron (sample 3): " << (bassLoaded ? "✓" : "✗"));
+            DEBUG_PRINT("- 6 connections created (fully connected)");
             
             // Initialize rhythmogram connection matrix with some default connections
             auto rhythmInterpreter = network.getRhythmInterpreter();
@@ -154,7 +159,7 @@ public:
                 rhythmInterpreter->setConnectionWeight(2, 2, 0.5f); // Half (0.5Hz) → 808
                 rhythmInterpreter->setConnectionWeight(3, 2, 0.3f); // Quarter (1Hz) → 808
                 
-                std::cout << "- Rhythmogram connection matrix initialized" << std::endl;
+                DEBUG_PRINT("- Rhythmogram connection matrix initialized");
             }
             
 #ifdef USE_TGUI
@@ -167,7 +172,7 @@ public:
             visualizer.refreshLayout();
             
         } else {
-            std::cout << "Error: Failed to create neurons for testing network" << std::endl;
+            ESSENTIAL_PRINT("Error: Failed to create neurons for testing network");
         }
     }
     
@@ -215,14 +220,14 @@ public:
                 if (event.key.code == sf::Keyboard::Space) {
                     // Manual network activation
                     network.activate();
-                    std::cout << "Manual network activation triggered" << std::endl;
+                    DEBUG_PRINT("Manual network activation triggered");
                 }
                 else if (event.key.code == sf::Keyboard::R) {
                     // Toggle recording with 'R' key
                     if (recorder.isCurrentlyRecording()) {
                         recorder.stopRecording();
                         audioManager.stopInternalRecording();
-                        std::cout << "Recording stopped" << std::endl;
+                        ESSENTIAL_PRINT("Recording stopped");
                     } else {
                         if (event.key.shift) {
                             // Shift+R: External microphone recording
@@ -340,16 +345,41 @@ public:
 
 int main(int argc, char* argv[]) {
     try {
-        std::cout << "Starting Neuron Sequence Sampler..." << std::endl;
-        
-        // Parse command line arguments
+        // Parse command line arguments first to check for animation control
         bool testingMode = false;
+        bool skipAnimation = false;
         for (int i = 1; i < argc; ++i) {
             if (std::string(argv[i]) == "--testing") {
                 testingMode = true;
-                std::cout << "Testing mode enabled" << std::endl;
-                break;
+            } else if (std::string(argv[i]) == "--debug") {
+                g_debugMode = true;
+            } else if (std::string(argv[i]) == "--no-animation") {
+                skipAnimation = true;
+            } else if (std::string(argv[i]) == "--help" || std::string(argv[i]) == "-h") {
+                std::cout << "NeuronSeqSampler - Neural Network Audio Sampler\n";
+                std::cout << "Usage: " << argv[0] << " [OPTIONS]\n";
+                std::cout << "Options:\n";
+                std::cout << "  --testing       Start with pre-configured 3-neuron drum network\n";
+                std::cout << "  --debug         Enable debug output (verbose logging)\n";
+                std::cout << "  --no-animation  Skip startup animation\n";
+                std::cout << "  --help, -h      Show this help message\n";
+                return 0;
             }
+        }
+        
+        // Play startup animation (unless skipped)
+        if (!skipAnimation) {
+            StartupAnimation::playAnimation();
+        }
+        
+        std::cout << "Starting Neuron Sequence Sampler..." << std::endl;
+        
+        // Show mode status
+        if (testingMode) {
+            std::cout << "Testing mode enabled" << std::endl;
+        }
+        if (g_debugMode) {
+            std::cout << "Debug mode enabled" << std::endl;
         }
         
         NeuronSeqSampler app(testingMode);

@@ -2,6 +2,7 @@
 #include "NeuronNetwork.h"
 #include "AudioManager.h"
 #include "BeatRoot.h"
+#include "Debug.h"
 #include <algorithm>
 #include <random>
 #include <cmath>
@@ -296,7 +297,7 @@ void RhythmDetector::analyzeTempo() {
         static int debugCounter = 0;
         debugCounter++;
         if (debugCounter % 50 == 0) {
-            std::cout << "🎯 Found " << peakIndices.size() << " peaks, " << intervals.size() << " intervals" << std::endl;
+            DEBUG_PRINT_STREAM("🎯 Found " << peakIndices.size() << " peaks, " << intervals.size() << " intervals");
         }
         
         // Use median instead of average to reduce outlier influence
@@ -530,15 +531,15 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     
     // Debug: Always log first few calls and periodically after
     if (debugCounter < 5 || debugCounter % 1000 == 0) {
-        std::cout << "🎛️  processAudioFrame called #" << debugCounter 
+        DEBUG_PRINT_STREAM("🎛️  processAudioFrame called #" << debugCounter 
                   << " - enabled: " << enabled 
                   << ", neuronNetwork: " << (neuronNetwork ? "yes" : "no")
-                  << ", audioData size: " << audioData.size() << std::endl;
+                  << ", audioData size: " << audioData.size());
     }
     
     if (!enabled || !neuronNetwork) {
-        std::cout << "⚠️  processAudioFrame early return - enabled: " << enabled 
-                  << ", neuronNetwork: " << (neuronNetwork ? "valid" : "null") << std::endl;
+        DEBUG_PRINT_STREAM("⚠️  processAudioFrame early return - enabled: " << enabled 
+                  << ", neuronNetwork: " << (neuronNetwork ? "valid" : "null"));
         return;
     }
     
@@ -549,7 +550,7 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         for (float sample : audioData) {
             maxSample = std::max(maxSample, std::abs(sample));
         }
-        std::cout << "📢 Audio input: " << audioData.size() << " samples, max: " << maxSample << std::endl;
+        DEBUG_PRINT_STREAM("📢 Audio input: " << audioData.size() << " samples, max: " << maxSample);
     }
     
     // Process audio through rhythm analysis systems
@@ -558,7 +559,7 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         static int beatRootDebugCounter = 0;
         beatRootDebugCounter++;
         if (beatRootDebugCounter % 100 == 0) {
-            std::cout << "🎯 BeatRoot ENABLED - Simple rhythm detector bypassed to save resources" << std::endl;
+            DEBUG_PRINT("🎯 BeatRoot ENABLED - Simple rhythm detector bypassed to save resources");
         }
         
         float deltaTime = audioData.size() / static_cast<float>(sampleRate);
@@ -571,14 +572,14 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
             static int tempoDebugCounter = 0;
             tempoDebugCounter++;
             if (tempoDebugCounter % 50 == 0) {
-                std::cout << "🎯 BeatRoot: detected=" << detectedTempo << " BPM, strength=" 
+                DEBUG_PRINT_STREAM("🎯 BeatRoot: detected=" << detectedTempo << " BPM, strength=" 
                           << beatRoot->getBeatStrength() << ", agents=" << beatRoot->getNumActiveAgents() 
-                          << ", stable=" << (beatRoot->hasStableTempo() ? "YES" : "NO") << std::endl;
+                          << ", stable=" << (beatRoot->hasStableTempo() ? "YES" : "NO"));
             }
             
             if (detectedTempo >= 30.0f && detectedTempo <= 300.0f && beatRoot->hasStableTempo()) {
                 if (std::abs(detectedTempo - bpm) > 1.0f) {
-                    std::cout << "🎯 BeatRoot updating BPM: " << bpm << " → " << detectedTempo << std::endl;
+                    ESSENTIAL_PRINT_STREAM("🎯 BeatRoot updating BPM: " << bpm << " → " << detectedTempo);
                     bpm = detectedTempo;
                     updateFilterBankForBPM();
                 }
@@ -589,7 +590,7 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         static int bypassDebugCounter = 0;
         bypassDebugCounter++;
         if (bypassDebugCounter % 100 == 0) {
-            std::cout << "🎵 BeatRoot DISABLED - Using simple rhythm detector to save resources" << std::endl;
+            DEBUG_PRINT("🎵 BeatRoot DISABLED - Using simple rhythm detector to save resources");
         }
         
         // Only process simple rhythm detector when BeatRoot is not active (mutual exclusivity)
@@ -604,19 +605,19 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
             static int tempoDebugCounter = 0;
             tempoDebugCounter++;
             if (tempoDebugCounter % 20 == 0) {  // More frequent debug output
-                std::cout << "🎵 Autodetect: detected=" << detectedTempo << " BPM, current=" << bpm << " BPM" << std::endl;
+                DEBUG_PRINT_STREAM("🎵 Autodetect: detected=" << detectedTempo << " BPM, current=" << bpm << " BPM");
             }
             
             if (detectedTempo >= 30.0f && detectedTempo <= 300.0f) { // Expanded valid BPM range
                 // Only update if the detected tempo is significantly different to avoid jitter
                 if (std::abs(detectedTempo - bpm) > 0.5f) {
-                    std::cout << "🎵 Updating BPM: " << bpm << " → " << detectedTempo << std::endl;
+                    ESSENTIAL_PRINT_STREAM("🎵 Updating BPM: " << bpm << " → " << detectedTempo);
                     bpm = detectedTempo;
                     updateFilterBankForBPM(); // Update filter frequencies when BPM changes
                 }
             } else {
                 if (tempoDebugCounter % 20 == 0) {  // More frequent debug output
-                    std::cout << "🎵 Rejected tempo " << detectedTempo << " BPM (out of range 30-300)" << std::endl;
+                    DEBUG_PRINT_STREAM("🎵 Rejected tempo " << detectedTempo << " BPM (out of range 30-300)");
                 }
             }
         }
@@ -649,8 +650,8 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         
         // Debug: Log filter output levels occasionally
         if (debugCounter % 1000 == 0 && i == 0) { // Only log for first filter to avoid spam
-            std::cout << "🎛️  Filter " << i << " - Raw sum: " << sum << ", Max sample: " << maxFilteredSample 
-                      << ", Final output: " << filterOutputs[i] << ", Gain: " << filterGains[i] << std::endl;
+            DEBUG_PRINT_STREAM("🎛️  Filter " << i << " - Raw sum: " << sum << ", Max sample: " << maxFilteredSample 
+                      << ", Final output: " << filterOutputs[i] << ", Gain: " << filterGains[i]);
         }
         
         // Adapt filter based on rhythm strength
@@ -678,7 +679,7 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         if (debugCounter % 100 == 0) {
             int soloCount = 0;
             for (bool solo : filterSoloEnabled) if (solo) soloCount++;
-            std::cout << "🎛️  Filter solo active: " << soloCount << " bands soloed" << std::endl;
+            DEBUG_PRINT_STREAM("🎛️  Filter solo active: " << soloCount << " bands soloed");
         }
     } else {
         // Output original audio (pass-through when no filters are soloed)
@@ -686,26 +687,24 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         
         // Debug: Output for pass-through
         if (debugCounter % 100 == 0 && !audioData.empty()) {
-            std::cout << "🔄 Pass-through mode: " << audioData.size() << " samples" << std::endl;
+            DEBUG_PRINT_STREAM("🔄 Pass-through mode: " << audioData.size() << " samples");
         }
     }
     
     // Debugging: Log audio processing details every 1000 frames to reduce spam
     if (debugCounter % 1000 == 0) {
-        std::cout << "🎛️  Global Gain: " << globalGain << ", Filter Gains: [";
-        for (size_t i = 0; i < std::min(filterGains.size(), size_t(3)); ++i) {
-            std::cout << filterGains[i];
-            if (i < std::min(filterGains.size(), size_t(3)) - 1) std::cout << ", ";
-        }
-        if (filterGains.size() > 3) std::cout << "...";
-        std::cout << "]" << std::endl;
+        DEBUG_PRINT_STREAM("🎛️  Global Gain: " << globalGain << ", Filter Gains: [" <<
+            (filterGains.size() > 0 ? std::to_string(filterGains[0]) : "") <<
+            (filterGains.size() > 1 ? ", " + std::to_string(filterGains[1]) : "") <<
+            (filterGains.size() > 2 ? ", " + std::to_string(filterGains[2]) : "") <<
+            (filterGains.size() > 3 ? "..." : "") << "]");
         
         float maxOutput = 0.0f;
         for (float sample : processedAudioBuffer) {
             maxOutput = std::max(maxOutput, std::abs(sample));
         }
-        std::cout << "🎛️  Processed Audio Buffer Size: " << processedAudioBuffer.size() 
-                  << ", Max Level: " << maxOutput << std::endl;
+        DEBUG_PRINT_STREAM("🎛️  Processed Audio Buffer Size: " << processedAudioBuffer.size() 
+                  << ", Max Level: " << maxOutput);
     }
 }
 
@@ -722,37 +721,39 @@ void RhythmInterpreter::update() {
     
     // Debug: Show connection matrix transform results occasionally
     if (debugCounter % 200 == 0) {
-        std::cout << "🔄 Connection matrix transform: " << filterOutputs.size() 
-                  << " filters → " << neuronInputs.size() << " neurons" << std::endl;
+        DEBUG_PRINT_STREAM("🔄 Connection matrix transform: " << filterOutputs.size() 
+                  << " filters → " << neuronInputs.size() << " neurons");
         
         // Show matrix weights for debugging
-        bool foundAnyWeights = false;
-        for (size_t f = 0; f < std::min(filterOutputs.size(), size_t(8)); ++f) {
-            if (filterOutputs[f] > 0.00001f) {  // Only check filters with output
-                for (size_t n = 0; n < neuronInputs.size(); ++n) {
-                    float weight = connectionMatrix->getWeight(f, n);
-                    if (weight > 0.001f) {
-                        std::cout << "   Filter " << f << " → Neuron " << (n+1) 
-                                  << ": output=" << filterOutputs[f] 
-                                  << " * weight=" << weight 
-                                  << " * scale=500" 
-                                  << " = " << (filterOutputs[f] * weight * 500.0f) << std::endl;
-                        foundAnyWeights = true;
+        if (g_debugMode) {
+            bool foundAnyWeights = false;
+            for (size_t f = 0; f < std::min(filterOutputs.size(), size_t(8)); ++f) {
+                if (filterOutputs[f] > 0.00001f) {  // Only check filters with output
+                    for (size_t n = 0; n < neuronInputs.size(); ++n) {
+                        float weight = connectionMatrix->getWeight(f, n);
+                        if (weight > 0.001f) {
+                            DEBUG_PRINT_STREAM("   Filter " << f << " → Neuron " << (n+1) 
+                                          << ": output=" << filterOutputs[f] 
+                                          << " * weight=" << weight 
+                                          << " * scale=500" 
+                                          << " = " << (filterOutputs[f] * weight * 500.0f));
+                            foundAnyWeights = true;
+                        }
                     }
                 }
             }
-        }
-        if (!foundAnyWeights) {
-            std::cout << "   ❌ No connection weights found! Matrix may be uninitialized." << std::endl;
-            // Show first few filter outputs and all weights for first neuron
-            for (size_t f = 0; f < std::min(size_t(3), filterOutputs.size()); ++f) {
-                float weight0 = (neuronInputs.size() > 0) ? connectionMatrix->getWeight(f, 0) : 0.0f;
-                std::cout << "      Filter " << f << ": output=" << filterOutputs[f] << " weight[0]=" << weight0 << std::endl;
+            if (!foundAnyWeights) {
+                DEBUG_PRINT("   ❌ No connection weights found! Matrix may be uninitialized.");
+                // Show first few filter outputs and all weights for first neuron
+                for (size_t f = 0; f < std::min(size_t(3), filterOutputs.size()); ++f) {
+                    float weight0 = (neuronInputs.size() > 0) ? connectionMatrix->getWeight(f, 0) : 0.0f;
+                    DEBUG_PRINT_STREAM("      Filter " << f << ": output=" << filterOutputs[f] << " weight[0]=" << weight0);
+                }
             }
-        }
-        
-        for (size_t i = 0; i < std::min(size_t(3), neuronInputs.size()); ++i) {
-            std::cout << "   Neuron " << (i+1) << " input: " << neuronInputs[i] << std::endl;
+            
+            for (size_t i = 0; i < std::min(size_t(3), neuronInputs.size()); ++i) {
+                DEBUG_PRINT_STREAM("   Neuron " << (i+1) << " input: " << neuronInputs[i]);
+            }
         }
     }
     
@@ -905,7 +906,7 @@ void RhythmInterpreter::updateFilterBankForBPM() {
     // At 120 BPM: quarter note = 1.0 Hz, so scaling factor = bpm/120
     float tempoScale = bpm / 120.0f;
     
-    std::cout << "🎵 BPM changed to " << bpm << " (scale factor: " << tempoScale << "x)" << std::endl;
+    ESSENTIAL_PRINT_STREAM("🎵 BPM changed to " << bpm << " (scale factor: " << tempoScale << "x)");
     
     // Scale all Todd frequencies proportionally to tempo
     // This keeps the rhythmic hierarchy relative to the current tempo
@@ -991,23 +992,23 @@ void RhythmInterpreter::setBeatRootSensitivity(float sensitivity) {
     if (useBeatRoot && beatRoot) {
         beatRoot->setSensitivity(beatRootSensitivity);
     }
-    std::cout << "🎯 BeatRoot sensitivity: " << beatRootSensitivity << std::endl;
+    DEBUG_PRINT_STREAM("🎯 BeatRoot sensitivity: " << beatRootSensitivity);
 }
 
 void RhythmInterpreter::initializeBeatRoot(float tempo) {
     if (!useBeatRoot || !beatRoot) {
-        std::cout << "🎯 BeatRoot initialization skipped (disabled)" << std::endl;
+        ESSENTIAL_PRINT("🎯 BeatRoot initialization skipped (disabled)");
         return;
     }
     
     if (tempo > 0.0f) {
         // Initialize with specific tempo
         beatRoot->initialize(tempo);
-        std::cout << "🎯 BeatRoot manually initialized with tempo: " << tempo << " BPM" << std::endl;
+        ESSENTIAL_PRINT_STREAM("🎯 BeatRoot manually initialized with tempo: " << tempo << " BPM");
     } else {
         // Enable auto-initialization
         beatRoot->setAutoInitialize(true);
-        std::cout << "🎯 BeatRoot auto-initialization enabled" << std::endl;
+        ESSENTIAL_PRINT("🎯 BeatRoot auto-initialization enabled");
     }
 }
 

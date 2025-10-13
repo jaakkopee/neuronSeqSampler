@@ -127,10 +127,10 @@ private:
     std::vector<float> beatTimes; // History of beat predictions
     bool isActive;
     
-    static constexpr float SCORE_DECAY = 0.9f;     // Score decay per frame
-    static constexpr float MIN_SCORE = 0.1f;       // Minimum score to stay active
-    static constexpr float ONSET_REWARD = 1.0f;    // Reward for onset near beat
-    static constexpr float ONSET_PENALTY = -0.5f;  // Penalty for onset far from beat
+    static constexpr float SCORE_DECAY = 0.98f;    // Score decay per frame (less aggressive)
+    static constexpr float MIN_SCORE = 0.05f;      // Minimum score to stay active (lower threshold)
+    static constexpr float ONSET_REWARD = 2.0f;    // Reward for onset near beat (higher reward)
+    static constexpr float ONSET_PENALTY = -0.2f;  // Penalty for onset far from beat (less harsh)
     
 public:
     BeatAgent(float tempo, float initialPhase = 0.0f);
@@ -169,8 +169,8 @@ private:
     float beatStrength;
     
     static constexpr size_t MAX_AGENTS = 8;
-    static constexpr float AGENT_SPAWN_THRESHOLD = 0.7f; // Tempo strength needed to spawn agent
-    static constexpr float BEAT_TOLERANCE = 0.05f;       // 50ms tolerance window
+    static constexpr float AGENT_SPAWN_THRESHOLD = 0.4f; // Tempo strength needed to spawn agent (more lenient)
+    static constexpr float BEAT_TOLERANCE = 0.1f;        // 100ms tolerance window (more forgiving)
     
     void spawnAgent(float tempo, float phase = 0.0f);
     void cullWeakAgents();

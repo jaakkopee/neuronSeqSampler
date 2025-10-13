@@ -255,7 +255,7 @@ void TempoInductor::reset() {
 
 BeatAgent::BeatAgent(float tempo, float initialPhase) 
     : beatInterval(60.0f / tempo), phase(initialPhase), score(1.0f), 
-      tolerance(0.05f), lastBeatTime(0.0f), isActive(true) {
+      tolerance(0.1f), lastBeatTime(0.0f), isActive(true) {  // Increased tolerance to 100ms
     beatTimes.reserve(100);
 }
 
@@ -279,6 +279,9 @@ void BeatAgent::update(float deltaTime, const std::vector<float>& onsetTimes, fl
     
     // Score this agent based on onsets
     scoreOnsets(onsetTimes, currentTime);
+    
+    // Small baseline survival bonus to prevent agents from dying too quickly
+    score += 0.02f;
     
     // Apply score decay
     score *= SCORE_DECAY;

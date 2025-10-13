@@ -6,6 +6,7 @@
 #include "Recorder.h"
 #include "RhythmInterpreter.h"
 #include "BeatRoot.h"
+#include "Debug.h"
 #include <iostream>
 #include <filesystem>
 #include <chrono>
@@ -34,7 +35,7 @@ void GUI::initialize() {
     // Enable rhythmogram analysis by default for neuron activation
     // Audio always plays directly, rhythmogram data drives neural network
     if (audioManager) {
-        std::cout << "🎛️  GUI: Enabling rhythmogram analysis for neuron activation (audio plays directly)" << std::endl;
+        DEBUG_PRINT("🎛️  GUI: Enabling rhythmogram analysis for neuron activation (audio plays directly)");
         audioManager->setFilterMode(true);  // Enable rhythmogram analysis
     }
 }
@@ -197,7 +198,7 @@ void GUI::createConnectionSliders() {
         yPos += 22.0f;
     }
     
-    std::cout << "Created " << connectionSliders.size() << " connection sliders" << std::endl;
+    DEBUG_PRINT_STREAM("Created " << connectionSliders.size() << " connection sliders");
 }
 
 void GUI::createNeuronSliders() {
@@ -293,7 +294,7 @@ void GUI::createNeuronSliders() {
         yPos += 22.0f; // Extra spacing after each neuron's controls
     }
     
-    std::cout << "Created " << neuronSliders.size() << " neuron sliders and " << activationFunctionCombos.size() << " activation function dropdowns" << std::endl;
+    DEBUG_PRINT_STREAM("Created " << neuronSliders.size() << " neuron sliders and " << activationFunctionCombos.size() << " activation function dropdowns");
 }
 
 void GUI::onNeuronSliderChanged(size_t neuronIndex, float value) {
@@ -2034,6 +2035,9 @@ void GUI::createConnectionMatrixPanel() {
             
             if (newState) {
                 std::cout << "🎯 BeatRoot enabled via GUI" << std::endl;
+                // Auto-initialize BeatRoot with current BPM when enabled  
+                rhythmInterpreter->initializeBeatRoot(rhythmInterpreter->getBPM());
+                std::cout << "🎯 BeatRoot auto-initialized with BPM: " << rhythmInterpreter->getBPM() << std::endl;
                 beatRootToggle->getRenderer()->setBackgroundColor(tgui::Color(80, 80, 140));
                 beatRootToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
             } else {
@@ -2218,8 +2222,8 @@ void GUI::updateConnectionMatrix() {
                 "Phrase(0.125Hz)", "Whole(0.25Hz)", "Half(0.5Hz)", "Quarter(1Hz)", "Eighth(2Hz)", "16th(4Hz)", "32nd(8Hz)", "Micro(16Hz)"
             };
             std::string bandName = (f < bandNames.size()) ? bandNames[f] : "Band" + std::to_string(f);
-            std::cout << "🎛️  Rhythmogram " << f << " (" << bandName << ") level: " << filterOutputs[f] 
-                      << " (clamped: " << outputLevel << ")" << std::endl;
+            DEBUG_PRINT_STREAM("🎛️  Rhythmogram " << f << " (" << bandName << ") level: " << filterOutputs[f] 
+                      << " (clamped: " << outputLevel << ")");
         }
 
         // Format with appropriate precision for both large and small values
@@ -2327,8 +2331,8 @@ void GUI::updateConnectionMatrix() {
             bool beatDetected = rhythmInterpreter->isBeatRootBeatDetected();
             
             std::ostringstream statusStream;
-            statusStream << "Agents: " << numAgents << "\\n";
-            statusStream << "Onset: " << std::fixed << std::setprecision(2) << onsetStrength << "\\n";
+            statusStream << "Agents: " << numAgents << "\n";
+            statusStream << "Onset: " << std::fixed << std::setprecision(2) << onsetStrength << "\n";
             statusStream << (stableTempo ? "STABLE" : "Learning");
             if (beatDetected) statusStream << " ♪";
             
