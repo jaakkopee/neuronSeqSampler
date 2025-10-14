@@ -249,7 +249,21 @@ public:
     bool isBeatRootBeatDetected() const;
     float getBeatRootOnsetStrength() const;
     size_t getBeatRootNumAgents() const;
+    
+    // BeatRoot advanced parameter control
+    BeatRoot* getBeatRoot() const { return beatRoot.get(); }
+    void setBeatRootOnsetThreshold(float threshold);
+    float getBeatRootOnsetThreshold() const;
+    void setBeatRootBeatTolerance(float tolerance);
+    float getBeatRootBeatTolerance() const;
+    void setBeatRootMaxAgents(size_t maxAgents);
+    size_t getBeatRootMaxAgents() const;
+    void setBeatRootAgentSpawnThreshold(float threshold);
+    float getBeatRootAgentSpawnThreshold() const;
+    void setBeatRootAutoInitialize(bool enable);
+    bool getBeatRootAutoInitialize() const;
     bool hasBeatRootStableTempo() const;
+    float getBeatRootCurrentTempo() const;
     
     // Getters
     bool isEnabled() const { return enabled; }

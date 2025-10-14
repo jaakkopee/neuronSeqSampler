@@ -85,6 +85,15 @@ private:
     tgui::Label::Ptr beatRootStatusLabel; // Status display (agents, tempo strength, etc.)
     tgui::Button::Ptr beatRootResetButton; // Manual reset button
     tgui::Button::Ptr beatRootInitButton; // Manual initialization button
+    
+    // Additional BeatRoot controls
+    tgui::Slider::Ptr beatRootOnsetThresholdSlider; // Onset detection threshold
+    tgui::Label::Ptr beatRootOnsetThresholdLabel; // Onset threshold value display
+    tgui::Slider::Ptr beatRootBeatToleranceSlider; // Beat prediction tolerance
+    tgui::Label::Ptr beatRootBeatToleranceLabel; // Beat tolerance value display
+    tgui::Slider::Ptr beatRootMaxAgentsSlider; // Maximum number of agents
+    tgui::Label::Ptr beatRootMaxAgentsLabel; // Max agents value display
+    tgui::Button::Ptr beatRootAutoInitToggle; // Auto-initialize toggle
     bool matrixVisible = true; // Connection matrix visibility state
     bool isUpdatingMatrix = false; // Flag to prevent recursive updates
     int matrixUpdateCounter = 0; // Counter to reduce update frequency

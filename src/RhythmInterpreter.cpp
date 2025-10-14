@@ -568,22 +568,36 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         // Update BPM from BeatRoot if autodetect is enabled
         if (autodetectTempo) {
             float detectedTempo = beatRoot->getCurrentTempo();
+            bool isStable = beatRoot->hasStableTempo();
+            float beatStrength = beatRoot->getBeatStrength();
+            size_t numAgents = beatRoot->getNumActiveAgents();
+            
+            DEBUG_PRINT_STREAM("🎯 AutodetectTempo ENABLED - checking BeatRoot tempo updates");
             
             static int tempoDebugCounter = 0;
             tempoDebugCounter++;
-            if (tempoDebugCounter % 50 == 0) {
+            if (tempoDebugCounter % 20 == 0) {  // More frequent updates
                 DEBUG_PRINT_STREAM("🎯 BeatRoot: detected=" << detectedTempo << " BPM, strength=" 
-                          << beatRoot->getBeatStrength() << ", agents=" << beatRoot->getNumActiveAgents() 
-                          << ", stable=" << (beatRoot->hasStableTempo() ? "YES" : "NO"));
+                          << beatStrength << ", agents=" << numAgents 
+                          << ", stable=" << (isStable ? "YES" : "NO")
+                          << ", current_bpm=" << bpm);
             }
             
-            if (detectedTempo >= 30.0f && detectedTempo <= 300.0f && beatRoot->hasStableTempo()) {
-                if (std::abs(detectedTempo - bpm) > 1.0f) {
-                    ESSENTIAL_PRINT_STREAM("🎯 BeatRoot updating BPM: " << bpm << " → " << detectedTempo);
-                    bpm = detectedTempo;
-                    updateFilterBankForBPM();
+            if (detectedTempo >= 30.0f && detectedTempo <= 300.0f) {
+                if (isStable) {
+                    if (std::abs(detectedTempo - bpm) > 1.0f) {
+                        ESSENTIAL_PRINT_STREAM("🎯 BeatRoot updating BPM: " << bpm << " → " << detectedTempo);
+                        bpm = detectedTempo;
+                        updateFilterBankForBPM();
+                    }
+                } else {
+                    DEBUG_PRINT_STREAM("🎯 BeatRoot: Tempo not stable yet - not updating BPM");
                 }
+            } else {
+                DEBUG_PRINT_STREAM("🎯 BeatRoot: Tempo out of range (" << detectedTempo << ") - not updating BPM");
             }
+        } else {
+            DEBUG_PRINT_STREAM("🎯 AutodetectTempo DISABLED - using simple rhythm detector");
         }
     } else {
         // Use simple rhythm detector (BeatRoot bypassed to save resources)
@@ -1035,4 +1049,59 @@ size_t RhythmInterpreter::getBeatRootNumAgents() const {
 
 bool RhythmInterpreter::hasBeatRootStableTempo() const {
     return useBeatRoot && beatRoot && beatRoot->hasStableTempo();
+}
+
+float RhythmInterpreter::getBeatRootCurrentTempo() const {
+    return (useBeatRoot && beatRoot) ? beatRoot->getCurrentTempo() : 120.0f;
+}
+
+// BeatRoot advanced parameter control
+void RhythmInterpreter::setBeatRootOnsetThreshold(float threshold) {
+    if (beatRoot) {
+        beatRoot->setOnsetThreshold(threshold);
+    }
+}
+
+float RhythmInterpreter::getBeatRootOnsetThreshold() const {
+    return beatRoot ? beatRoot->getOnsetThreshold() : 0.3f;
+}
+
+void RhythmInterpreter::setBeatRootBeatTolerance(float tolerance) {
+    if (beatRoot) {
+        beatRoot->setBeatTolerance(tolerance);
+    }
+}
+
+float RhythmInterpreter::getBeatRootBeatTolerance() const {
+    return beatRoot ? beatRoot->getBeatTolerance() : 0.1f;
+}
+
+void RhythmInterpreter::setBeatRootMaxAgents(size_t maxAgents) {
+    if (beatRoot) {
+        beatRoot->setMaxAgents(maxAgents);
+    }
+}
+
+size_t RhythmInterpreter::getBeatRootMaxAgents() const {
+    return beatRoot ? beatRoot->getMaxAgents() : 8;
+}
+
+void RhythmInterpreter::setBeatRootAgentSpawnThreshold(float threshold) {
+    if (beatRoot) {
+        beatRoot->setAgentSpawnThreshold(threshold);
+    }
+}
+
+float RhythmInterpreter::getBeatRootAgentSpawnThreshold() const {
+    return beatRoot ? beatRoot->getAgentSpawnThreshold() : 0.15f;
+}
+
+void RhythmInterpreter::setBeatRootAutoInitialize(bool enable) {
+    if (beatRoot) {
+        beatRoot->setAutoInitialize(enable);
+    }
+}
+
+bool RhythmInterpreter::getBeatRootAutoInitialize() const {
+    return beatRoot ? beatRoot->getAutoInitialize() : true;
 }

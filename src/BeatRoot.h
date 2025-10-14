@@ -168,15 +168,21 @@ private:
     float currentTempo;
     float beatStrength;
     
-    static constexpr size_t MAX_AGENTS = 8;
-    static constexpr float AGENT_SPAWN_THRESHOLD = 0.4f; // Tempo strength needed to spawn agent (more lenient)
-    static constexpr float BEAT_TOLERANCE = 0.1f;        // 100ms tolerance window (more forgiving)
+    // Configurable parameters
+    size_t maxAgents = 8;
+    float beatTolerance = 0.1f;        // 100ms tolerance window (more forgiving)
+    static constexpr size_t DEFAULT_MAX_AGENTS = 8;
+    static constexpr float DEFAULT_BEAT_TOLERANCE = 0.1f;
     
     void spawnAgent(float tempo, float phase = 0.0f);
     void cullWeakAgents();
     void updateWinningAgent();
     
 public:
+    // Configurable spawn threshold
+    float agentSpawnThreshold = 0.05f; // Tempo strength needed to spawn agent (lowered to allow more agents)
+    static constexpr float DEFAULT_AGENT_SPAWN_THRESHOLD = 0.05f;
+    
     BeatTracker();
     
     void update(float deltaTime, const std::vector<float>& onsetTimes, 
@@ -185,7 +191,7 @@ public:
     void initializeFromTempo(float tempo, float firstBeatTime = 0.0f);
     
     // Beat prediction
-    bool isBeatPredicted(float tolerance = BEAT_TOLERANCE) const;
+    bool isBeatPredicted(float tolerance) const;
     float getNextBeatTime() const;
     float getCurrentBeatStrength() const;
     
@@ -194,6 +200,14 @@ public:
     float getBeatStrength() const { return beatStrength; }
     const BeatAgent* getWinningAgent() const { return winningAgent.get(); }
     size_t getNumActiveAgents() const;
+    
+    // Parameter getters/setters
+    void setMaxAgents(size_t maxAgents) { this->maxAgents = maxAgents; }
+    size_t getMaxAgents() const { return maxAgents; }
+    void setBeatTolerance(float tolerance) { beatTolerance = tolerance; }
+    float getBeatTolerance() const { return beatTolerance; }
+    void setAgentSpawnThreshold(float threshold) { agentSpawnThreshold = threshold; }
+    float getAgentSpawnThreshold() const { return agentSpawnThreshold; }
     
     void reset();
 };
@@ -259,6 +273,16 @@ public:
     
     void setAutoInitialize(bool enable) { autoInitialize = enable; }
     bool getAutoInitialize() const { return autoInitialize; }
+    
+    // Advanced parameter control
+    void setOnsetThreshold(float threshold);
+    float getOnsetThreshold() const;
+    void setBeatTolerance(float tolerance);
+    float getBeatTolerance() const;
+    void setMaxAgents(size_t maxAgents);
+    size_t getMaxAgents() const;
+    void setAgentSpawnThreshold(float threshold);
+    float getAgentSpawnThreshold() const;
     
     // Component access (for debugging/advanced control)
     const OnsetDetector* getOnsetDetector() const { return onsetDetector.get(); }
