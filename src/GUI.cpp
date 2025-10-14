@@ -180,8 +180,12 @@ void GUI::createConnectionSliders() {
         slider->setValue(conn->getWeight());
         
         // Connect slider to callback
-        slider->onValueChange([this, i](float value) {
+        slider->onValueChange([this, i, slider](float value) {
             this->onSliderChanged(i, value);
+            // Remove focus from the slider and unfocus all widgets so global key events work
+            slider->setFocused(false);
+            if (gui)
+                gui->unfocusAllWidgets();
         });
         
         slidersPanel->add(slider);
@@ -234,8 +238,17 @@ void GUI::createNeuronSliders() {
         slider->setValue(neuron->getActivationIncreasePerIteration());
         
         // Connect slider to callback
-        slider->onValueChange([this, i](float value) {
+        slider->onValueChange([this, i, slider](float value) {
             this->onNeuronSliderChanged(i, value);
+            // Remove focus from the slider and unfocus all widgets so global key events work
+            slider->setFocused(false);
+            if (gui)
+                gui->unfocusAllWidgets();
+        });
+        // Fix: explicitly capture slider in the lambda
+        slider->onValueChange([this, i, slider](float value) {
+            this->onNeuronSliderChanged(i, value);
+            slider->setFocused(false);
         });
         
         slidersPanel->add(slider);
@@ -1516,6 +1529,8 @@ void GUI::showExternalRecordingDialog() {
 void GUI::createConnectionMatrixPanel() {
     // Remove existing panel if it exists
     if (connectionMatrixPanel) {
+        // Preserve current visibility state before removing panel
+        matrixVisible = connectionMatrixPanel->isVisible();
         gui->remove(connectionMatrixPanel);
         connectionMatrixPanel = nullptr;
         matrixToggleButtons.clear();
@@ -1527,7 +1542,6 @@ void GUI::createConnectionMatrixPanel() {
         bpmSlider = nullptr;
         bpmLabel = nullptr;
         autodetectTempoToggle = nullptr;
-        
         // BeatRoot controls
         beatRootToggle = nullptr;
         beatRootSensitivitySlider = nullptr;
@@ -1543,6 +1557,7 @@ void GUI::createConnectionMatrixPanel() {
         beatRootResetButton = nullptr;
         beatRootInitButton = nullptr;
     }
+    // Always use the current value of matrixVisible when creating the panel, even if it did not exist before
     
     if (!network || !network->getRhythmInterpreter()) {
         return; // No rhythm interpreter available

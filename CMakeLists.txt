@@ -8,12 +8,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 # Find required packages
+# Homebrew provides only shared SFML libraries, so force shared
+set(SFML_STATIC_LIBRARIES OFF)
 find_package(SFML 3.0 REQUIRED COMPONENTS System Window Graphics Audio Network)
 find_package(TGUI CONFIG REQUIRED)
-
-# Set static libraries to match our installation
-set(SFML_STATIC_LIBRARIES TRUE)
-set(TGUI_STATIC_LIBRARIES TRUE)
 
 # Create source directory if it doesn't exist
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/src)
