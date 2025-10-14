@@ -43,6 +43,10 @@ private:
                     window.close();
                 } else if constexpr (std::is_same_v<T, sf::Event::MouseWheelScrolled>) {
                     handleMouseScroll(e.delta);
+                } else if constexpr (std::is_same_v<T, sf::Event::KeyPressed>) {
+                    if (!eventConsumedByGUI) {
+                        handleKeyPress(e.code);
+                    }
                 } else {
                     // Ignore other events
                 }
@@ -239,7 +243,64 @@ public:
         visualizer.handleMouseDrag(mouseX, mouseY);
     }
 
+    void handleKeyPress(sf::Keyboard::Key key) {
+        switch (key) {
+            case sf::Keyboard::Key::M:
+                // Toggle rhythmogram matrix visibility
+#ifdef USE_TGUI
+                guiManager.toggleMatrixVisibility();
+                ESSENTIAL_PRINT("🎛️ Toggled rhythmogram matrix visibility");
+#else
+                ESSENTIAL_PRINT("🎛️ Matrix toggle requires GUI support (TGUI not available)");
+#endif
+                break;
+            case sf::Keyboard::Key::F:
+                // Toggle filtered audio output
+                {
+                    bool currentMode = audioManager.isFilterModeEnabled();
+                    audioManager.setAdaptiveFilterMode(!currentMode);
+                    ESSENTIAL_PRINT("🎚️ Toggled filtered audio output: " << (!currentMode ? "ON" : "OFF"));
+                }
+                break;
+            case sf::Keyboard::Key::Space:
+                // Manual network activation
+                if (network.getNeuronCount() > 0) {
+                    network.activate();
+                    ESSENTIAL_PRINT("🎵 Manual network activation");
+                } else {
+                    ESSENTIAL_PRINT("🎵 No neurons in network to activate");
+                }
+                break;
+            case sf::Keyboard::Key::Num1:
+            case sf::Keyboard::Key::Num2:
+            case sf::Keyboard::Key::Num3:
+            case sf::Keyboard::Key::Num4:
+            case sf::Keyboard::Key::Num5:
+            case sf::Keyboard::Key::Num6:
+            case sf::Keyboard::Key::Num7:
+            case sf::Keyboard::Key::Num8:
+            case sf::Keyboard::Key::Num9:
+                // Play samples with number keys
+                {
+                    int sampleIndex = static_cast<int>(key) - static_cast<int>(sf::Keyboard::Key::Num1);
+                    audioManager.playSample(sampleIndex);
+                    ESSENTIAL_PRINT("🎵 Playing sample " << (sampleIndex + 1));
+                }
+                break;
+            default:
+                // Ignore other keys
+                break;
+        }
+    }
+
     void update() {
+    // Automatic network activation based on activation interval
+    float elapsedMs = clock.getElapsedTime().asMilliseconds();
+    if (elapsedMs >= activationInterval) {
+        network.activate();
+        clock.restart();
+    }
+    
     // Status monitoring
     static int statusCounter = 0;
     bool hasRhythmInterpreter = network.getRhythmInterpreter() != nullptr;
