@@ -1,5 +1,10 @@
 # Recent Updates
 
+![Neural Network Visualization](https://img.shields.io/badge/Interface-Real--time%20Neural%20Visualization-blue)
+![Audio Engine](https://img.shields.io/badge/Audio-SFML%20Based-green)
+![Build Status](https://img.shields.io/badge/Build-CMake%20%2B%20C%2B%2B17-orange)
+![Preset System](https://img.shields.io/badge/Presets-JSON%20Save%2FLoad-purple)*🎵 JSON Preset System**: Complete save/load functionality with keyboard shortcuts (S/L) and GUI dialogs for neural network configurations.
+- **💾 Smart Preset Management**: Factory presets, user presets, metadata support, and automatic network restoration.
 - **Rhythmogram Matrix Panel**: Toggle with 'M', scrollable 8×N grid, real-time routing, per-band and per-connection gain controls.
 - **Robust Keyboard Shortcuts**: Global keys (e.g., 'M' for matrix) work reliably after all GUI actions.
 - **Live Parameter Editing**: Instantly adjust neuron activation and connection weights with immediate audio/visual feedback.
@@ -48,6 +53,7 @@ This isn't just a traditional step sequencer - it's a living, breathing musical 
 - **📹 Dual Recording System**: Capture both external microphone input and internal network-generated audio
 - **🎧 High-Quality Audio Engine**: Built on SFML for low-latency, professional audio processing
 - **🚀 Instant Gratification**: Testing mode provides pre-configured drum networks for immediate experimentation
+- **💾 JSON Preset System**: Save and load complete neural network configurations with metadata and version control
 - **🎼 Sample Management**: Load and organize your own samples or use the included professional sample library
 
 ## Quick Start
@@ -56,7 +62,7 @@ This isn't just a traditional step sequencer - it's a living, breathing musical 
 
 ```bash
 # Install dependencies (Ubuntu/Debian)
-sudo apt install build-essential cmake libsfml-dev libtgui-dev
+sudo apt install build-essential cmake libsfml-dev libtgui-dev nlohmann-json3-dev
 
 # Clone and build
 git clone <repository-url>
@@ -73,6 +79,7 @@ make
 - **OS**: Linux (Debian/Ubuntu), macOS (tested)
 - **SFML**: 3.0.2 required (not 2.x)
 - **TGUI**: Latest version compatible with SFML 3.x
+- **nlohmann/json**: 3.2.0+ for JSON preset system
 - **Compiler**: GCC 7+ or Clang 7+ with C++17 support
 - **Audio**: ALSA/PulseAudio (Linux) or CoreAudio (macOS)
 - **Graphics**: OpenGL-capable system for real-time visualization
@@ -100,8 +107,11 @@ make
 - **Spacebar**: Random network activation
 - **R Key**: Toggle audio recording
 - **M Key**: Toggle connection matrix visibility
+- **S Key**: Quick save current network as preset
+- **L Key**: Load factory drum pattern preset
 - **Number Keys (1-9)**: Activate specific neurons
 - **Menu System**: Add/remove neurons and connections
+- **Presets Menu**: Complete preset management with save/load/browse dialogs
 
 **Left Panel - Neuron Controls:**
 - **Activation Sliders**: Control self-modulation rate (-0.1 to 0.6) for each neuron
@@ -173,7 +183,7 @@ This creates emergent musical behavior where simple biological principles genera
 **Ubuntu/Debian:**
 ```bash
 sudo apt update
-sudo apt install build-essential cmake libsfml-dev libtgui-dev
+sudo apt install build-essential cmake libsfml-dev libtgui-dev nlohmann-json3-dev
 # If your distro does not yet provide SFML 3.0.2, build SFML and TGUI from source:
 # https://www.sfml-dev.org/download.php
 # https://tgui.eu/download/
@@ -181,12 +191,12 @@ sudo apt install build-essential cmake libsfml-dev libtgui-dev
 
 **Fedora:**
 ```bash
-sudo dnf install gcc-c++ cmake sfml-devel tgui-devel
+sudo dnf install gcc-c++ cmake sfml-devel tgui-devel nlohmann-json-devel
 ```
 
 **Arch Linux:**
 ```bash
-sudo pacman -S gcc cmake sfml tgui
+sudo pacman -S gcc cmake sfml tgui nlohmann-json
 ```
 
 **macOS:**
@@ -368,6 +378,85 @@ The system includes comprehensive debug output:
 ```
 
 This breakthrough integration transforms NeuronSeqSampler from an interactive audio toy into a serious tool for **computational music research** and **live electronic performance**.
+
+---
+
+## JSON Preset System
+
+### Complete Network State Management
+
+The JSON preset system provides professional-grade save/load functionality for complete neural network configurations, enabling users to preserve, share, and restore complex musical patterns with full fidelity.
+
+#### **🎹 Keyboard Shortcuts**
+- **S Key**: Quick save current network with timestamp (saves to `presets/user/quicksave_[timestamp].json`)
+- **L Key**: Instantly load factory drum pattern preset (3-neuron network with kick/clap/bass)
+
+#### **🖥️ GUI Integration**
+- **Presets Menu**: Complete preset management system
+  - **Save Dialog**: Create named presets with descriptions and metadata
+  - **Load Dialog**: Browse and select from factory and user presets
+  - **Preset Browser**: Detailed view with preset information, author, and descriptions
+  - **Quick Actions**: Direct access to factory presets
+
+#### **📁 Preset Structure**
+```
+presets/
+├── factory/                    # Built-in example presets
+│   ├── drum_pattern.json      # 3-neuron drum network
+│   └── ambient_textures.json  # 2-neuron ambient network
+└── user/                      # Your custom presets
+    └── [custom_presets].json
+```
+
+#### **📋 Complete State Preservation**
+Each preset captures the full network configuration:
+- **Neuron Parameters**: Activation levels, thresholds, decay rates, self-modulation, activation functions
+- **Connection Topology**: Complete network structure with precise connection weights
+- **Rhythmogram Matrix**: Filter configurations and frequency-to-neuron routing
+- **Metadata**: Name, author, description, creation date, tags, and version information
+
+#### **🔧 Example Preset Structure**
+```json
+{
+  "preset_info": {
+    "name": "Funky Drum Loop",
+    "author": "Your Name",
+    "description": "Polyrhythmic pattern with sigmoid activation",
+    "created_date": "2025-10-14T12:30:00Z",
+    "tags": "drums,polyrhythmic,sigmoid"
+  },
+  "neurons": [
+    {
+      "id": 0,
+      "sample_index": 1,
+      "activation": 0.0,
+      "threshold": 1.0,
+      "decay_rate": 0.5,
+      "activation_increase_per_iteration": 0.0,
+      "activation_function": "Sigmoid"
+    }
+  ],
+  "connections": [
+    {
+      "source_id": 0,
+      "target_id": 1,
+      "weight": 0.6
+    }
+  ],
+  "rhythmogram_matrix": {
+    "enabled": true,
+    "scale": 5.0,
+    "filter_gains": [1.0, 1.5, 2.0, 1.2, 0.8, 1.0, 1.0, 1.0]
+  }
+}
+```
+
+#### **✅ Professional Features**
+- **Human-Readable Format**: JSON structure allows manual editing and version control
+- **Automatic Validation**: Error handling with detailed feedback for malformed presets
+- **Smart Restoration**: Complete network rebuilding including rhythm interpreter reinitialization
+- **GUI Synchronization**: All sliders, matrices, and visual elements update to reflect loaded state
+- **Cross-Session Compatibility**: Presets work across different application sessions and system restarts
 
 ---
 
