@@ -8,8 +8,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 # Find required packages
-# Homebrew provides only shared SFML libraries, so force shared
+# Force shared libraries for both SFML and TGUI
 set(SFML_STATIC_LIBRARIES OFF)
+set(TGUI_STATIC_LIBRARIES OFF)
 find_package(SFML 3.0 REQUIRED COMPONENTS System Window Graphics Audio Network)
 find_package(TGUI CONFIG REQUIRED)
 
