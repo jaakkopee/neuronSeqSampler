@@ -10,7 +10,7 @@
 
 class Recorder : public sf::SoundRecorder {
 private:
-    std::vector<int16_t> samples;
+    std::vector<std::int16_t> samples;
     std::string outputFilename;
     bool isRecordingToFile;
     bool currentlyRecording;
@@ -50,18 +50,18 @@ private:
     // WAV file format structures
     struct WavHeader {
         char chunkId[4] = {'R', 'I', 'F', 'F'};
-        uint32_t chunkSize;
+        std::uint32_t chunkSize;
         char format[4] = {'W', 'A', 'V', 'E'};
         char subchunk1Id[4] = {'f', 'm', 't', ' '};
-        uint32_t subchunk1Size = 16;
-        uint16_t audioFormat = 1; // PCM
-        uint16_t numChannels;
-        uint32_t sampleRate;
-        uint32_t byteRate;
-        uint16_t blockAlign;
-        uint16_t bitsPerSample = 16;
+        std::uint32_t subchunk1Size = 16;
+        std::uint16_t audioFormat = 1; // PCM
+        std::uint16_t numChannels;
+        std::uint32_t sampleRate;
+        std::uint32_t byteRate;
+        std::uint16_t blockAlign;
+        std::uint16_t bitsPerSample = 16;
         char subchunk2Id[4] = {'d', 'a', 't', 'a'};
-        uint32_t subchunk2Size;
+        std::uint32_t subchunk2Size;
     };
 
 public:
@@ -89,13 +89,13 @@ public:
     float getRecordingDuration() const; // in seconds
     
     // Audio processing
-    void addSamples(const int16_t* sampleData, size_t sampleCount);
-    void addSamples(const std::vector<int16_t>& newSamples);
-    void addSampleAtTime(const int16_t* sampleData, size_t sampleCount, int sampleIndex); // Time-aware addition for internal recording
+    void addSamples(const std::int16_t* sampleData, size_t sampleCount);
+    void addSamples(const std::vector<std::int16_t>& newSamples);
+    void addSampleAtTime(const std::int16_t* sampleData, size_t sampleCount, int sampleIndex); // Time-aware addition for internal recording
     void stopSampleAtTime(int sampleIndex); // Stop a specific sample in the recording
     
     // Get current audio data
-    const std::vector<int16_t>& getSamples() const { return samples; }
+    const std::vector<std::int16_t>& getSamples() const { return samples; }
     
     // Get current realtime audio buffer (for rhythm analysis)
     std::vector<float> getRealtimeAudioBuffer(size_t maxSamples = 512) const;
@@ -103,12 +103,12 @@ public:
 protected:
     // Inherited from sf::SoundRecorder
     virtual bool onStart() override;
-    virtual bool onProcessSamples(const int16_t* sampleData, std::size_t sampleCount) override;
+    virtual bool onProcessSamples(const std::int16_t* sampleData, std::size_t sampleCount) override;
     virtual void onStop() override;
 
 private:
     bool writeWavFile(const std::string& filename);
-    WavHeader createWavHeader(uint32_t dataSize, uint32_t sampleRate, uint16_t channels);
+    WavHeader createWavHeader(std::uint32_t dataSize, std::uint32_t sampleRate, std::uint16_t channels);
     
     // Helper methods to get effective recording parameters
     unsigned int getEffectiveSampleRate() const;
@@ -116,13 +116,13 @@ private:
     
     // Real-time buffer management for internal recording
     void finalizeRealtimeBuffer(); // Convert real-time buffer to samples
-    void mixSampleIntoBuffer(const int16_t* sampleData, size_t sampleCount, size_t bufferOffset);
+    void mixSampleIntoBuffer(const std::int16_t* sampleData, size_t sampleCount, size_t bufferOffset);
     void stopActiveSample(int sampleIndex, size_t currentPosition); // Stop active sample and remove from buffer
     void rebuildRealtimeBuffer(size_t currentPosition); // Rebuild buffer from active samples
     size_t getRealtimeBufferSize() const; // Get current buffer size in samples
     
     // Audio processing functions
-    int16_t applyNoiseGate(int16_t sample);
-    int16_t applyHighPassFilter(int16_t sample);
-    void processSample(int16_t& sample);
+    std::int16_t applyNoiseGate(std::int16_t sample);
+    std::int16_t applyHighPassFilter(std::int16_t sample);
+    void processSample(std::int16_t& sample);
 };

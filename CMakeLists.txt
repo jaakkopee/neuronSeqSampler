@@ -8,14 +8,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 # Find required packages
-find_package(PkgConfig REQUIRED)
-set(SFML_STATIC_LIBRARIES FALSE)
-set(TGUI_STATIC_LIBRARIES FALSE)
-pkg_check_modules(SFML REQUIRED sfml-graphics sfml-audio sfml-system sfml-window)
+find_package(SFML 3.0 REQUIRED COMPONENTS System Window Graphics Audio Network)
 find_package(TGUI CONFIG REQUIRED)
 
-# Add Homebrew SFML 3.0.2 library path for linker
-link_directories(/opt/homebrew/Cellar/sfml/3.0.2/lib)
+# Set static libraries to match our installation
+set(SFML_STATIC_LIBRARIES TRUE)
+set(TGUI_STATIC_LIBRARIES TRUE)
 
 # Create source directory if it doesn't exist
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/src)
@@ -25,8 +23,6 @@ file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/assets/fonts)
 
 # Include directories
 include_directories(src)
-include_directories(${SFML_INCLUDE_DIRS})
-include_directories(/opt/homebrew/include)
 
 
 
@@ -81,27 +77,19 @@ add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 if(USE_TGUI)
     target_link_libraries(${PROJECT_NAME} PRIVATE TGUI::TGUI)
 endif()
-target_link_libraries(${PROJECT_NAME} PRIVATE ${SFML_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} PRIVATE SFML::Graphics SFML::Audio SFML::System SFML::Window)
 
 # Create recorder demo executable
 add_executable(recorder_demo recorder_demo.cpp src/Recorder.cpp)
+target_link_libraries(recorder_demo PRIVATE SFML::Audio SFML::System)
 
 # Create debug recorder executable
 add_executable(debug_recorder debug_recorder.cpp src/Recorder.cpp)
+target_link_libraries(debug_recorder PRIVATE SFML::Audio SFML::System)
 
 # Create SFML audio test executable
 add_executable(test_sfml_audio test_sfml_audio.cpp)
-
-# Set compiler flags for SFML
-target_compile_options(${PROJECT_NAME} PRIVATE ${SFML_CFLAGS_OTHER})
-target_compile_options(recorder_demo PRIVATE ${SFML_CFLAGS_OTHER})
-target_compile_options(debug_recorder PRIVATE ${SFML_CFLAGS_OTHER})
-target_compile_options(test_sfml_audio PRIVATE ${SFML_CFLAGS_OTHER})
-
-# Link libraries
-target_link_libraries(recorder_demo PRIVATE ${SFML_LIBRARIES})
-target_link_libraries(debug_recorder PRIVATE ${SFML_LIBRARIES})
-target_link_libraries(test_sfml_audio PRIVATE ${SFML_LIBRARIES})
+target_link_libraries(test_sfml_audio PRIVATE SFML::Audio SFML::System)
 
 # Copy assets to build directory
 file(COPY ${CMAKE_SOURCE_DIR}/samples DESTINATION ${CMAKE_BINARY_DIR})
