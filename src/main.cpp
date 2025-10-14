@@ -14,6 +14,7 @@
 #include "Debug.h"
 #include "Recorder.h"
 #include "StartupAnimation.h"
+#include "PresetManager.h"
 #ifdef USE_TGUI
 #include "GUI.h"
 #endif
@@ -287,6 +288,36 @@ public:
                     ESSENTIAL_PRINT("🎵 Playing sample " << (sampleIndex + 1));
                 }
                 break;
+            case sf::Keyboard::Key::S:
+                // Save preset (Ctrl+S would be better, but this is simpler for now)
+                {
+                    PresetManager::PresetInfo info;
+                    info.name = "Quick Save";
+                    info.description = "Quickly saved preset";
+                    std::string filename = "presets/user/quicksave_" + std::to_string(std::time(nullptr)) + ".json";
+                    if (PresetManager::savePreset(network, filename, info)) {
+                        ESSENTIAL_PRINT("💾 Preset saved: " << filename);
+                    } else {
+                        ESSENTIAL_PRINT("❌ Failed to save preset");
+                    }
+                }
+                break;
+            case sf::Keyboard::Key::L:
+                // Load factory drum pattern preset
+                if (PresetManager::loadFactoryPreset(network, "drum_pattern")) {
+                    ESSENTIAL_PRINT("📂 Loaded factory drum pattern preset");
+                    // Refresh visualizer to show the loaded network
+                    visualizer.refreshLayout();
+#ifdef USE_TGUI
+                    // Refresh GUI to show the loaded network
+                    guiManager.refreshConnectionSliders();
+                    guiManager.refreshNeuronSliders();
+                    guiManager.refreshConnectionMatrix();
+#endif
+                } else {
+                    ESSENTIAL_PRINT("❌ Failed to load factory preset");
+                }
+                break;
             default:
                 // Ignore other keys
                 break;
@@ -324,6 +355,16 @@ public:
 };
 
 int main() {
+    // Initialize preset system
+    PresetManager::createPresetDirectory();
+    PresetManager::createFactoryPresets();
+    
+    std::cout << "🎵 Neuron Sequence Sampler" << std::endl;
+    std::cout << "💾 Preset Controls:" << std::endl;
+    std::cout << "   S - Save current network as preset" << std::endl;
+    std::cout << "   L - Load factory drum pattern preset" << std::endl;
+    std::cout << std::endl;
+    
     NeuronSeqSampler app;
     app.run();
     return 0;

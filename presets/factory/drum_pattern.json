@@ -1,0 +1,75 @@
+{
+  "connections": [
+    {
+      "source_id": 0,
+      "target_id": 1,
+      "weight": 0.6
+    },
+    {
+      "source_id": 0,
+      "target_id": 2,
+      "weight": 0.7
+    },
+    {
+      "source_id": 1,
+      "target_id": 2,
+      "weight": 0.5
+    },
+    {
+      "source_id": 2,
+      "target_id": 0,
+      "weight": 0.4
+    }
+  ],
+  "neurons": [
+    {
+      "activation": 0.0,
+      "activation_function": "Linear",
+      "activation_increase_per_iteration": 0.0,
+      "decay_rate": 0.5,
+      "id": 0,
+      "sample_index": 1,
+      "threshold": 1.0
+    },
+    {
+      "activation": 0.0,
+      "activation_function": "Linear",
+      "activation_increase_per_iteration": 0.0,
+      "decay_rate": 0.5,
+      "id": 1,
+      "sample_index": 2,
+      "threshold": 1.0
+    },
+    {
+      "activation": 0.0,
+      "activation_function": "Linear",
+      "activation_increase_per_iteration": 0.0,
+      "decay_rate": 0.5,
+      "id": 2,
+      "sample_index": 3,
+      "threshold": 1.0
+    }
+  ],
+  "preset_info": {
+    "author": "NeuronSeqSampler",
+    "created_date": "2025-10-14T07:49:39Z",
+    "description": "Basic 3-neuron drum pattern with kick, clap, and bass",
+    "name": "Factory Drum Pattern",
+    "tags": "drums,factory,basic",
+    "version": "1.0"
+  },
+  "rhythmogram_matrix": {
+    "enabled": true,
+    "filter_gains": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "scale": 5.0
+  }
+}

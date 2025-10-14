@@ -13,6 +13,7 @@ set(SFML_STATIC_LIBRARIES OFF)
 set(TGUI_STATIC_LIBRARIES OFF)
 find_package(SFML 3.0 REQUIRED COMPONENTS System Window Graphics Audio Network)
 find_package(TGUI CONFIG REQUIRED)
+find_package(nlohmann_json 3.2.0 REQUIRED)
 
 # Create source directory if it doesn't exist
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/src)
@@ -48,6 +49,7 @@ set(SOURCES
     src/RhythmInterpreter.cpp
     src/BeatRoot.cpp
     src/StartupAnimation.cpp
+    src/PresetManager.cpp
 )
 
 set(HEADERS
@@ -60,6 +62,7 @@ set(HEADERS
     src/RhythmInterpreter.h
     src/BeatRoot.h
     src/StartupAnimation.h
+    src/PresetManager.h
 )
 
 # Add GUI files only if TGUI is available
@@ -76,7 +79,7 @@ add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 if(USE_TGUI)
     target_link_libraries(${PROJECT_NAME} PRIVATE TGUI::TGUI)
 endif()
-target_link_libraries(${PROJECT_NAME} PRIVATE SFML::Graphics SFML::Audio SFML::System SFML::Window)
+target_link_libraries(${PROJECT_NAME} PRIVATE SFML::Graphics SFML::Audio SFML::System SFML::Window nlohmann_json::nlohmann_json)
 
 # Create recorder demo executable
 add_executable(recorder_demo recorder_demo.cpp src/Recorder.cpp)

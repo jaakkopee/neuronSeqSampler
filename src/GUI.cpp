@@ -63,6 +63,13 @@ void GUI::createMenuBar() {
     menuBar->addMenuItem("Recording", "Record External Microphone");
     menuBar->addMenuItem("Recording", "Stop Recording");
     
+    // Add "Presets" menu
+    menuBar->addMenu("Presets");
+    menuBar->addMenuItem("Presets", "Save Preset");
+    menuBar->addMenuItem("Presets", "Load Preset");
+    menuBar->addMenuItem("Presets", "Load Factory Drum Pattern");
+    menuBar->addMenuItem("Presets", "Browse Presets");
+    
     // Connect menu actions
     menuBar->connectMenuItem("Network", "Add Neuron", [this]() { this->addNeuron(); });
     menuBar->connectMenuItem("Network", "Remove Neuron", [this]() { this->removeNeuron(); });
@@ -72,6 +79,10 @@ void GUI::createMenuBar() {
     menuBar->connectMenuItem("Recording", "Record NeuronSeq Output", [this]() { this->startInternalRecording(); });
     menuBar->connectMenuItem("Recording", "Record External Microphone", [this]() { this->startExternalRecording(); });
     menuBar->connectMenuItem("Recording", "Stop Recording", [this]() { this->stopRecording(); });
+    menuBar->connectMenuItem("Presets", "Save Preset", [this]() { this->showSavePresetDialog(); });
+    menuBar->connectMenuItem("Presets", "Load Preset", [this]() { this->showLoadPresetDialog(); });
+    menuBar->connectMenuItem("Presets", "Load Factory Drum Pattern", [this]() { this->loadFactoryDrumPattern(); });
+    menuBar->connectMenuItem("Presets", "Browse Presets", [this]() { this->showPresetBrowser(); });
     
     // Adjust control panel position to account for menu bar
     controlPanelTopOffset = 4.0f; // 4% for menu bar
@@ -2583,3 +2594,245 @@ void GUI::updateFrequencyLabels() {
 }
 
 // Frequency response visualization method temporarily removed due to TGUI widget limitations
+
+// ================================================================================================
+// Preset Management Methods
+// ================================================================================================
+
+void GUI::showSavePresetDialog() {
+    auto dialog = tgui::ChildWindow::create("Save Preset");
+    dialog->setSize(400, 250);
+    dialog->setPosition("50%", "50%");
+    dialog->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+    dialog->getRenderer()->setBorderColor(tgui::Color::White);
+    
+    // Name input
+    auto nameLabel = tgui::Label::create("Preset Name:");
+    nameLabel->setPosition(20, 30);
+    nameLabel->getRenderer()->setTextColor(tgui::Color::White);
+    dialog->add(nameLabel);
+    
+    auto nameInput = tgui::EditBox::create();
+    nameInput->setSize(300, 30);
+    nameInput->setPosition(20, 55);
+    nameInput->setText("My Preset");
+    dialog->add(nameInput);
+    
+    // Description input
+    auto descLabel = tgui::Label::create("Description:");
+    descLabel->setPosition(20, 95);
+    descLabel->getRenderer()->setTextColor(tgui::Color::White);
+    dialog->add(descLabel);
+    
+    auto descInput = tgui::EditBox::create();
+    descInput->setSize(300, 30);
+    descInput->setPosition(20, 120);
+    descInput->setText("Custom neural network preset");
+    dialog->add(descInput);
+    
+    // Buttons
+    auto saveButton = tgui::Button::create("Save");
+    saveButton->setPosition(80, 180);
+    saveButton->setSize(100, 30);
+    saveButton->onPress([=]() {
+        PresetManager::PresetInfo info;
+        info.name = nameInput->getText().toStdString();
+        info.description = descInput->getText().toStdString();
+        info.author = "User";
+        
+        std::string filename = "presets/user/" + info.name + ".json";
+        
+        if (PresetManager::savePreset(*network, filename, info)) {
+            std::cout << "✅ Preset saved: " << filename << std::endl;
+        } else {
+            std::cout << "❌ Failed to save preset" << std::endl;
+        }
+        
+        dialog->close();
+    });
+    dialog->add(saveButton);
+    
+    auto cancelButton = tgui::Button::create("Cancel");
+    cancelButton->setPosition(220, 180);
+    cancelButton->setSize(100, 30);
+    cancelButton->onPress([=]() {
+        dialog->close();
+    });
+    dialog->add(cancelButton);
+    
+    gui->add(dialog);
+}
+
+void GUI::showLoadPresetDialog() {
+    auto dialog = tgui::ChildWindow::create("Load Preset");
+    dialog->setSize(500, 400);
+    dialog->setPosition("50%", "50%");
+    dialog->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+    dialog->getRenderer()->setBorderColor(tgui::Color::White);
+    
+    // Preset list
+    auto presetList = tgui::ListBox::create();
+    presetList->setSize(450, 280);
+    presetList->setPosition(25, 40);
+    
+    // Populate with available presets
+    auto factoryPresets = PresetManager::getAvailablePresets("presets/factory/");
+    auto userPresets = PresetManager::getAvailablePresets("presets/user/");
+    
+    presetList->addItem("--- Factory Presets ---");
+    for (const auto& preset : factoryPresets) {
+        auto info = PresetManager::getPresetInfo(preset);
+        std::string displayName = info.name.empty() ? 
+            std::filesystem::path(preset).stem().string() : info.name;
+        presetList->addItem("F: " + displayName, preset);
+    }
+    
+    presetList->addItem("--- User Presets ---");
+    for (const auto& preset : userPresets) {
+        auto info = PresetManager::getPresetInfo(preset);
+        std::string displayName = info.name.empty() ? 
+            std::filesystem::path(preset).stem().string() : info.name;
+        presetList->addItem("U: " + displayName, preset);
+    }
+    
+    dialog->add(presetList);
+    
+    // Load button
+    auto loadButton = tgui::Button::create("Load");
+    loadButton->setPosition(150, 340);
+    loadButton->setSize(100, 30);
+    loadButton->onPress([=]() {
+        auto selectedItem = presetList->getSelectedItem();
+        if (!selectedItem.empty() && presetList->getSelectedItemId() != "") {
+            std::string filename = presetList->getSelectedItemId().toStdString();
+            if (!filename.empty() && filename != "--- Factory Presets ---" && filename != "--- User Presets ---") {
+                if (PresetManager::loadPreset(*network, filename)) {
+                    std::cout << "✅ Preset loaded: " << filename << std::endl;
+                    visualizer->refreshLayout();  // Refresh visualizer layout
+                    refreshConnectionSliders();
+                    refreshNeuronSliders();
+                    refreshConnectionMatrix();
+                } else {
+                    std::cout << "❌ Failed to load preset" << std::endl;
+                }
+            }
+        }
+        dialog->close();
+    });
+    dialog->add(loadButton);
+    
+    auto cancelButton = tgui::Button::create("Cancel");
+    cancelButton->setPosition(270, 340);
+    cancelButton->setSize(100, 30);
+    cancelButton->onPress([=]() {
+        dialog->close();
+    });
+    dialog->add(cancelButton);
+    
+    gui->add(dialog);
+}
+
+void GUI::loadFactoryDrumPattern() {
+    if (PresetManager::loadFactoryPreset(*network, "drum_pattern")) {
+        std::cout << "✅ Loaded factory drum pattern preset" << std::endl;
+        visualizer->refreshLayout();  // Refresh visualizer layout
+        refreshConnectionSliders();
+        refreshNeuronSliders();
+        refreshConnectionMatrix();
+    } else {
+        std::cout << "❌ Failed to load factory preset" << std::endl;
+    }
+}
+
+void GUI::showPresetBrowser() {
+    auto dialog = tgui::ChildWindow::create("Preset Browser");
+    dialog->setSize(600, 500);
+    dialog->setPosition("50%", "50%");
+    dialog->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+    dialog->getRenderer()->setBorderColor(tgui::Color::White);
+    
+    // Get preset information
+    auto factoryInfos = PresetManager::getPresetInfos("presets/factory/");
+    auto userInfos = PresetManager::getPresetInfos("presets/user/");
+    
+    // Create scrollable panel for preset details
+    auto scrollPanel = tgui::ScrollablePanel::create();
+    scrollPanel->setSize(550, 400);
+    scrollPanel->setPosition(25, 40);
+    dialog->add(scrollPanel);
+    
+    float yPos = 10;
+    
+    // Add factory presets
+    if (!factoryInfos.empty()) {
+        auto factoryHeader = tgui::Label::create("Factory Presets");
+        factoryHeader->setPosition(10, yPos);
+        factoryHeader->getRenderer()->setTextColor(tgui::Color::Yellow);
+        factoryHeader->getRenderer()->setTextStyle(tgui::TextStyle::Bold);
+        scrollPanel->add(factoryHeader);
+        yPos += 30;
+        
+        for (const auto& info : factoryInfos) {
+            auto nameLabel = tgui::Label::create(info.name);
+            nameLabel->setPosition(20, yPos);
+            nameLabel->getRenderer()->setTextColor(tgui::Color::White);
+            nameLabel->getRenderer()->setTextStyle(tgui::TextStyle::Bold);
+            scrollPanel->add(nameLabel);
+            
+            auto authorLabel = tgui::Label::create("Author: " + info.author);
+            authorLabel->setPosition(20, yPos + 20);
+            authorLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+            scrollPanel->add(authorLabel);
+            
+            auto descLabel = tgui::Label::create(info.description);
+            descLabel->setPosition(20, yPos + 40);
+            descLabel->setSize(500, 40);
+            descLabel->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+            scrollPanel->add(descLabel);
+            
+            yPos += 80;
+        }
+    }
+    
+    // Add user presets
+    if (!userInfos.empty()) {
+        auto userHeader = tgui::Label::create("User Presets");
+        userHeader->setPosition(10, yPos);
+        userHeader->getRenderer()->setTextColor(tgui::Color::Cyan);
+        userHeader->getRenderer()->setTextStyle(tgui::TextStyle::Bold);
+        scrollPanel->add(userHeader);
+        yPos += 30;
+        
+        for (const auto& info : userInfos) {
+            auto nameLabel = tgui::Label::create(info.name);
+            nameLabel->setPosition(20, yPos);
+            nameLabel->getRenderer()->setTextColor(tgui::Color::White);
+            nameLabel->getRenderer()->setTextStyle(tgui::TextStyle::Bold);
+            scrollPanel->add(nameLabel);
+            
+            auto authorLabel = tgui::Label::create("Author: " + info.author);
+            authorLabel->setPosition(20, yPos + 20);
+            authorLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+            scrollPanel->add(authorLabel);
+            
+            auto descLabel = tgui::Label::create(info.description);
+            descLabel->setPosition(20, yPos + 40);
+            descLabel->setSize(500, 40);
+            descLabel->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+            scrollPanel->add(descLabel);
+            
+            yPos += 80;
+        }
+    }
+    
+    // Close button
+    auto closeButton = tgui::Button::create("Close");
+    closeButton->setPosition(250, 460);
+    closeButton->setSize(100, 30);
+    closeButton->onPress([=]() {
+        dialog->close();
+    });
+    dialog->add(closeButton);
+    
+    gui->add(dialog);
+}

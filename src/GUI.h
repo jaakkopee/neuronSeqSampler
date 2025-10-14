@@ -14,6 +14,7 @@
 #include <SFML/Graphics.hpp>
 #include <memory>
 #include <filesystem>
+#include "PresetManager.h"
 
 // Forward declarations
 class NeuronNetwork;
@@ -130,6 +131,12 @@ private:
     void showRecordingDialog();
     void showInternalRecordingDialog();
     void showExternalRecordingDialog();
+    
+    // Preset actions
+    void showSavePresetDialog();
+    void showLoadPresetDialog();
+    void loadFactoryDrumPattern();
+    void showPresetBrowser();
     
     // Sample file management
     std::vector<std::string> getSampleFiles(const std::string& directory);
