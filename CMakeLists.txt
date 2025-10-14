@@ -5,27 +5,35 @@ project(NeuronSeqSampler VERSION 1.0.0)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+
+
 # Find required packages
 find_package(PkgConfig REQUIRED)
+set(SFML_STATIC_LIBRARIES FALSE)
+set(TGUI_STATIC_LIBRARIES FALSE)
 pkg_check_modules(SFML REQUIRED sfml-graphics sfml-audio sfml-system sfml-window)
-pkg_check_modules(TGUI REQUIRED tgui)
+find_package(TGUI CONFIG REQUIRED)
+
+# Add Homebrew SFML 3.0.2 library path for linker
+link_directories(/opt/homebrew/Cellar/sfml/3.0.2/lib)
 
 # Create source directory if it doesn't exist
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/src)
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/assets/fonts)
 
+
+
 # Include directories
 include_directories(src)
 include_directories(${SFML_INCLUDE_DIRS})
-include_directories(${TGUI_INCLUDE_DIRS})
+include_directories(/opt/homebrew/include)
 
-# Link directories
-link_directories("/home/jaakko/Asiakirjat/Koodii/TGUI-1.11/lib")
-link_directories(${TGUI_LIBRARY_DIRS})
+
+
 
 # Check if TGUI is available
 if(TGUI_FOUND)
-    message(STATUS "TGUI found via pkg-config")
+    message(STATUS "TGUI found via CMake CONFIG")
     set(USE_TGUI 1)
     add_definitions(-DUSE_TGUI)
 else()
@@ -68,12 +76,12 @@ endif()
 # Create executable
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
+
 # Link libraries
 if(USE_TGUI)
-    target_link_libraries(${PROJECT_NAME} ${TGUI_LIBRARIES})
+    target_link_libraries(${PROJECT_NAME} PRIVATE TGUI::TGUI)
 endif()
-
-target_link_libraries(${PROJECT_NAME} ${SFML_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${SFML_LIBRARIES})
 
 # Create recorder demo executable
 add_executable(recorder_demo recorder_demo.cpp src/Recorder.cpp)
@@ -91,10 +99,9 @@ target_compile_options(debug_recorder PRIVATE ${SFML_CFLAGS_OTHER})
 target_compile_options(test_sfml_audio PRIVATE ${SFML_CFLAGS_OTHER})
 
 # Link libraries
-target_link_libraries(${PROJECT_NAME} ${SFML_LIBRARIES})
-target_link_libraries(recorder_demo ${SFML_LIBRARIES})
-target_link_libraries(debug_recorder ${SFML_LIBRARIES})
-target_link_libraries(test_sfml_audio ${SFML_LIBRARIES})
+target_link_libraries(recorder_demo PRIVATE ${SFML_LIBRARIES})
+target_link_libraries(debug_recorder PRIVATE ${SFML_LIBRARIES})
+target_link_libraries(test_sfml_audio PRIVATE ${SFML_LIBRARIES})
 
 # Copy assets to build directory
 file(COPY ${CMAKE_SOURCE_DIR}/samples DESTINATION ${CMAKE_BINARY_DIR})

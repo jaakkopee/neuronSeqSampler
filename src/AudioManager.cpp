@@ -4,6 +4,7 @@
 #include "Debug.h"
 #include <iostream>
 #include <SFML/System/Time.hpp>
+#include <cstdint>
 
 AudioManager::AudioManager(const std::string& samplesDir, bool loadDefaults) 
     : samplesDirectory(samplesDir), internalRecorder(nullptr), recordingOutput(false), rhythmInterpreter(nullptr)
@@ -24,13 +25,9 @@ bool AudioManager::loadSampleFromPath(int sampleIndex, const std::string& fullPa
         std::cerr << "Failed to load audio file: " << fullPath << std::endl;
         return false;
     }
-    
-    auto sound = std::make_unique<sf::Sound>();
-    sound->setBuffer(*buffer);
-    
+    auto sound = std::make_unique<sf::Sound>(*buffer);
     soundBuffers[sampleIndex] = std::move(buffer);
     sounds[sampleIndex] = std::move(sound);
-    
     DEBUG_PRINT_STREAM("Loaded sample " << sampleIndex << " from " << fullPath);
     return true;
 }
@@ -85,18 +82,19 @@ bool AudioManager::playSample(int sampleIndex, float offsetSeconds, float volume
                 
                 // Create a new sound buffer with filtered data and play it
                 if (!filteredData.empty()) {
-                    std::vector<sf::Int16> int16Data;
+                    std::vector<std::int16_t> int16Data;
                     int16Data.reserve(filteredData.size());
                     for (float sample : filteredData) {
                         float clampedSample = std::max(-1.0f, std::min(1.0f, sample));
-                        int16Data.push_back(static_cast<sf::Int16>(clampedSample * 32767.0f));
+                        int16Data.push_back(static_cast<std::int16_t>(clampedSample * 32767.0f));
                     }
                     
                     auto filteredBuffer = std::make_unique<sf::SoundBuffer>();
-                    if (filteredBuffer->loadFromSamples(&int16Data[0], int16Data.size(), 1, 44100)) {
+                    std::vector<sf::SoundChannel> channelMap; // Empty for mono
+                    if (filteredBuffer->loadFromSamples(reinterpret_cast<const std::int16_t*>(&int16Data[0]), int16Data.size(), 1, 44100, channelMap)) {
                         // Stop direct audio and play filtered version instead
                         it->second->stop();
-                        it->second->setBuffer(*filteredBuffer);
+                        it->second = std::make_unique<sf::Sound>(*filteredBuffer);
                         filteredBuffers[sampleIndex] = std::move(filteredBuffer);
                         it->second->setPlayingOffset(sf::Time::Zero);
                         it->second->play();
@@ -116,9 +114,8 @@ bool AudioManager::playSample(int sampleIndex, float offsetSeconds, float volume
             auto bufferIt = soundBuffers.find(sampleIndex);
             if (bufferIt != soundBuffers.end()) {
                 const sf::SoundBuffer* buffer = bufferIt->second.get();
-                const sf::Int16* samples = buffer->getSamples();
+                const std::int16_t* samples = reinterpret_cast<const std::int16_t*>(buffer->getSamples());
                 std::size_t sampleCount = buffer->getSampleCount();
-                
                 // Add the sample data with timing information and sample index
                 internalRecorder->addSampleAtTime(samples, sampleCount, sampleIndex);
                 DEBUG_PRINT_STREAM("Stopped previous and added new sample " << sampleIndex 
@@ -179,9 +176,9 @@ std::vector<float> AudioManager::getSampleData(int sampleIndex) const {
     auto bufferIt = soundBuffers.find(sampleIndex);
     DEBUG_PRINT_STREAM("🎛️  getSampleData for index " << sampleIndex << " - buffer found: " << (bufferIt != soundBuffers.end()));
     if (bufferIt != soundBuffers.end()) {
-        const sf::SoundBuffer* buffer = bufferIt->second.get();
-        const sf::Int16* samples = buffer->getSamples();
-        std::size_t sampleCount = buffer->getSampleCount();
+    const sf::SoundBuffer* buffer = bufferIt->second.get();
+    const std::int16_t* samples = reinterpret_cast<const std::int16_t*>(buffer->getSamples());
+    std::size_t sampleCount = buffer->getSampleCount();
         DEBUG_PRINT_STREAM("🎛️  Sample count: " << sampleCount);
         
         // Convert Int16 samples to float

@@ -1,4 +1,7 @@
 #include <SFML/Graphics.hpp>
+#include <variant>
+#include <optional>
+#include <optional>
 #include <iostream>
 
 #ifdef USE_TGUI
@@ -20,6 +23,32 @@
 bool g_debugMode = false;
 
 class NeuronSeqSampler {
+private:
+    void handleEvents() {
+        while (auto eventOpt = window.pollEvent()) {
+            if (!eventOpt) break;
+            const auto& event = *eventOpt;
+#ifdef USE_TGUI
+            bool eventConsumedByGUI = gui.handleEvent(event);
+#else
+            bool eventConsumedByGUI = false;
+#endif
+            event.visit([&](const auto& e) {
+                using T = std::decay_t<decltype(e)>;
+                if constexpr (std::is_same_v<T, sf::Event::MouseButtonPressed>) {
+                    if (!eventConsumedByGUI && e.button == sf::Mouse::Button::Left) {
+                        handleMouseDrag(e.position.x, e.position.y);
+                    }
+                } else if constexpr (std::is_same_v<T, sf::Event::Closed>) {
+                    window.close();
+                } else if constexpr (std::is_same_v<T, sf::Event::MouseWheelScrolled>) {
+                    handleMouseScroll(e.delta);
+                } else {
+                    // Ignore other events
+                }
+            });
+        }
+    }
 private:
     sf::RenderWindow window;
 #ifdef USE_TGUI
@@ -43,7 +72,7 @@ private:
 
 public:
     NeuronSeqSampler(bool enableTestingMode = false) 
-        : window(sf::VideoMode(1024, 800), "Neuron Sequence Sampler")
+        : window(sf::VideoMode({1024, 800}), "Neuron Sequence Sampler")
 #ifdef USE_TGUI
         , gui(window)
 #endif
@@ -183,115 +212,18 @@ public:
             render();
         }
     }
-    
-    void handleEvents() {
-        sf::Event event;
-        while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed) {
-                window.close();
-            }
-            
-#ifdef USE_TGUI
-            // Handle GUI events - check if event was consumed by GUI
-            bool eventConsumedByGUI = gui.handleEvent(event);
-            
-            // Only handle mouse clicks if GUI didn't consume the event
-            if (!eventConsumedByGUI && event.type == sf::Event::MouseButtonPressed) {
-                if (event.mouseButton.button == sf::Mouse::Left) {
-                    handleMouseDrag(event.mouseButton.x, event.mouseButton.y);
-                }
-            }
-#else
-            // Handle mouse clicks on neurons (for manual activation) - no GUI
-            if (event.type == sf::Event::MouseButtonPressed) {
-                if (event.mouseButton.button == sf::Mouse::Left) {
-                    handleMouseDrag(event.mouseButton.x, event.mouseButton.y);
-                }
-            }
-#endif
-
-            // Handle mouse scroll for zooming
-            if (event.type == sf::Event::MouseWheelScrolled) {
-                handleMouseScroll(event.mouseWheelScroll.delta);
-            }
-
-            // Handle keyboard input
-            if (event.type == sf::Event::KeyPressed) {
-                if (event.key.code == sf::Keyboard::Space) {
-                    // Manual network activation
-                    network.activate();
-                    DEBUG_PRINT("Manual network activation triggered");
-                }
-                else if (event.key.code == sf::Keyboard::R) {
-                    // Toggle recording with 'R' key
-                    if (recorder.isCurrentlyRecording()) {
-                        recorder.stopRecording();
-                        audioManager.stopInternalRecording();
-                        ESSENTIAL_PRINT("Recording stopped");
-                    } else {
-                        if (event.key.shift) {
-                            // Shift+R: External microphone recording
-                            if (recorder.startRecording()) {
-                                std::cout << "External recording started (press R again to stop)" << std::endl;
-                            }
-                        } else {
-                            // R: Internal recording of NeuronSeqSampler output
-                            if (recorder.startInternalRecording()) {
-                                audioManager.startInternalRecording();
-                                std::cout << "Internal recording started - capturing NeuronSeqSampler output (press R again to stop)" << std::endl;
-                            }
-                        }
-                    }
-                }
-                else if (event.key.code >= sf::Keyboard::Num1 && 
-                         event.key.code <= sf::Keyboard::Num9) {
-                    // Direct neuron activation with number keys (1-9)
-                    int neuronIndex = event.key.code - sf::Keyboard::Num1;
-                    if (neuronIndex < static_cast<int>(network.getNeuronCount())) {
-                        network.getNeuron(neuronIndex)->activate(0.5f);
-                        std::cout << "Activated neuron " << (neuronIndex + 1) << std::endl;
-                    } else if (network.getNeuronCount() == 0) {
-                        std::cout << "No neurons in network. Use the Network menu to add neurons." << std::endl;
-                    }
-                }
-                else if (event.key.code == sf::Keyboard::M) {
-                    // Toggle connection matrix visibility with 'M' key
-                    guiManager.toggleMatrixVisibility();
-                }
-                else if (event.key.code == sf::Keyboard::F) {
-                    // Toggle filtered audio output (analysis is always active)
-                    audioStreamingEnabled = !audioStreamingEnabled;
-                    if (audioStreamingEnabled && network.getRhythmInterpreter()) {
-                        // Set up filter callback to route samples through filter bank
-                        auto rhythmInterpreter = network.getRhythmInterpreter();
-                        audioManager.setFilterCallback([rhythmInterpreter](const std::vector<float>& audioData) -> std::vector<float> {
-                            // Process audio through rhythm interpreter and get filtered output
-                            std::cout << "🔥  F-KEY FILTERED CALLBACK executing - returning filtered audio!" << std::endl;
-                            rhythmInterpreter->processAudioFrame(audioData);
-                            auto filtered = rhythmInterpreter->getProcessedAudioOutput();
-                            std::cout << "🔥  F-KEY returning " << filtered.size() << " filtered samples" << std::endl;
-                            return filtered;
-                        });
-                        std::cout << "🔥  F-KEY Filtered audio output ENABLED - hearing filtered samples (analysis continues)" << std::endl;
-                    } else {
-                        // Disable filter callback for direct playback (analysis continues)
-                        audioManager.setFilterCallback(nullptr);
-                        std::cout << "🔊  F-KEY Filtered audio output DISABLED - hearing original samples (analysis continues)" << std::endl;
-                    }
-                }
-            }
-        }
-    }
     /*
     void handleNeuronClick(int mouseX, int mouseY) {
         // Click detection in the visualization area
         if (mouseX >= 50 && mouseX <= 750 && mouseY >= 50 && mouseY <= 750) {
             if (network.getNeuronCount() > 0) {
                 // For now, activate the first neuron - could be enhanced to detect specific neurons
-                network.getNeuron(0)->activate(0.8f);
-                std::cout << "Neuron activated by mouse click" << std::endl;
-            } else {
-                std::cout << "No neurons in network. Use the Network menu to add neurons." << std::endl;
+                    sf::Event event;
+                    while (window.pollEvent(event)) {
+                        bool eventConsumedByGUI = gui.handleEvent(event);
+                        if (event.type == sf::Event::Closed) {
+                            window.close();
+                        }
             }
         }
     }
@@ -308,87 +240,30 @@ public:
     }
 
     void update() {
-        // Status monitoring
-        static int statusCounter = 0;
-        bool hasRhythmInterpreter = network.getRhythmInterpreter() != nullptr;
-        bool isFilterModeEnabled = audioManager.isFilterModeEnabled();
-        
-        if (++statusCounter % 300 == 0) { // Every ~10 seconds at 60fps
-            std::cout << "📊 Status - RhythmInterpreter: " << (hasRhythmInterpreter ? "READY" : "NOT READY")
-                      << ", FilterMode: " << (isFilterModeEnabled ? "ON" : "OFF") << std::endl;
-        }
-        
-        // Automatic network activation at intervals
-        if (clock.getElapsedTime().asMilliseconds() >= activationInterval) {
-            network.activate();
-            clock.restart();
-        }
-
+    // Status monitoring
+    static int statusCounter = 0;
+    bool hasRhythmInterpreter = network.getRhythmInterpreter() != nullptr;
+    bool isFilterModeEnabled = audioManager.isFilterModeEnabled();
 #ifdef USE_TGUI
-        // Update GUI
-        guiManager.update();
+    guiManager.update();
 #endif
-    }    void render() {
-        window.clear(sf::Color::Black);
-        
-        // Render the neural network visualization
-        visualizer.render();
-        
-#ifdef USE_TGUI
-        // Render GUI
-        gui.draw();
-#endif
-        
-        window.display();
     }
+
+    void render() {
+    window.clear(sf::Color::Black);
+    // Render the neural network visualization
+    visualizer.render();
+#ifdef USE_TGUI
+    // Render GUI
+    gui.draw();
+#endif
+    window.display();
+    }
+
 };
 
-int main(int argc, char* argv[]) {
-    try {
-        // Parse command line arguments first to check for animation control
-        bool testingMode = false;
-        bool skipAnimation = false;
-        for (int i = 1; i < argc; ++i) {
-            if (std::string(argv[i]) == "--testing") {
-                testingMode = true;
-            } else if (std::string(argv[i]) == "--debug") {
-                g_debugMode = true;
-            } else if (std::string(argv[i]) == "--no-animation") {
-                skipAnimation = true;
-            } else if (std::string(argv[i]) == "--help" || std::string(argv[i]) == "-h") {
-                std::cout << "NeuronSeqSampler - Neural Network Audio Sampler\n";
-                std::cout << "Usage: " << argv[0] << " [OPTIONS]\n";
-                std::cout << "Options:\n";
-                std::cout << "  --testing       Start with pre-configured 3-neuron drum network\n";
-                std::cout << "  --debug         Enable debug output (verbose logging)\n";
-                std::cout << "  --no-animation  Skip startup animation\n";
-                std::cout << "  --help, -h      Show this help message\n";
-                return 0;
-            }
-        }
-        
-        // Play startup animation (unless skipped)
-        if (!skipAnimation) {
-            StartupAnimation::playAnimation();
-        }
-        
-        std::cout << "Starting Neuron Sequence Sampler..." << std::endl;
-        
-        // Show mode status
-        if (testingMode) {
-            std::cout << "Testing mode enabled" << std::endl;
-        }
-        if (g_debugMode) {
-            std::cout << "Debug mode enabled" << std::endl;
-        }
-        
-        NeuronSeqSampler app(testingMode);
-        app.run();
-        
-    } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-        return 1;
-    }
-    
+int main() {
+    NeuronSeqSampler app;
+    app.run();
     return 0;
 }

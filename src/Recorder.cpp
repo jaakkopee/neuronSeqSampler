@@ -1,5 +1,6 @@
 #include "Recorder.h"
 #include <iostream>
+#include <cstdint>
 #include <cstring>
 #include <chrono>
 #include <iomanip>
@@ -172,7 +173,7 @@ void Recorder::clearBuffer() {
 
 void Recorder::setSampleRate(unsigned int sampleRate) {
     recordingSampleRate = sampleRate; // Store for internal recording
-    sf::SoundRecorder::setProcessingInterval(sf::milliseconds(10));
+
     // Note: SFML doesn't allow setting custom sample rates directly
     // The actual sample rate will be determined by the audio device
 }
@@ -210,7 +211,7 @@ float Recorder::getRecordingDuration() const {
     return static_cast<float>(samples.size()) / (sampleRate * channels);
 }
 
-void Recorder::addSamples(const sf::Int16* sampleData, size_t sampleCount) {
+void Recorder::addSamples(const std::int16_t* sampleData, size_t sampleCount) {
     if (!sampleData || sampleCount == 0) return;
     
     std::lock_guard<std::mutex> lock(samplesMutex);
@@ -221,7 +222,7 @@ void Recorder::addSamples(const sf::Int16* sampleData, size_t sampleCount) {
     }
 }
 
-void Recorder::addSamples(const std::vector<sf::Int16>& newSamples) {
+void Recorder::addSamples(const std::vector<std::int16_t>& newSamples) {
     if (newSamples.empty()) return;
     
     std::lock_guard<std::mutex> lock(samplesMutex);
@@ -229,7 +230,7 @@ void Recorder::addSamples(const std::vector<sf::Int16>& newSamples) {
     samples.insert(samples.end(), newSamples.begin(), newSamples.end());
 }
 
-void Recorder::addSampleAtTime(const sf::Int16* sampleData, size_t sampleCount, int sampleIndex) {
+void Recorder::addSampleAtTime(const std::int16_t* sampleData, size_t sampleCount, int sampleIndex) {
     if (!sampleData || sampleCount == 0 || !isInternalRecording) return;
     
     std::lock_guard<std::mutex> bufferLock(realtimeBufferMutex);
@@ -279,14 +280,14 @@ bool Recorder::onStart() {
     return true;
 }
 
-bool Recorder::onProcessSamples(const sf::Int16* sampleData, std::size_t sampleCount) {
+bool Recorder::onProcessSamples(const std::int16_t* sampleData, std::size_t sampleCount) {
     // Process and add the new samples to our buffer
-    std::vector<sf::Int16> processedSamples(sampleCount);
+    std::vector<std::int16_t> processedSamples(sampleCount);
     
     for (std::size_t i = 0; i < sampleCount; ++i) {
-        sf::Int16 sample = sampleData[i];
+    std::int16_t sample = sampleData[i];
         processSample(sample);
-        processedSamples[i] = sample;
+    processedSamples[i] = sample;
     }
     
     addSamples(processedSamples.data(), sampleCount);
@@ -309,7 +310,7 @@ bool Recorder::writeWavFile(const std::string& filename) {
     
     try {
         // Calculate data size
-        sf::Uint32 dataSize = static_cast<sf::Uint32>(samples.size() * sizeof(sf::Int16));
+    std::uint32_t dataSize = static_cast<std::uint32_t>(samples.size() * sizeof(std::int16_t));
         
         // Create WAV header
         WavHeader header = createWavHeader(
@@ -349,7 +350,7 @@ void Recorder::finalizeRealtimeBuffer() {
     for (float sample : realtimeBuffer) {
         // Clamp and convert to Int16
         sample = std::max(-1.0f, std::min(1.0f, sample));
-        samples.push_back(static_cast<sf::Int16>(sample * 32767.0f));
+    samples.push_back(static_cast<std::int16_t>(sample * 32767.0f));
     }
     
     std::cout << "Finalized real-time buffer: " << realtimeBuffer.size() 
@@ -359,7 +360,7 @@ void Recorder::finalizeRealtimeBuffer() {
     realtimeBuffer.clear();
 }
 
-void Recorder::mixSampleIntoBuffer(const sf::Int16* sampleData, size_t sampleCount, size_t bufferOffset) {
+void Recorder::mixSampleIntoBuffer(const std::int16_t* sampleData, size_t sampleCount, size_t bufferOffset) {
     // Mix sample data into the real-time buffer with proper audio mixing
     for (size_t i = 0; i < sampleCount && (bufferOffset + i) < realtimeBuffer.size(); ++i) {
         float newSample = static_cast<float>(sampleData[i]) / 32767.0f;
@@ -422,7 +423,7 @@ unsigned int Recorder::getEffectiveChannelCount() const {
     }
 }
 
-Recorder::WavHeader Recorder::createWavHeader(sf::Uint32 dataSize, sf::Uint32 sampleRate, sf::Uint16 channels) {
+Recorder::WavHeader Recorder::createWavHeader(std::uint32_t dataSize, std::uint32_t sampleRate, std::uint16_t channels) {
     WavHeader header;
     
     header.chunkSize = 36 + dataSize;
@@ -435,7 +436,7 @@ Recorder::WavHeader Recorder::createWavHeader(sf::Uint32 dataSize, sf::Uint32 sa
     return header;
 }
 
-sf::Int16 Recorder::applyNoiseGate(sf::Int16 sample) {
+std::int16_t Recorder::applyNoiseGate(std::int16_t sample) {
     if (!noiseGateEnabled) return sample;
     
     // Convert to float for processing
@@ -451,7 +452,7 @@ sf::Int16 Recorder::applyNoiseGate(sf::Int16 sample) {
     return sample;
 }
 
-sf::Int16 Recorder::applyHighPassFilter(sf::Int16 sample) {
+std::int16_t Recorder::applyHighPassFilter(std::int16_t sample) {
     if (!highPassFilterEnabled) return sample;
     
     // Convert to float for processing
@@ -473,10 +474,10 @@ sf::Int16 Recorder::applyHighPassFilter(sf::Int16 sample) {
     
     // Convert back to Int16 with clipping
     float clipped = std::max(-1.0f, std::min(1.0f, output));
-    return static_cast<sf::Int16>(clipped * 32767.0f);
+    return static_cast<std::int16_t>(clipped * 32767.0f);
 }
 
-void Recorder::processSample(sf::Int16& sample) {
+void Recorder::processSample(std::int16_t& sample) {
     // Filters disabled - pass samples through unchanged
     // Apply noise gate first
     // sample = applyNoiseGate(sample);

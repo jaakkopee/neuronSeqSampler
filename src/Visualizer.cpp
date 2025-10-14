@@ -6,6 +6,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <cstdint>
 
 Visualizer::Visualizer(sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork)
     : window(renderWindow)
@@ -197,7 +198,7 @@ void Visualizer::drawNeuron(const Neuron* neuron, const sf::Vector2f& position, 
     float scaledRadius = neuronRadius * scaleFactor;
     
     sf::CircleShape circle(scaledRadius);
-    circle.setOrigin(scaledRadius, scaledRadius);
+        circle.setOrigin(sf::Vector2f(scaledRadius, scaledRadius));
     circle.setPosition(position);
     
     // Use rainbow color based on activation level and firing state
@@ -212,18 +213,13 @@ void Visualizer::drawNeuron(const Neuron* neuron, const sf::Vector2f& position, 
     // Draw text if font is loaded
     if (fontLoaded) {
         // Create neuron index text (N1, N2, etc.)
-        sf::Text neuronText;
-        neuronText.setFont(font);
-        neuronText.setString("N" + std::to_string(neuronIndex + 1));
-        neuronText.setCharacterSize(12);
+        sf::Text neuronText(font, "N" + std::to_string(neuronIndex + 1), 12);
         neuronText.setFillColor(sf::Color::White);
-        
         // Center the text on the neuron
         sf::FloatRect textBounds = neuronText.getLocalBounds();
-        neuronText.setOrigin(textBounds.left + textBounds.width / 2.0f, 
-                            textBounds.top + textBounds.height / 2.0f);
-        neuronText.setPosition(position.x, position.y); // Centered on the neuron
-        
+        neuronText.setOrigin(sf::Vector2f(textBounds.position.x + textBounds.size.x / 2.0f, 
+                                          textBounds.position.y + textBounds.size.y / 2.0f));
+        neuronText.setPosition(position); // Centered on the neuron
         window->draw(neuronText);
     }
 }
@@ -244,8 +240,7 @@ void Visualizer::drawConnection(const Connection* connection,
     
     if (std::abs(weight) > 0.1f) {
         float intensity = std::min(1.0f, std::abs(weight));
-        baseColor.a = static_cast<sf::Uint8>(100 + 155 * intensity);
-        
+        baseColor.a = static_cast<std::uint8_t>(100 + 155 * intensity);
         if (weight > 0) {
             baseColor = sf::Color(255, 255, 255, baseColor.a); // White for positive
         } else {
@@ -254,16 +249,14 @@ void Visualizer::drawConnection(const Connection* connection,
     } else {
         baseColor.a = 50; // Very faint for near-zero weights
     }
-    
     // Enhance color based on neuronal activity
     float activityBoost = std::min(1.0f, totalActivation);
     sf::Color activityColor = baseColor;
-    
     if (activityBoost > 0.1f) {
-        activityColor.r = static_cast<sf::Uint8>(std::min(255, static_cast<int>(baseColor.r + activityBoost * 100)));
-        activityColor.g = static_cast<sf::Uint8>(std::min(255, static_cast<int>(baseColor.g + activityBoost * 50)));
-        activityColor.b = static_cast<sf::Uint8>(std::min(255, static_cast<int>(baseColor.b + activityBoost * 150)));
-        activityColor.a = static_cast<sf::Uint8>(std::min(255, static_cast<int>(baseColor.a + activityBoost * 100)));
+        activityColor.r = static_cast<std::uint8_t>(std::min(255, static_cast<int>(baseColor.r + activityBoost * 100)));
+        activityColor.g = static_cast<std::uint8_t>(std::min(255, static_cast<int>(baseColor.g + activityBoost * 50)));
+        activityColor.b = static_cast<std::uint8_t>(std::min(255, static_cast<int>(baseColor.b + activityBoost * 150)));
+        activityColor.a = static_cast<std::uint8_t>(std::min(255, static_cast<int>(baseColor.a + activityBoost * 100)));
     }
     
     // Draw single thick line with vibration effect
@@ -316,8 +309,8 @@ void Visualizer::drawConnection(const Connection* connection,
     
     line.setSize(sf::Vector2f(length, 3.0f));
     line.setPosition(vibratingSourcePos);
-    line.setOrigin(0, 1.5f);
-    line.setRotation(angle);
+    line.setOrigin(sf::Vector2f(0, 1.5f));
+    line.setRotation(sf::degrees(angle));
     line.setFillColor(activityColor);
     
     window->draw(line);
@@ -446,7 +439,9 @@ void Visualizer::drawCurvedConnection(const Connection* connection,
             }
             
             sf::Vector2f point = basePoint + offsetVector + vibrationVector;
-            curveVertices.push_back(sf::Vertex(point));
+            sf::Vertex v;
+            v.position = point;
+            curveVertices.push_back(v);
         }
         thickCurveLines.push_back(curveVertices);
     }
@@ -456,7 +451,7 @@ void Visualizer::drawCurvedConnection(const Connection* connection,
     
     if (std::abs(weight) > 0.1f) {
         float intensity = std::min(1.0f, std::abs(weight));
-        baseColor.a = static_cast<sf::Uint8>(100 + 155 * intensity);
+    baseColor.a = static_cast<std::uint8_t>(100 + 155 * intensity);
         
         if (weight > 0) {
             baseColor = sf::Color(255, 255, 255, baseColor.a); // White for positive
@@ -473,10 +468,10 @@ void Visualizer::drawCurvedConnection(const Connection* connection,
     
     if (activityBoost > 0.1f) {
         // Add brightness and saturation based on activity
-        activityColor.r = static_cast<sf::Uint8>(std::min(255, static_cast<int>(baseColor.r + activityBoost * 100)));
-        activityColor.g = static_cast<sf::Uint8>(std::min(255, static_cast<int>(baseColor.g + activityBoost * 50)));
-        activityColor.b = static_cast<sf::Uint8>(std::min(255, static_cast<int>(baseColor.b + activityBoost * 150)));
-        activityColor.a = static_cast<sf::Uint8>(std::min(255, static_cast<int>(baseColor.a + activityBoost * 100)));
+    activityColor.r = static_cast<std::uint8_t>(std::min(255, static_cast<int>(baseColor.r + activityBoost * 100)));
+    activityColor.g = static_cast<std::uint8_t>(std::min(255, static_cast<int>(baseColor.g + activityBoost * 50)));
+    activityColor.b = static_cast<std::uint8_t>(std::min(255, static_cast<int>(baseColor.b + activityBoost * 150)));
+    activityColor.a = static_cast<std::uint8_t>(std::min(255, static_cast<int>(baseColor.a + activityBoost * 100)));
     }
     
     // Draw all thick curve lines
@@ -486,7 +481,7 @@ void Visualizer::drawCurvedConnection(const Connection* connection,
             for (auto& vertex : curveVertices) {
                 vertex.color = activityColor;
             }
-            window->draw(&curveVertices[0], curveVertices.size(), sf::LineStrip);
+            window->draw(&curveVertices[0], curveVertices.size(), sf::PrimitiveType::LineStrip);
         }
     }
 }
@@ -507,7 +502,7 @@ bool Visualizer::loadFont(const std::string& fontPath) {
     
     // Try to load the specified font first
     if (!fontPath.empty()) {
-        if (font.loadFromFile(fontPath)) {
+        if (font.openFromFile(fontPath)) {
             fontLoaded = true;
             std::cout << "Loaded font: " << fontPath << std::endl;
             return true;
@@ -525,7 +520,7 @@ bool Visualizer::loadFont(const std::string& fontPath) {
     };
     
     for (const auto& path : systemFonts) {
-        if (font.loadFromFile(path)) {
+        if (font.openFromFile(path)) {
             fontLoaded = true;
             std::cout << "Loaded system font: " << path << std::endl;
             return true;
@@ -598,8 +593,8 @@ sf::Color Visualizer::getRainbowColor(float activation, bool hasFired) const {
     }
     
     return sf::Color(
-        static_cast<sf::Uint8>((r + m) * 255),
-        static_cast<sf::Uint8>((g + m) * 255),
-        static_cast<sf::Uint8>((b + m) * 255)
+    static_cast<std::uint8_t>((r + m) * 255),
+    static_cast<std::uint8_t>((g + m) * 255),
+    static_cast<std::uint8_t>((b + m) * 255)
     );
 }

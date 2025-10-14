@@ -1,11 +1,13 @@
 // Example of using the Recorder class
 // This file demonstrates how to use the Recorder for streaming audio to a file
 
+
 #include "Recorder.h"
 #include <iostream>
 #include <thread>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 
 int main() {
     std::cout << "Audio Recorder Demo" << std::endl;
@@ -55,7 +57,7 @@ int main() {
     Recorder manualRecorder;
     
     // Create some sample audio data (sine wave)
-    std::vector<sf::Int16> sineWave;
+    std::vector<std::int16_t> sineWave;
     const int sampleRate = 44100;
     const float frequency = 440.0f; // A4 note
     const float duration = 2.0f; // 2 seconds
@@ -63,8 +65,8 @@ int main() {
     for (int i = 0; i < static_cast<int>(sampleRate * duration); ++i) {
         float t = static_cast<float>(i) / sampleRate;
         float amplitude = 0.3f; // 30% volume
-        sf::Int16 sample = static_cast<sf::Int16>(amplitude * 32767 * sin(2 * M_PI * frequency * t));
-        sineWave.push_back(sample);
+        std::int16_t sineSample = static_cast<std::int16_t>(amplitude * 32767 * sin(2 * M_PI * frequency * t));
+        sineWave.push_back(sineSample);
     }
     
     // Add the generated samples to the recorder
