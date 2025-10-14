@@ -1,3 +1,11 @@
+# Recent Updates
+
+- **Rhythmogram Matrix Panel**: Toggle with 'M', scrollable 8×N grid, real-time routing, per-band and per-connection gain controls.
+- **Robust Keyboard Shortcuts**: Global keys (e.g., 'M' for matrix) work reliably after all GUI actions.
+- **Live Parameter Editing**: Instantly adjust neuron activation and connection weights with immediate audio/visual feedback.
+- **Dual Recording**: Record both internal neural output and external microphone input.
+- **Cross-Platform Compatibility**: Fully tested on both macOS (Homebrew, SFML 3.0.2, TGUI) and Debian/Ubuntu (apt, libsfml-dev, libtgui-dev).
+
 # NeuronSeqSampler
 
 **A real-time neural network audio sampler that creates dynamic music through artificial neurons**
@@ -62,7 +70,9 @@ make
 
 ### System Requirements
 
-- **OS**: Linux (tested), macOS (SFML 2.6 required)
+- **OS**: Linux (Debian/Ubuntu), macOS (tested)
+- **SFML**: 3.0.2 required (not 2.x)
+- **TGUI**: Latest version compatible with SFML 3.x
 - **Compiler**: GCC 7+ or Clang 7+ with C++17 support
 - **Audio**: ALSA/PulseAudio (Linux) or CoreAudio (macOS)
 - **Graphics**: OpenGL-capable system for real-time visualization
@@ -164,6 +174,9 @@ This creates emergent musical behavior where simple biological principles genera
 ```bash
 sudo apt update
 sudo apt install build-essential cmake libsfml-dev libtgui-dev
+# If your distro does not yet provide SFML 3.0.2, build SFML and TGUI from source:
+# https://www.sfml-dev.org/download.php
+# https://tgui.eu/download/
 ```
 
 **Fedora:**
@@ -176,8 +189,12 @@ sudo dnf install gcc-c++ cmake sfml-devel tgui-devel
 sudo pacman -S gcc cmake sfml tgui
 ```
 
-**macOS:** 
-Install dependencies via Homebrew, ensure SFML version 2.6 (not 3.x)
+**macOS:**
+Install dependencies via Homebrew:
+```bash
+brew install sfml@3 tgui cmake
+# If needed, link SFML 3.0.2 and TGUI for CMake
+```
 
 ### Build Process
 
