@@ -237,18 +237,13 @@ void GUI::createNeuronSliders() {
         slider->setStep(0.01f);
         slider->setValue(neuron->getActivationIncreasePerIteration());
         
-        // Connect slider to callback
+        // Connect slider to callback (only once)
         slider->onValueChange([this, i, slider](float value) {
             this->onNeuronSliderChanged(i, value);
             // Remove focus from the slider and unfocus all widgets so global key events work
             slider->setFocused(false);
             if (gui)
                 gui->unfocusAllWidgets();
-        });
-        // Fix: explicitly capture slider in the lambda
-        slider->onValueChange([this, i, slider](float value) {
-            this->onNeuronSliderChanged(i, value);
-            slider->setFocused(false);
         });
         
         slidersPanel->add(slider);
