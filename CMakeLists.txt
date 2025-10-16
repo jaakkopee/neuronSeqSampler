@@ -50,6 +50,7 @@ set(SOURCES
     src/BeatRoot.cpp
     src/StartupAnimation.cpp
     src/PresetManager.cpp
+    src/SimpleSpectralDisplay.cpp
 )
 
 set(HEADERS
@@ -63,6 +64,7 @@ set(HEADERS
     src/BeatRoot.h
     src/StartupAnimation.h
     src/PresetManager.h
+    src/SimpleSpectralDisplay.h
 )
 
 # Add GUI files only if TGUI is available

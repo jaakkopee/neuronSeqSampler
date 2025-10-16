@@ -19,6 +19,7 @@
 #include "GUI.h"
 #endif
 #include "RhythmInterpreter.h" // Ensure this is included after its dependencies
+#include "SimpleSpectralDisplay.h"
 
 // Global debug flag definition
 bool g_debugMode = false;
@@ -64,6 +65,7 @@ private:
     NeuronNetwork network;
     Visualizer visualizer;
     Recorder recorder;
+    SimpleSpectralDisplay spectralDisplay;
 #ifdef USE_TGUI
     GUI guiManager;
 #endif
@@ -84,6 +86,7 @@ public:
         , audioManager("samples/girliepop/", true)  // Load default samples
         , network()
         , visualizer(&window, &network)
+        , spectralDisplay(nullptr)  // Will be set properly in initialize()
 #ifdef USE_TGUI
         , guiManager(&gui, &window, &network, &visualizer, &recorder, &audioManager, &activationInterval)
 #endif
@@ -119,6 +122,12 @@ public:
         // Set GUI area to the right side of the window with dimensions 324x800
         guiManager.setGUIArea(700.0f, 0.0f, 1024.0f, 800.0f);
 #endif
+
+        // Position spectral display (bottom area)
+        spectralDisplay.setPosition(50.0f, 600.0f);
+        spectralDisplay.setSize(600.0f, 150.0f);
+        // Update rhythm interpreter reference after network initialization
+        spectralDisplay.setRhythmInterpreter(network.getRhythmInterpreter());
         
         DEBUG_PRINT("\nAll changes to code by GitHub Copilot. The prompts were either feature additions or bug fixes for most cases.");
         
@@ -319,7 +328,8 @@ public:
                 }
                 break;
             default:
-                // Ignore other keys
+                // Forward key to spectral display for its controls
+                spectralDisplay.handleKeyPress(key);
                 break;
         }
     }
@@ -331,6 +341,9 @@ public:
         network.activate();
         clock.restart();
     }
+    
+    // Update spectral display
+    spectralDisplay.update();
     
     // Status monitoring
     static int statusCounter = 0;
@@ -345,6 +358,10 @@ public:
     window.clear(sf::Color::Black);
     // Render the neural network visualization
     visualizer.render();
+    
+    // Render spectral display
+    spectralDisplay.render(window);
+    
 #ifdef USE_TGUI
     // Render GUI
     gui.draw();
