@@ -210,15 +210,22 @@ RhythmDetector::RhythmDetector()
     : currentTempo(120.0f), beatStrength(0.0f), rhythmicComplexity(0.0f),
       onsetThreshold(0.1f), tempoSmoothingFactor(0.1f) {
     
-    audioBuffer.resize(BUFFER_SIZE, 0.0f);
+    microRhythmBuffer.resize(HISTORY_LENGTH, 0.0f);
+    beatBuffer.resize(HISTORY_LENGTH, 0.0f);
     onsetBuffer.resize(HISTORY_LENGTH, 0.0f);
     tempoHistory.resize(HISTORY_LENGTH, 120.0f);
 }
 
-void RhythmDetector::processAudioChunk(const std::vector<float>& audioData) {
-    // Copy audio data to internal buffer
-    size_t copySize = std::min(audioData.size(), BUFFER_SIZE);
-    std::copy(audioData.begin(), audioData.begin() + copySize, audioBuffer.begin());
+void RhythmDetector::processFilterOutputs(float onsetOutput, float microRhythmOutput, float beatOutput) {
+    // Store filter outputs in buffers for analysis
+    microRhythmBuffer.erase(microRhythmBuffer.begin());
+    microRhythmBuffer.push_back(microRhythmOutput);
+    
+    beatBuffer.erase(beatBuffer.begin());
+    beatBuffer.push_back(beatOutput);
+    
+    onsetBuffer.erase(onsetBuffer.begin());
+    onsetBuffer.push_back(onsetOutput);
     
     detectOnsets();
     analyzeTempo();
@@ -226,62 +233,69 @@ void RhythmDetector::processAudioChunk(const std::vector<float>& audioData) {
 }
 
 void RhythmDetector::detectOnsets() {
-    // Simple onset detection using energy and spectral flux
-    float currentEnergy = 0.0f;
-    float spectralFlux = 0.0f;
+    // Use filter outputs for sophisticated onset detection
+    float currentOnset = onsetBuffer.back();
+    float currentMicroRhythm = microRhythmBuffer.back();
+    float currentBeat = beatBuffer.back();
     
-    // Calculate energy
-    for (float sample : audioBuffer) {
-        currentEnergy += sample * sample;
-    }
-    currentEnergy /= audioBuffer.size();
+    // Combine filter outputs for onset strength
+    // Onset filter (16Hz) provides sharp transient detection
+    // Micro-rhythm filter (8Hz) provides rhythmic texture
+    // Beat filter (1Hz) provides low-frequency emphasis
+    float combinedOnsetStrength = 0.6f * currentOnset + 0.3f * currentMicroRhythm + 0.1f * currentBeat;
     
-    // Simple spectral flux approximation using high frequency content
-    for (size_t i = 1; i < audioBuffer.size(); ++i) {
-        float diff = audioBuffer[i] - audioBuffer[i-1];
-        spectralFlux += diff * diff;
-    }
-    spectralFlux /= audioBuffer.size();
-    
-    // Combine energy and flux for onset strength
-    float onsetStrength = currentEnergy + 0.5f * spectralFlux;
-    
-    // Add to onset buffer
-    onsetBuffer.erase(onsetBuffer.begin());
-    onsetBuffer.push_back(onsetStrength);
-    
-    // Calculate beat strength as peak detection
+    // Calculate beat strength using peak detection across filter outputs
     beatStrength = 0.0f;
-    if (onsetStrength > onsetThreshold) {
-        // Check if this is a local maximum
+    if (combinedOnsetStrength > onsetThreshold) {
+        // Check if this is a local maximum in the onset buffer
         bool isPeak = true;
         size_t checkRange = std::min(size_t(5), onsetBuffer.size() / 2);
         
         for (size_t i = onsetBuffer.size() - checkRange; i < onsetBuffer.size() - 1; ++i) {
-            if (onsetBuffer[i] >= onsetStrength) {
+            if (onsetBuffer[i] >= currentOnset) {
                 isPeak = false;
                 break;
             }
         }
         
-        if (isPeak) {
-            beatStrength = std::clamp(onsetStrength, 0.0f, 1.0f);
+        // Also check micro-rhythm consistency for stronger detection
+        bool microRhythmPeak = false;
+        if (microRhythmBuffer.size() >= 3) {
+            float prevMicroRhythm = microRhythmBuffer[microRhythmBuffer.size() - 2];
+            float prev2MicroRhythm = microRhythmBuffer[microRhythmBuffer.size() - 3];
+            microRhythmPeak = (currentMicroRhythm > prevMicroRhythm) && (prevMicroRhythm > prev2MicroRhythm);
+        }
+        
+        if (isPeak || microRhythmPeak) {
+            // Weight beat strength by filter output combination
+            beatStrength = std::clamp(combinedOnsetStrength * (1.0f + 0.5f * currentBeat), 0.0f, 1.0f);
         }
     }
 }
 
 void RhythmDetector::analyzeTempo() {
-    // Enhanced tempo estimation using multiple detection methods
+    // Enhanced tempo estimation using rhythmogram filter outputs
     std::vector<float> intervals;
     
-    // Find peaks in onset buffer with adaptive threshold
+    // Find peaks in onset buffer with adaptive threshold based on filter combination
     std::vector<size_t> peakIndices;
-    float dynamicThreshold = onsetThreshold * 1.5f; // Less sensitive to avoid false positives
     
-    for (size_t i = 1; i < onsetBuffer.size() - 1; ++i) {
-        if (onsetBuffer[i] > onsetBuffer[i-1] && 
-            onsetBuffer[i] > onsetBuffer[i+1] && 
-            onsetBuffer[i] > dynamicThreshold) {
+    // Calculate dynamic threshold using micro-rhythm and beat context
+    float avgMicroRhythm = std::accumulate(microRhythmBuffer.begin(), microRhythmBuffer.end(), 0.0f) / microRhythmBuffer.size();
+    float avgBeat = std::accumulate(beatBuffer.begin(), beatBuffer.end(), 0.0f) / beatBuffer.size();
+    float dynamicThreshold = onsetThreshold * (1.0f + 0.5f * avgMicroRhythm + 0.3f * avgBeat);
+    
+    // Peak detection with filter-enhanced criteria
+    for (size_t i = 2; i < onsetBuffer.size() - 2; ++i) {
+        float currentOnset = onsetBuffer[i];
+        float currentMicroRhythm = microRhythmBuffer[i];
+        
+        // Multi-criteria peak detection
+        bool isOnsetPeak = (currentOnset > onsetBuffer[i-1] && currentOnset > onsetBuffer[i+1] && currentOnset > dynamicThreshold);
+        bool isMicroRhythmSupported = (currentMicroRhythm > 0.3f * avgMicroRhythm);
+        bool isLocalMaximum = (currentOnset > onsetBuffer[i-2] && currentOnset > onsetBuffer[i+2]);
+        
+        if (isOnsetPeak && (isMicroRhythmSupported || isLocalMaximum)) {
             peakIndices.push_back(i);
         }
     }
@@ -292,38 +306,50 @@ void RhythmDetector::analyzeTempo() {
         intervals.push_back(interval);
     }
     
-    if (!intervals.empty() && intervals.size() >= 3) { // Need at least 3 intervals for reliability
+    if (!intervals.empty() && intervals.size() >= 3) {
         // Debug: Show intervals occasionally
         static int debugCounter = 0;
         debugCounter++;
         if (debugCounter % 50 == 0) {
-            DEBUG_PRINT_STREAM("🎯 Found " << peakIndices.size() << " peaks, " << intervals.size() << " intervals");
+            DEBUG_PRINT_STREAM("🎯 Filter-based: " << peakIndices.size() << " peaks, " << intervals.size() << " intervals");
         }
         
-        // Use median instead of average to reduce outlier influence
+        // Use median with additional filtering for better tempo estimation
         std::vector<float> sortedIntervals = intervals;
         std::sort(sortedIntervals.begin(), sortedIntervals.end());
         float medianInterval = sortedIntervals[sortedIntervals.size() / 2];
         
-        // Filter out unrealistic intervals (too small = too fast tempo)
-        if (medianInterval < 4.0f) {
+        // Filter out unrealistic intervals with beat filter validation
+        if (medianInterval < 3.0f) {
             return; // Skip this tempo estimate - likely noise
         }
         
-        // Improved tempo calculation based on actual processing rate
-        // Each onset buffer element represents one audio analysis frame
-        // Based on observed processing: ~10-20 Hz rate (50-100ms per frame)
-        float framesPerSecond = 15.0f; // Realistic processing rate
+        // Beat filter provides low-frequency validation for tempo stability
+        float beatConsistency = 1.0f;
+        if (beatBuffer.size() >= 10) {
+            float recentBeatAvg = 0.0f;
+            for (size_t i = beatBuffer.size() - 10; i < beatBuffer.size(); ++i) {
+                recentBeatAvg += beatBuffer[i];
+            }
+            recentBeatAvg /= 10.0f;
+            beatConsistency = std::clamp(recentBeatAvg * 2.0f, 0.3f, 1.0f);
+        }
+        
+        // Improved tempo calculation with filter-based frame rate estimation
+        float framesPerSecond = 12.0f + 8.0f * avgMicroRhythm; // Adaptive rate based on activity
         float timePerFrame = 1.0f / framesPerSecond;
         float estimatedTempo = 60.0f / (medianInterval * timePerFrame);
         
-        // Handle tempo doubling/halving detection
+        // Tempo validation using beat filter
+        estimatedTempo *= beatConsistency;
+        
+        // Handle tempo doubling/halving detection with filter context
         std::vector<float> candidates = {estimatedTempo, estimatedTempo * 2.0f, estimatedTempo * 0.5f};
         float bestTempo = estimatedTempo;
         float minDistance = std::abs(estimatedTempo - currentTempo);
         
         for (float candidate : candidates) {
-            if (candidate >= 60.0f && candidate <= 300.0f) { // Expanded tempo range
+            if (candidate >= 60.0f && candidate <= 300.0f) {
                 float distance = std::abs(candidate - currentTempo);
                 if (distance < minDistance) {
                     minDistance = distance;
@@ -332,13 +358,13 @@ void RhythmDetector::analyzeTempo() {
             }
         }
         
-        // Adaptive smoothing - faster when confidence is high
-        float confidence = 1.0f / (1.0f + minDistance / 20.0f); // Higher confidence when closer to current tempo
-        float adaptiveSmoothingFactor = tempoSmoothingFactor * (1.0f + confidence * 3.0f); // Up to 4x faster smoothing
+        // Filter-based confidence calculation
+        float confidence = beatConsistency / (1.0f + minDistance / 20.0f);
+        float adaptiveSmoothingFactor = tempoSmoothingFactor * (1.0f + confidence * 4.0f);
         
-        // Smooth tempo estimate with adaptive rate
+        // Smooth tempo estimate
         currentTempo += adaptiveSmoothingFactor * (bestTempo - currentTempo);
-        currentTempo = std::clamp(currentTempo, 60.0f, 300.0f); // Expanded range to 300 BPM
+        currentTempo = std::clamp(currentTempo, 60.0f, 300.0f);
     }
     
     // Update tempo history
@@ -347,7 +373,7 @@ void RhythmDetector::analyzeTempo() {
 }
 
 void RhythmDetector::calculateComplexity() {
-    // Calculate rhythmic complexity based on tempo variance and onset patterns
+    // Calculate rhythmic complexity using filter outputs and tempo variance
     float tempoVariance = 0.0f;
     float avgTempo = std::accumulate(tempoHistory.begin(), tempoHistory.end(), 0.0f) / tempoHistory.size();
     
@@ -357,8 +383,20 @@ void RhythmDetector::calculateComplexity() {
     }
     tempoVariance /= tempoHistory.size();
     
-    // Normalize complexity measure
-    rhythmicComplexity = std::clamp(tempoVariance / 100.0f, 0.0f, 1.0f);
+    // Add micro-rhythm variation for enhanced complexity measure
+    float microRhythmVariance = 0.0f;
+    if (microRhythmBuffer.size() > 1) {
+        float avgMicroRhythm = std::accumulate(microRhythmBuffer.begin(), microRhythmBuffer.end(), 0.0f) / microRhythmBuffer.size();
+        for (float microRhythm : microRhythmBuffer) {
+            float diff = microRhythm - avgMicroRhythm;
+            microRhythmVariance += diff * diff;
+        }
+        microRhythmVariance /= microRhythmBuffer.size();
+    }
+    
+    // Combine tempo and micro-rhythm variance for complexity
+    float combinedComplexity = 0.7f * (tempoVariance / 100.0f) + 0.3f * (microRhythmVariance * 10.0f);
+    rhythmicComplexity = std::clamp(combinedComplexity, 0.0f, 1.0f);
 }
 
 bool RhythmDetector::isBeatDetected() const {
@@ -376,7 +414,8 @@ std::vector<float> RhythmDetector::getRhythmPattern() const {
 }
 
 void RhythmDetector::reset() {
-    std::fill(audioBuffer.begin(), audioBuffer.end(), 0.0f);
+    std::fill(microRhythmBuffer.begin(), microRhythmBuffer.end(), 0.0f);
+    std::fill(beatBuffer.begin(), beatBuffer.end(), 0.0f);
     std::fill(onsetBuffer.begin(), onsetBuffer.end(), 0.0f);
     std::fill(tempoHistory.begin(), tempoHistory.end(), 120.0f);
     currentTempo = 120.0f;
@@ -607,9 +646,14 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
             DEBUG_PRINT("🎵 BeatRoot DISABLED - Using simple rhythm detector to save resources");
         }
         
-        // Only process simple rhythm detector when BeatRoot is not active (mutual exclusivity)
+        // Only process rhythm detector when BeatRoot is not active (mutual exclusivity)
         if (!useBeatRoot && rhythmDetector) {
-            rhythmDetector->processAudioChunk(audioData);
+            // Use filter outputs for rhythmogram-based tempo detection
+            float onsetOutput = (filterOutputs.size() > 7) ? filterOutputs[7] : 0.0f;     // 16Hz - onset detection
+            float microRhythmOutput = (filterOutputs.size() > 6) ? filterOutputs[6] : 0.0f; // 8Hz - micro-rhythm
+            float beatOutput = (filterOutputs.size() > 2) ? filterOutputs[2] : 0.0f;      // 1Hz - beat
+            
+            rhythmDetector->processFilterOutputs(onsetOutput, microRhythmOutput, beatOutput);
         }
         
         // Update BPM from rhythm detector if autodetect is enabled (only when BeatRoot is not active)

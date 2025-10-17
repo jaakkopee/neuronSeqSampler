@@ -56,11 +56,11 @@ public:
  */
 class RhythmDetector {
 private:
-    static constexpr size_t BUFFER_SIZE = 1024;
     static constexpr size_t HISTORY_LENGTH = 100;
     
-    std::vector<float> audioBuffer;
-    std::vector<float> onsetBuffer;
+    std::vector<float> onsetBuffer;        // Onset detection filter (16Hz) history
+    std::vector<float> microRhythmBuffer;  // 32nd note filter (8Hz) history  
+    std::vector<float> beatBuffer;         // Quarter note filter (1Hz) history
     std::vector<float> tempoHistory;
     
     float currentTempo;
@@ -78,7 +78,7 @@ private:
 public:
     RhythmDetector();
     
-    void processAudioChunk(const std::vector<float>& audioData);
+    void processFilterOutputs(float onsetOutput, float microRhythmOutput, float beatOutput);
     void reset();
     
     // Getters
