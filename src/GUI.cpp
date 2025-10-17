@@ -1674,8 +1674,11 @@ void GUI::createConnectionMatrixPanel() {
     filterGainDisplays.clear();
     filterOutputDisplays.clear();
     for (size_t f = 0; f < numFilters; ++f) {
+        // Reverse vertical order: Onset at top (f=7 -> y=90), Phrase at bottom (f=0 -> y=90+420)
+        size_t displayRow = (numFilters - 1) - f;
+        
         auto label = tgui::Label::create(filterNames[f]);
-        label->setPosition(5, 90 + f * 60); // Aligned with neuron toggle buttons
+        label->setPosition(5, 90 + displayRow * 60); // Reversed position: Onset top, Phrase bottom
         label->setTextSize(10);
         label->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
         
@@ -1688,7 +1691,7 @@ void GUI::createConnectionMatrixPanel() {
         auto gainSlider = tgui::Slider::create(0.0f, 5.0f);
         gainSlider->setValue(rhythmInterpreter->getFilterGain(f));
         gainSlider->setStep(0.1f); // 0.1x step increments
-        gainSlider->setPosition(5, 105 + f * 60); // Just below the label
+        gainSlider->setPosition(5, 105 + displayRow * 60); // Just below the label, reversed position
         gainSlider->setSize(65, 15); // Small horizontal slider
         gainSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
         gainSlider->getRenderer()->setThumbColor(tgui::Color(100, 140, 100));
@@ -1711,7 +1714,7 @@ void GUI::createConnectionMatrixPanel() {
         
         // Add filter gain value display (shows current gain setting)
         auto gainDisplay = tgui::Label::create("1.0x");
-        gainDisplay->setPosition(75, 105 + f * 60); // Right of the gain slider
+        gainDisplay->setPosition(75, 105 + displayRow * 60); // Right of the gain slider, reversed position
         gainDisplay->setSize(25, 15); // Small label
         gainDisplay->setTextSize(8);
         gainDisplay->getRenderer()->setTextColor(tgui::Color(140, 140, 200));
@@ -1724,7 +1727,7 @@ void GUI::createConnectionMatrixPanel() {
         
         // Add filter output display (label showing current output level)
         auto outputDisplay = tgui::Label::create("0.0");
-        outputDisplay->setPosition(105, 95 + f * 60); // Per decamille displays - moved right to make room for gain display
+        outputDisplay->setPosition(105, 95 + displayRow * 60); // Per decamille displays, reversed position
         outputDisplay->setSize(40, 15); // Small label
         outputDisplay->setTextSize(8);
         outputDisplay->getRenderer()->setTextColor(tgui::Color(100, 200, 100));
@@ -1756,14 +1759,17 @@ void GUI::createConnectionMatrixPanel() {
     
     if (numNeurons > 0) {
         for (size_t f = 0; f < numFilters; ++f) {
+            // Reverse vertical order: Onset at top (f=7 -> y=90), Phrase at bottom (f=0 -> y=90+420)
+            size_t displayRow = (numFilters - 1) - f;
+            
             std::vector<tgui::Button::Ptr> buttonRow;
             std::vector<tgui::Slider::Ptr> sliderRow;
-            std::vector<tgui::Label::Ptr> displayRow;
+            std::vector<tgui::Label::Ptr> displayRowVec;
             
             for (size_t n = 0; n < numNeurons; ++n) {
             // Toggle button
             auto toggleButton = tgui::Button::create("○");
-            toggleButton->setPosition(150 + n * 80, 90 + f * 60); // Aligned with neuron column labels
+            toggleButton->setPosition(150 + n * 80, 90 + displayRow * 60); // Aligned with neuron column labels, reversed position
             toggleButton->setSize(20, 20);
             toggleButton->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
             toggleButton->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
@@ -1829,7 +1835,7 @@ void GUI::createConnectionMatrixPanel() {
             
             // Gain slider (only visible when connected)
             auto gainSlider = tgui::Slider::create(0.0f, 100.0f);
-            gainSlider->setPosition(175 + n * 80, 90 + f * 60); // Right of toggle button
+            gainSlider->setPosition(175 + n * 80, 90 + displayRow * 60); // Right of toggle button, reversed position
             gainSlider->setSize(15, 20);
             gainSlider->setValue(std::abs(currentWeight) * 100.0f); // Convert to 0-100 range
             gainSlider->setVisible(isConnected);
@@ -1856,7 +1862,7 @@ void GUI::createConnectionMatrixPanel() {
             
             // Connection gain value display (shows current connection weight)
             auto connectionGainDisplay = tgui::Label::create("0.0");
-            connectionGainDisplay->setPosition(195 + n * 80, 90 + f * 60); // Right of the gain slider
+            connectionGainDisplay->setPosition(195 + n * 80, 90 + displayRow * 60); // Right of the gain slider, reversed position
             connectionGainDisplay->setSize(20, 20); // Small square label
             connectionGainDisplay->setTextSize(7);
             connectionGainDisplay->getRenderer()->setTextColor(tgui::Color(200, 200, 140));
@@ -1871,12 +1877,12 @@ void GUI::createConnectionMatrixPanel() {
             }
             
             connectionMatrixPanel->add(connectionGainDisplay);
-            displayRow.push_back(connectionGainDisplay);
+            displayRowVec.push_back(connectionGainDisplay);
         }
         
             matrixToggleButtons.push_back(buttonRow);
             matrixGainSliders.push_back(sliderRow);
-            matrixGainDisplays.push_back(displayRow);
+            matrixGainDisplays.push_back(displayRowVec);
         }
     }
     

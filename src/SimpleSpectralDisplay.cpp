@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <string>
+#include <cstdio>
 
 SimpleSpectralDisplay::SimpleSpectralDisplay(RhythmInterpreter* rhythmInterp)
     : rhythmInterpreter(rhythmInterp)
@@ -10,6 +12,7 @@ SimpleSpectralDisplay::SimpleSpectralDisplay(RhythmInterpreter* rhythmInterp)
     , size(400, 300)
     , fontLoaded(false)
     , needsTextureUpdate(false)
+    , lastKnownBPM(120.0f) // Default BPM
 {
     initializeFrequencyBands();
     initializeColorMap();
@@ -29,6 +32,56 @@ void SimpleSpectralDisplay::initializeFrequencyBands() {
         "32nd (8Hz)",         // Very fast subdivisions
         "Onset (16Hz)"        // Attack transients
     };
+}
+
+void SimpleSpectralDisplay::updateFrequencyBands() {
+    if (!rhythmInterpreter) return;
+    
+    float currentBPM = rhythmInterpreter->getBPM();
+    
+    // Only update if BPM has changed
+    if (std::abs(currentBPM - lastKnownBPM) < 0.01f) return;
+    
+    lastKnownBPM = currentBPM;
+    
+    // Calculate tempo scaling factor (same as RhythmInterpreter)
+    float tempoScale = currentBPM / 120.0f;
+    
+    // Base frequencies at 120 BPM (Todd 1994)
+    const std::vector<float> baseFrequencies = {
+        0.125f, 0.25f, 0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f
+    };
+    
+    const std::vector<std::string> baseNames = {
+        "Phrase", "Whole", "Half", "Quarter", "Eighth", "16th", "32nd", "Onset"
+    };
+    
+    // Update frequency band names with current tempo-scaled frequencies
+    frequencyBandNames.clear();
+    for (size_t i = 0; i < baseFrequencies.size(); ++i) {
+        float scaledFreq = baseFrequencies[i] * tempoScale;
+        
+        // Format frequency with appropriate precision
+        std::string freqStr;
+        if (scaledFreq < 1.0f) {
+            // For frequencies < 1Hz, show 3 decimal places
+            char buffer[16];
+            snprintf(buffer, sizeof(buffer), "%.3fHz", scaledFreq);
+            freqStr = buffer;
+        } else if (scaledFreq < 10.0f) {
+            // For 1-10Hz, show 1 decimal place
+            char buffer[16]; 
+            snprintf(buffer, sizeof(buffer), "%.1fHz", scaledFreq);
+            freqStr = buffer;
+        } else {
+            // For >= 10Hz, show as integer
+            char buffer[16];
+            snprintf(buffer, sizeof(buffer), "%.0fHz", scaledFreq);
+            freqStr = buffer;
+        }
+        
+        frequencyBandNames.push_back(baseNames[i] + " (" + freqStr + ")");
+    }
 }
 
 void SimpleSpectralDisplay::initializeColorMap() {
@@ -73,6 +126,9 @@ void SimpleSpectralDisplay::setRhythmInterpreter(RhythmInterpreter* rhythmInterp
 
 void SimpleSpectralDisplay::update() {
     if (!rhythmInterpreter) return;
+    
+    // Update frequency band labels if BPM changed
+    updateFrequencyBands();
     
     // Check if it's time for an update
     float timeSinceLastUpdate = updateClock.getElapsedTime().asSeconds();

@@ -61,7 +61,11 @@ private:
     // Time history of filter outputs
     std::deque<std::vector<float>> amplitudeHistory;
     
+    // Track BPM for dynamic frequency labels
+    float lastKnownBPM;
+    
     void initializeFrequencyBands();
+    void updateFrequencyBands(); // Update labels based on current BPM
     void initializeColorMap();
     void loadFont();
     void initializeSpectrogram();
