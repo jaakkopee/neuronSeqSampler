@@ -154,22 +154,50 @@ float AdaptiveFilter::process(float input) {
         output = smoothedOutput * adaptiveGain;
         
     } else {
-        // TRADITIONAL HIGH-FREQUENCY FILTERING (>= 4Hz)
-        // Apply biquad filter: y[n] = b0*x[n] + b1*x[n-1] + b2*x[n-2] - a1*y[n-1] - a2*y[n-2]
-        output = coefficients[0] * input + 
-                 coefficients[1] * delayLine[0] + 
-                 coefficients[2] * delayLine[1] - 
-                 coefficients[3] * delayLine[2] - 
-                 coefficients[4] * delayLine[3];
+        // ENHANCED HIGH-FREQUENCY PROCESSING (>= 4Hz) for rhythm detection
+        // Use envelope detection and onset enhancement for better rhythm capture
         
-        // Update delay line
-        delayLine[1] = delayLine[0]; // x[n-2] = x[n-1]
-        delayLine[0] = input;        // x[n-1] = x[n]
-        delayLine[3] = delayLine[2]; // y[n-2] = y[n-1]
-        delayLine[2] = output;       // y[n-1] = y[n]
+        if (centerFrequency >= 8.0f) {
+            // ONSET DETECTION for 8Hz+ (32nd notes and micro-rhythmic onsets)
+            // Use envelope detection with onset emphasis
+            
+            // Calculate input envelope (absolute value with some smoothing)
+            float envelope = std::abs(input);
+            
+            // Onset detection using differentiation (emphasis on attacks)
+            float onsetStrength = envelope - delayLine[0] * 0.7f;  // Differentiate envelope
+            onsetStrength = std::max(0.0f, onsetStrength);         // Half-wave rectification
+            
+            // Update delay line for envelope history
+            delayLine[0] = envelope;
+            
+            // Scale for frequency-specific emphasis
+            float frequencyScale = centerFrequency / 8.0f;  // Relative to minimum onset freq
+            output = onsetStrength * frequencyScale * 2.0f;  // Boost for visibility
+            
+        } else {
+            // RHYTHMIC ENVELOPE DETECTION for 4-8Hz (16th notes)
+            // Use smoothed envelope detection with rhythmic emphasis
+            
+            // Envelope following with frequency-appropriate time constant
+            float envelope = std::abs(input);
+            float timeConstant = 0.98f - (centerFrequency / 16.0f) * 0.2f; // Faster for higher freq
+            currentEnergy = timeConstant * currentEnergy + (1.0f - timeConstant) * envelope;
+            
+            // Apply some rhythmic modulation detection
+            sampleCount += 1.0f;
+            float referencePhase = 2.0f * M_PI * centerFrequency * sampleCount / 44100.0f;
+            float rhythmicRef = (sin(referencePhase) + 1.0f) * 0.5f;
+            
+            // Combine envelope with rhythmic correlation
+            output = currentEnergy * (0.7f + 0.3f * rhythmicRef);
+        }
         
         // Apply adaptive gain
         output *= adaptiveGain;
+        
+        // Final scaling boost for high-frequency filters
+        output *= 3.0f;  // Significant boost to make outputs visible
         
         // Update energy estimate
         currentEnergy = 0.95f * currentEnergy + 0.05f * (output * output);

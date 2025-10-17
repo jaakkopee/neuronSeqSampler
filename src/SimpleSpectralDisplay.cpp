@@ -344,14 +344,18 @@ sf::Color SimpleSpectralDisplay::amplitudeToColor(float amplitude, size_t bandIn
     // Use different scaling for different filter types
     float normalizedAmplitude;
     
-    if (bandIndex < 5) {
-        // Lower frequency filters (0-4): Phrase, Whole, Half, Quarter, Eighth
-        // These have larger amplitude ranges (typically 0.001 to 0.01)
+    if (bandIndex < 3) {
+        // Very low frequency filters (0-2): Phrase, Whole, Half
+        // These use rhythmogram correlation (typically 0.0001 to 0.001)
+        normalizedAmplitude = std::clamp(amplitude / 0.001f, 0.0f, 1.0f);
+    } else if (bandIndex < 5) {
+        // Low-mid frequency filters (3-4): Quarter, Eighth
+        // These use rhythmogram correlation (typically 0.001 to 0.01)
         normalizedAmplitude = std::clamp(amplitude / 0.01f, 0.0f, 1.0f);
     } else {
-        // Higher frequency filters (5-7): 16th, 32nd, Onset
-        // These have smaller amplitude ranges (typically 1e-7 to 1e-6)
-        normalizedAmplitude = std::clamp(amplitude / 1e-6f, 0.0f, 1.0f);
+        // High frequency filters (5-7): 16th, 32nd, Onset
+        // These now use envelope detection with boost (typically 0.01 to 0.1)
+        normalizedAmplitude = std::clamp(amplitude / 0.1f, 0.0f, 1.0f);
     }
     
     // Get base color for this frequency band
