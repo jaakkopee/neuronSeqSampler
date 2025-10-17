@@ -250,9 +250,13 @@ void SimpleSpectralDisplay::updateSpectrogramImage() {
     // Clear the image
     spectrogramImage = sf::Image(sf::Vector2u(config.timeWindowSamples, 8), sf::Color::Black);
     
-    // Fill the image with amplitude history
+    // Fill the image with amplitude history - new data on left, travels right
     for (size_t timeIdx = 0; timeIdx < amplitudeHistory.size(); ++timeIdx) {
         const auto& amplitudes = amplitudeHistory[timeIdx];
+        
+        // Reverse X mapping: newest data (highest timeIdx) appears at X=0 (left)
+        // Older data appears further right
+        size_t xPixel = amplitudeHistory.size() - 1 - timeIdx;
         
         for (size_t freqIdx = 0; freqIdx < 8; ++freqIdx) {
             // Invert Y axis (lower frequencies at bottom)
@@ -260,7 +264,7 @@ void SimpleSpectralDisplay::updateSpectrogramImage() {
             float amplitude = amplitudes[freqIdx];
             
             sf::Color pixelColor = amplitudeToColor(amplitude, freqIdx);
-            spectrogramImage.setPixel(sf::Vector2u(timeIdx, yPixel), pixelColor);
+            spectrogramImage.setPixel(sf::Vector2u(xPixel, yPixel), pixelColor);
         }
     }
     
