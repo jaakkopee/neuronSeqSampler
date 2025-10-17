@@ -23,6 +23,7 @@ struct SimpleDisplayConfig {
     sf::Color textColor = sf::Color::White;
     bool showLabels = true;
     bool showGrid = true;
+    float opacity = 100.0f;          // Opacity in percentage (0-100)
 };
 
 class SimpleSpectralDisplay {
@@ -32,6 +33,8 @@ public:
     void setPosition(float x, float y);
     void setSize(float width, float height);
     void setRhythmInterpreter(RhythmInterpreter* rhythmInterp);
+    void setOpacity(float opacity);  // Set opacity in range 0-100%
+    float getOpacity() const;        // Get current opacity in range 0-100%
     void update();
     void render(sf::RenderWindow& window);
     void clear();

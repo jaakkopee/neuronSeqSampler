@@ -21,6 +21,7 @@ class NeuronNetwork;
 class Visualizer;
 class Recorder;
 class AudioManager;
+class SimpleSpectralDisplay;
 
 class GUI {
 private:
@@ -30,6 +31,7 @@ private:
     Visualizer* visualizer;
     Recorder* recorder;
     AudioManager* audioManager;
+    SimpleSpectralDisplay* spectralDisplay;
     float* activationInterval; // Pointer to the main app's activation interval
     
     // GUI panels
@@ -50,6 +52,10 @@ private:
     tgui::Label::Ptr activationIntervalLabel;
     tgui::ComboBox::Ptr viewModeComboBox;
     tgui::Label::Ptr viewModeLabel;
+    
+    // Spectral display controls
+    tgui::Slider::Ptr spectralOpacitySlider;
+    tgui::Label::Ptr spectralOpacityLabel;
     
     // Rhythm interpreter controls
     tgui::Panel::Ptr rhythmPanel;
@@ -149,7 +155,8 @@ private:
 
 public:
     GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, 
-        Visualizer* visualizerPtr, Recorder* recorderPtr, AudioManager* audioMgr, float* activationIntervalPtr);
+        Visualizer* visualizerPtr, Recorder* recorderPtr, AudioManager* audioMgr, 
+        SimpleSpectralDisplay* spectralDisplayPtr, float* activationIntervalPtr);
     
     void initialize();
     void update();

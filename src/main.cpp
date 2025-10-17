@@ -86,9 +86,9 @@ public:
         , audioManager("samples/girliepop/", true)  // Load default samples
         , network()
         , visualizer(&window, &network)
-        , spectralDisplay(nullptr)  // Will be set properly in initialize()
+        , spectralDisplay(network.getRhythmInterpreter())  // Initialize with rhythm interpreter
 #ifdef USE_TGUI
-        , guiManager(&gui, &window, &network, &visualizer, &recorder, &audioManager, &activationInterval)
+        , guiManager(&gui, &window, &network, &visualizer, &recorder, &audioManager, &spectralDisplay, &activationInterval)
 #endif
         , activationInterval(100.0f) // milliseconds
         , testingMode(enableTestingMode)

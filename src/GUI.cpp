@@ -6,6 +6,7 @@
 #include "Recorder.h"
 #include "RhythmInterpreter.h"
 #include "BeatRoot.h"
+#include "SimpleSpectralDisplay.h"
 #include "Debug.h"
 #include <iostream>
 #include <filesystem>
@@ -13,13 +14,14 @@
 #include <iomanip>
 #include <sstream>
 
-GUI::GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, Visualizer* visualizerPtr, Recorder* recorderPtr, AudioManager* audioMgr, float* activationIntervalPtr)
+GUI::GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, Visualizer* visualizerPtr, Recorder* recorderPtr, AudioManager* audioMgr, SimpleSpectralDisplay* spectralDisplayPtr, float* activationIntervalPtr)
     : gui(tguiGui)
     , window(renderWindow)
     , network(neuronNetwork)
     , visualizer(visualizerPtr)
     , recorder(recorderPtr)
     , audioManager(audioMgr)
+    , spectralDisplay(spectralDisplayPtr)
     , activationInterval(activationIntervalPtr)
 {
 }
@@ -153,9 +155,33 @@ void GUI::createControlPanel() {
     });
     controlPanel->add(viewModeComboBox, "ViewModeComboBox");
     
+    // Spectral Display Opacity Control
+    spectralOpacityLabel = tgui::Label::create("Spectral Opacity: 100%");
+    spectralOpacityLabel->setPosition("5%", "29%");
+    spectralOpacityLabel->setTextSize(10);
+    spectralOpacityLabel->getRenderer()->setTextColor(tgui::Color::White);
+    controlPanel->add(spectralOpacityLabel, "SpectralOpacityLabel");
+    
+    spectralOpacitySlider = tgui::Slider::create();
+    spectralOpacitySlider->setPosition("5%", "32%");
+    spectralOpacitySlider->setSize("90%", "3%");
+    spectralOpacitySlider->setMinimum(0.0f);     // 0% opacity (fully transparent)
+    spectralOpacitySlider->setMaximum(100.0f);   // 100% opacity (fully opaque)
+    spectralOpacitySlider->setStep(1.0f);        // 1% increments
+    spectralOpacitySlider->setValue(100.0f);     // Default to full opacity
+    
+    // Connect slider to callback
+    spectralOpacitySlider->onValueChange([this](float value) {
+        if (spectralDisplay) {
+            spectralDisplay->setOpacity(value);
+            spectralOpacityLabel->setText("Spectral Opacity: " + std::to_string(static_cast<int>(value)) + "%");
+        }
+    });
+    controlPanel->add(spectralOpacitySlider, "SpectralOpacitySlider");
+    
     // Create scrollable panel for sliders - adjusted position for new control
-    slidersPanel = tgui::ScrollablePanel::create({"95%", "68%"}); // Reduced height to accommodate view mode control
-    slidersPanel->setPosition("2.5%", "30%"); // Moved down to accommodate view mode control
+    slidersPanel = tgui::ScrollablePanel::create({"95%", "62%"}); // Reduced height to accommodate opacity control
+    slidersPanel->setPosition("2.5%", "36%"); // Moved down to accommodate opacity control
     slidersPanel->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40, 200));
     controlPanel->add(slidersPanel, "SlidersPanel");
 }

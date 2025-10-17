@@ -124,6 +124,14 @@ void SimpleSpectralDisplay::setRhythmInterpreter(RhythmInterpreter* rhythmInterp
     rhythmInterpreter = rhythmInterp;
 }
 
+void SimpleSpectralDisplay::setOpacity(float opacity) {
+    config.opacity = std::clamp(opacity, 0.0f, 100.0f);
+}
+
+float SimpleSpectralDisplay::getOpacity() const {
+    return config.opacity;
+}
+
 void SimpleSpectralDisplay::update() {
     if (!rhythmInterpreter) return;
     
@@ -352,10 +360,13 @@ sf::Color SimpleSpectralDisplay::amplitudeToColor(float amplitude, size_t bandIn
     // Use a brighter color mapping with minimum visibility
     float brightness = 0.2f + (normalizedAmplitude * 0.8f); // Range from 20% to 100% brightness
     
+    // Convert opacity percentage to 0-255 range
+    std::uint8_t alpha = static_cast<std::uint8_t>(config.opacity * 2.55f);  // 100% -> 255, 0% -> 0
+    
     return sf::Color(
         static_cast<std::uint8_t>(baseColor.r * brightness),
         static_cast<std::uint8_t>(baseColor.g * brightness),
         static_cast<std::uint8_t>(baseColor.b * brightness),
-        255  // Full opacity
+        alpha  // Configurable opacity
     );
 }
