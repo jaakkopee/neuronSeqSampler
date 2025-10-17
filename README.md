@@ -17,7 +17,7 @@
 
 NeuronSeqSampler is an innovative experimental audio application that uses interconnected artificial neurons to trigger and sequence audio samples. Each neuron can be connected to others through customizable connection matrices, creating complex cascading patterns that generate evolving rhythms, melodies, and soundscapes in real-time.
 
-This isn't just a traditional step sequencer - it's a living, breathing musical organism where advanced tempo detection (including professional BeatRoot multi-agent beat tracking) and rhythm analysis directly drive neural activity, creating emergent musical behaviors that can surprise even experienced users.
+This isn't just a traditional step sequencer - it's a living, breathing musical organism where efficient rhythm analysis directly drives neural activity, creating emergent musical behaviors that can surprise even experienced users. Advanced BeatRoot multi-agent beat tracking is available for users requiring maximum precision in complex rhythmic scenarios.
 
 ![Neural Network Visualization](https://img.shields.io/badge/Interface-Real--time%20Neural%20Visualization-blue)
 ![Audio Engine](https://img.shields.io/badge/Audio-SFML%20Based-green)
@@ -35,11 +35,11 @@ This isn't just a traditional step sequencer - it's a living, breathing musical 
 - **⚡ Real-Time Response**: Rhythmic analysis bypasses traditional audio processing for immediate neural triggering
 - **🔄 Intelligent Feedback Loop**: 8-band filterbank analyzes the network's own output, creating evolving self-organization
 
-### Advanced Tempo Detection (BeatRoot)
-- **🎯 Professional Beat Tracking**: Multi-agent system based on academic beat tracking research
-- **🧠 Intelligent Analysis**: Multiple tracking agents compete to find the most stable tempo
+### Tempo Detection System
+- **⚡ Simple Rhythm Detector** (Default): Fast, efficient rhythm analysis for real-time performance
+- **🎯 BeatRoot System** (Optional): Professional multi-agent beat tracking for complex rhythms
 - **📊 Tempo Confidence**: Real-time stability analysis ensures reliable beat detection before BPM updates
-- **🔄 Automatic Switching**: Seamlessly switches between BeatRoot and simple detector for optimal performance
+- **🔄 Intelligent Switching**: Choose between simple detector and advanced BeatRoot based on needs
 - **⚙️ Resource Optimization**: Complete mutual exclusivity prevents unnecessary CPU usage
 - **🎼 Wide Range Support**: Accurate detection from 30-300 BPM for diverse musical styles
 
@@ -132,15 +132,12 @@ make
 - **🎼 BPM Control**: Tempo slider (30-260 BPM) with large, clear value display for precise readings
 - **🤖 Dual Tempo Detection System**: 
   - **BeatRoot**: Professional-grade multi-agent beat tracking system for superior accuracy
-  - **Simple RhythmDetector**: Lightweight fallback system for basic tempo detection
-  - **Automatic Switching**: Mutual exclusivity ensures optimal resource usage
+  - **Simple RhythmDetector** (Default): Lightweight system for efficient tempo detection
+  - **BeatRoot System** (Advanced): Professional multi-agent beat tracking (disabled by default)
+  - **Streamlined Interface**: BeatRoot controls removed for simplified user experience
 - **⚡ Resource Optimization**: Only one tempo detection system active at a time for maximum performance
 
-**BeatRoot Controls** (Located left of Scale Slider):
-- **🎯 Enable/Disable Toggle**: Switch between BeatRoot and simple rhythm detector
-- **📊 Status Display**: Real-time information showing active agents, tempo strength, and stability
-- **🔧 Manual Initialization**: Initialize BeatRoot with current BPM for faster lock-on
-- **📈 Performance Monitoring**: Visual feedback of beat tracking confidence and system health
+**Tempo Detection**: System defaults to simple rhythm detector for optimal performance. Advanced users can enable BeatRoot through code modifications if needed for complex rhythm analysis.
 
 ### Sample Organization
 

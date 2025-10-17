@@ -165,7 +165,7 @@ private:
     float rhythmogramScale; // Scaling factor for rhythmogram to neural activation (0.0-20.0, default 5.0)
     float bpm; // Beats per minute for tempo-relative frequency scaling (30.0-260.0, default 120.0)
     bool autodetectTempo; // Enable automatic tempo detection from RhythmDetector (default false)
-    bool useBeatRoot; // Use BeatRoot system instead of simple RhythmDetector (default true)
+    bool useBeatRoot; // Use BeatRoot system instead of simple RhythmDetector (default false)
     float beatRootSensitivity; // BeatRoot sensitivity (0.1-2.0, default 1.0)
     
     // Frequency bands for filterbank (in Hz)

@@ -482,7 +482,7 @@ RhythmInterpreter::RhythmInterpreter(NeuronNetwork* network, AudioManager* audio
       rhythmogramScale(5.0f), // Default rhythmogram scale of 5.0
       bpm(120.0f), // Default BPM of 120
       autodetectTempo(true), // Default autodetect ON for better user experience
-      useBeatRoot(true), // Use BeatRoot by default
+      useBeatRoot(false), // BeatRoot disabled by default
       beatRootSensitivity(1.0f) { // Default sensitivity
     
     initializeFilterBank();

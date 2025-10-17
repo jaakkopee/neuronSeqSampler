@@ -1585,7 +1585,7 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixPanel->setVisible(matrixVisible);
     
     // Set content size to accommodate all filters, neurons, and control sliders (Scale + BPM)
-    float contentWidth = std::max(350.0f, static_cast<float>(270 + numNeurons * 80 + 280)); // Extra space for sliders and repositioned BeatRoot controls
+    float contentWidth = std::max(350.0f, static_cast<float>(270 + numNeurons * 80 + 280)); // Space for sliders and controls (BeatRoot controls removed)
     float contentHeight = std::max(400.0f, static_cast<float>(150 + numFilters * 60));
     static_cast<tgui::ScrollablePanel*>(connectionMatrixPanel.get())->setContentSize(tgui::Vector2f(contentWidth, contentHeight));
     
@@ -2034,9 +2034,13 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixPanel->add(autodetectTempoToggle);
     
     // ============================================================================
-    // BeatRoot Controls - Positioned to the left of Rhythmogram scale slider
+    // BeatRoot Controls - DISABLED BY DEFAULT
     // ============================================================================
     
+    // BeatRoot controls have been removed from the GUI to simplify the interface
+    // The BeatRoot system is disabled by default in RhythmInterpreter
+    
+    /*
     float beatRootControlsX = scaleSliderX - 200; // Position BeatRoot controls much further left to avoid scale/BPM controls
     
     // BeatRoot toggle button - aligned with other controls
@@ -2320,6 +2324,7 @@ void GUI::createConnectionMatrixPanel() {
         }
     });
     connectionMatrixPanel->add(beatRootAutoInitToggle);
+    */
     
     // Initialize frequency labels with current BPM scaling
     updateFrequencyLabels();
@@ -2490,7 +2495,8 @@ void GUI::updateConnectionMatrix() {
         }
     }
     
-    // Update BeatRoot controls
+    // Update BeatRoot controls - DISABLED
+    /*
     if (beatRootToggle && beatRootStatusLabel && beatRootSensitivityLabel) {
         bool beatRootActive = rhythmInterpreter->getUseBeatRoot();
         
@@ -2532,6 +2538,7 @@ void GUI::updateConnectionMatrix() {
         beatRootSensitivitySlider->setValue(currentSensitivity);
         beatRootSensitivityLabel->setText(tgui::String::fromNumber(currentSensitivity));
     }
+    */
     
     isUpdatingMatrix = false; // Reset the flag
 }
