@@ -197,36 +197,38 @@ float AdaptiveFilter::process(float input) {
             // ENVELOPE DETECTION for 4-8Hz (16th notes) and 8Hz+ (32nd/onset)
             // Use the bandpass-filtered input for proper frequency-specific envelope detection
             
-            // Simple envelope following with aggressive decay for responsiveness
-            float envelope = std::abs(filteredInput); // Use filtered input instead of raw input
+            // Simple envelope following - start with basic approach
+            float envelope = std::abs(filteredInput);
             
-            // Use very fast attack and release for high-frequency responsiveness
-            float attack = 0.2f;   // Faster attack for immediate response
-            float decay = 0.85f;   // Much faster decay to show dynamics
+            // Debug: Check if we're getting any filtered input at all
+            static int debugCounter = 0;
+            if ((debugCounter++ % 2000 == 0) && centerFrequency >= 4.0f) {
+                printf("Filter %.1fHz: raw=%.6f, filtered=%.6f, envelope=%.6f\n", 
+                       centerFrequency, input, filteredInput, envelope);
+            }
+            
+            // Apply very aggressive boost for high frequencies since bandpass output is extremely weak
+            float boost = 1000.0f; // Much more aggressive boost
+            if (centerFrequency >= 8.0f) {
+                boost = 5000.0f; // Even more for highest frequencies
+            }
+            envelope *= boost;
+            
+            // Use moderate attack and release
+            float attack = 0.1f;   
+            float decay = 0.9f;    
             
             if (envelope > currentEnergy) {
-                // Attack: follow increases quickly
                 currentEnergy = attack * envelope + (1.0f - attack) * currentEnergy;
             } else {
-                // Release: decay quickly to show changes
                 currentEnergy = decay * currentEnergy;
             }
             
-            // Clamp currentEnergy to prevent runaway accumulation
-            currentEnergy = std::clamp(currentEnergy, 0.0f, 1.0f);
+            // Larger clamp range for heavily boosted signals
+            currentEnergy = std::clamp(currentEnergy, 0.0f, 5.0f);
             
-            // For high frequencies (>= 8Hz), add onset detection
-            if (centerFrequency >= 8.0f) {
-                // Onset detection: look for rapid energy increases
-                float energyDiff = currentEnergy - previousEnergy;
-                float onsetBoost = std::max(0.0f, energyDiff * 10.0f); // More aggressive onset detection
-                previousEnergy = 0.8f * previousEnergy + 0.2f * currentEnergy; // Faster previous energy update
-                
-                output = currentEnergy + onsetBoost;
-            } else {
-                // For 4-8Hz, use clean envelope but with some modulation to show activity
-                output = currentEnergy;
-            }
+            // For all high frequencies, just use the envelope - no complex onset detection for now
+            output = currentEnergy;
         }
         
         // Apply adaptive gain (conservative)

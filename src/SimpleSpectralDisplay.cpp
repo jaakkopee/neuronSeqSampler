@@ -354,9 +354,8 @@ sf::Color SimpleSpectralDisplay::amplitudeToColor(float amplitude, size_t bandIn
         normalizedAmplitude = std::clamp(amplitude / 0.01f, 0.0f, 1.0f);
     } else {
         // High frequency filters (5-7): 16th, 32nd, Onset
-        // These now use bounded envelope detection (0.0 to 1.0 range with 1.2x boost)
-        // So expect values roughly 0.0 to 1.2, normalize to 0-1
-        normalizedAmplitude = std::clamp(amplitude / 1.5f, 0.0f, 1.0f);
+        // These now use 1000-5000x boost, so expect values 0-5 range
+        normalizedAmplitude = std::clamp(amplitude / 5.0f, 0.0f, 1.0f);
     }
     
     // Get base color for this frequency band
