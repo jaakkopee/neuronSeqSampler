@@ -101,23 +101,46 @@ void AdaptiveFilter::updateFilterCoefficients() {
         return;
     }
     
-    // For higher frequencies (>= 4Hz), use traditional biquad bandpass filter
-    float Q = resonance; // Use resonance as Q factor
-    float alpha = sin(omega) / (2.0f * Q);
-    
-    float b0 = alpha;
-    float b1 = 0.0f;
-    float b2 = -alpha;
-    float a0 = 1.0f + alpha;
-    float a1 = -2.0f * cos(omega);
-    float a2 = 1.0f - alpha;
-    
-    // Normalize coefficients
-    coefficients[0] = b0 / a0; // b0
-    coefficients[1] = b1 / a0; // b1
-    coefficients[2] = b2 / a0; // b2
-    coefficients[3] = a1 / a0; // a1
-    coefficients[4] = a2 / a0; // a2
+    // For higher frequencies (>= 4Hz), use high-pass filter for better onset/transient detection
+    if (centerFrequency >= 8.0f) {
+        // Use aggressive high-pass filter for very high frequencies (8Hz+) - better for onset detection
+        float cutoff = centerFrequency * 1.5f; // More aggressive cutoff for better transient detection
+        float omega_hp = 2.0f * M_PI * cutoff / 44100.0f;
+        float alpha_hp = sin(omega_hp) / (2.0f * sqrt(2.0f)); // Butterworth response
+        
+        // High-pass coefficients
+        float b0 = (1.0f + cos(omega_hp)) / 2.0f;
+        float b1 = -(1.0f + cos(omega_hp));
+        float b2 = (1.0f + cos(omega_hp)) / 2.0f;
+        float a0 = 1.0f + alpha_hp;
+        float a1 = -2.0f * cos(omega_hp);
+        float a2 = 1.0f - alpha_hp;
+        
+        // Normalize coefficients
+        coefficients[0] = b0 / a0; // b0
+        coefficients[1] = b1 / a0; // b1
+        coefficients[2] = b2 / a0; // b2
+        coefficients[3] = a1 / a0; // a1
+        coefficients[4] = a2 / a0; // a2
+    } else {
+        // For mid frequencies (4-8Hz), use bandpass filter
+        float Q = resonance; // Use resonance as Q factor
+        float alpha = sin(omega) / (2.0f * Q);
+        
+        float b0 = alpha;
+        float b1 = 0.0f;
+        float b2 = -alpha;
+        float a0 = 1.0f + alpha;
+        float a1 = -2.0f * cos(omega);
+        float a2 = 1.0f - alpha;
+        
+        // Normalize coefficients
+        coefficients[0] = b0 / a0; // b0
+        coefficients[1] = b1 / a0; // b1
+        coefficients[2] = b2 / a0; // b2
+        coefficients[3] = a1 / a0; // a1
+        coefficients[4] = a2 / a0; // a2
+    }
 }
 
 float AdaptiveFilter::process(float input) {
@@ -173,43 +196,45 @@ float AdaptiveFilter::process(float input) {
         output = smoothedOutput * adaptiveGain;
         
     } else {
-        // ENHANCED HIGH-FREQUENCY PROCESSING (>= 4Hz) for rhythm detection
+        // HIGH-FREQUENCY PROCESSING (>= 4Hz) for onset and transient detection
         
         if (centerFrequency >= 8.0f) {
-            // ONSET DETECTION for 8Hz+ (32nd notes and micro-rhythmic onsets)
+            // AGGRESSIVE TRANSIENT/ONSET DETECTION for 8Hz+ using high-pass filtered signal
+            // The high-pass filter emphasizes sudden changes and transients
             
-            // Calculate input envelope
-            float envelope = std::abs(input);
+            // Get rectified envelope of the high-pass filtered signal with moderate boost
+            float envelope = std::abs(filteredInput) * 3.0f; // Moderate 3x boost for sensitivity
             
-            // Smooth the envelope for better onset detection
-            float smoothedEnv = 0.8f * delayLine[0] + 0.2f * envelope;
-            delayLine[0] = smoothedEnv;
+            // Sensitive onset detection without over-amplification
+            float recent_avg = delayLine[0] * 0.9f + envelope * 0.1f; // Balanced averaging
+            delayLine[0] = recent_avg;
             
-            // Onset strength using rate of change
-            float onsetStrength = std::max(0.0f, smoothedEnv - delayLine[1] * 0.9f);
-            delayLine[1] = smoothedEnv;
+            // Sensitive but controlled threshold for onset detection
+            float threshold = recent_avg * 1.3f; // 30% above average needed
+            float onsetStrength = std::max(0.0f, envelope - threshold) * 2.0f; // Moderate 2x boost on detection
             
-            // Apply frequency-specific scaling (higher frequencies get more boost)
-            float freqBoost = 1.0f + (centerFrequency - 8.0f) / 8.0f; // 1.0 to 2.0 range
-            output = onsetStrength * freqBoost;
+            // Fast attack, moderate release for onset detection
+            float attack = 0.6f;   // Fast but controlled attack
+            float decay = 0.9f;    // Moderate decay for stability
+            
+            if (onsetStrength > currentEnergy) {
+                currentEnergy = attack * onsetStrength + (1.0f - attack) * currentEnergy;
+            } else {
+                currentEnergy = decay * currentEnergy;
+            }
+            
+            // Clamp output to prevent overflow and inf values
+            output = std::clamp(currentEnergy, 0.0f, 100.0f); // Reasonable maximum
             
         } else {
-            // ENVELOPE DETECTION for 4-8Hz (16th notes) and 8Hz+ (32nd/onset)
-            // Use the bandpass-filtered input for proper frequency-specific envelope detection
+            // MODERATE MID-FREQUENCY PROCESSING (4-8Hz) using bandpass filtered signal
+            // Use envelope following for sustained rhythmic patterns with controlled sensitivity
             
-            // Simple envelope following - start with basic approach
-            float envelope = std::abs(filteredInput);
+            float envelope = std::abs(filteredInput) * 2.0f; // Moderate 2x boost for visibility
             
-            // Apply extremely aggressive boost for high frequencies since bandpass output is extremely weak
-            float boost = 10000.0f; // Massive boost for visibility
-            if (centerFrequency >= 8.0f) {
-                boost = 50000.0f; // Enormous boost for highest frequencies (8Hz, 16Hz)
-            }
-            envelope *= boost;
-            
-            // Use moderate attack and release
-            float attack = 0.1f;   
-            float decay = 0.9f;    
+            // Balanced attack and release for rhythm tracking
+            float attack = 0.3f;   // Moderate attack for responsiveness
+            float decay = 0.9f;    // Moderate decay for stability
             
             if (envelope > currentEnergy) {
                 currentEnergy = attack * envelope + (1.0f - attack) * currentEnergy;
@@ -217,20 +242,26 @@ float AdaptiveFilter::process(float input) {
                 currentEnergy = decay * currentEnergy;
             }
             
-            // Larger clamp range for heavily boosted signals
-            currentEnergy = std::clamp(currentEnergy, 0.0f, 5.0f);
-            
-            // For all high frequencies, just use the envelope - no complex onset detection for now
-            output = currentEnergy;
+            // Clamp output to prevent overflow and inf values
+            output = std::clamp(currentEnergy, 0.0f, 100.0f); // Reasonable maximum
         }
         
         // Apply adaptive gain (conservative)
         output *= adaptiveGain;
         
-        // Massive visibility boost for high frequencies
-        if (centerFrequency >= 4.0f) {
-            output *= 100.0f; // 100x additional boost for all high frequencies
+        // Moderate visibility boost for high frequencies
+        if (centerFrequency >= 8.0f) {
+            output *= 3.0f; // Moderate boost for highest frequencies (8Hz, 16Hz)
+        } else if (centerFrequency >= 4.0f) {
+            output *= 2.0f; // Gentle boost for 4Hz (sixteenth notes)
         }
+    }
+    
+    // Final safety clamp to prevent inf/nan/overflow values
+    if (!std::isfinite(output) || output < 0.0f) {
+        output = 0.0f;
+    } else if (output > 1000.0f) {
+        output = 1000.0f; // Reasonable upper limit
     }
     
     return output;
@@ -597,12 +628,11 @@ RhythmInterpreter::RhythmInterpreter(NeuronNetwork* network, AudioManager* audio
     
     audioBuffer.resize(bufferSize);
     filterOutputs.resize(filterBank.size());
-    filterGains.resize(filterBank.size(), 1.0f); // Initialize all filter gains to 1.0
+    filterGains.resize(filterBank.size(), 1.0f); // Initialize all filter gains to 1.0x
     
-    // Massive boost for high-frequency filter gains to ensure visibility
-    for (size_t i = 5; i < filterGains.size(); ++i) {
-        filterGains[i] = 1000.0f; // 1000x boost for high-frequency filters (5, 6, 7)
-    }
+    // Initialize internal processing boosts (separate from GUI-visible gains)
+    internalBoosts.resize(filterBank.size(), 1.0f);
+    // All internal boosts set to 1.0 (no additional amplification)
     filterSoloEnabled.resize(filterBank.size(), false); // Initialize all solo states to false
     anyFilterSoloed = false; // No filters soloed initially
     audioOutputEnabled = true; // Audio output ENABLED by default for debugging
@@ -858,7 +888,7 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
             // Use original audioData directly to debug high-frequency issue
             float filteredSample = filterBank[i]->process(audioData[j]);
             maxFilteredSample = std::max(maxFilteredSample, std::abs(filteredSample));
-            filterAudioOutputs[i][j] = filteredSample * globalGain * filterGains[i];
+            filterAudioOutputs[i][j] = filteredSample * globalGain * filterGains[i] * internalBoosts[i];
             sum += filteredSample;
             lastFilteredSample = filteredSample; // Update last sample
         }
@@ -866,10 +896,15 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         // For GUI display, use different approaches based on filter type:
         if (i >= 5) { // High-frequency filters (5, 6, 7) use envelope detection
             // Use the last processed sample which contains the current envelope state
-            filterOutputs[i] = lastFilteredSample * filterGains[i];
+            // Apply both GUI-visible gain and internal boost
+            float rawOutput = lastFilteredSample * filterGains[i] * internalBoosts[i];
+            // Scale down aggressive high-frequency outputs to reasonable GUI range
+            filterOutputs[i] = std::clamp(rawOutput * 0.01f, 0.0f, 0.5f); // Scale down and clamp to 50% max
         } else {
             // Low-frequency filters use average (rhythmogram correlation)
-            filterOutputs[i] = (sum / audioData.size()) * filterGains[i];
+            // Apply both GUI-visible gain and internal boost
+            float rawOutput = (sum / audioData.size()) * filterGains[i] * internalBoosts[i];
+            filterOutputs[i] = std::clamp(rawOutput, 0.0f, 1.0f); // Normal clamp for low-frequency bands
         }
         
         // Debug: Log filter output levels frequently for high-frequency filters

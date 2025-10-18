@@ -257,6 +257,7 @@ private:
     bool enabled;
     float globalGain; // Should be 0 for analysis-only mode, >0 for filtered audio output
     std::vector<float> filterGains; // User-controlled gain for each filter band
+    std::vector<float> internalBoosts; // Internal processing boosts (separate from GUI-visible gains)
     std::vector<bool> filterSoloEnabled; // Solo/listen state for each filter band
     bool anyFilterSoloed; // True if any filter is currently soloed
     bool audioOutputEnabled; // Enable filtered audio output
