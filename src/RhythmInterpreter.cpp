@@ -898,8 +898,17 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
             // Use the last processed sample which contains the current envelope state
             // Apply both GUI-visible gain and internal boost
             float rawOutput = lastFilteredSample * filterGains[i] * internalBoosts[i];
-            // Scale down aggressive high-frequency outputs to reasonable GUI range
-            filterOutputs[i] = std::clamp(rawOutput * 0.01f, 0.0f, 0.5f); // Scale down and clamp to 50% max
+            
+            // Different scaling for different high-frequency bands to prevent saturation
+            if (i == 5) { // 4Hz (16th notes)
+                filterOutputs[i] = std::clamp(rawOutput * 0.05f, 0.0f, 0.3f); // Moderate scaling
+            } else if (i == 6) { // 8Hz (32nd notes) 
+                filterOutputs[i] = std::clamp(rawOutput * 0.02f, 0.0f, 0.3f); // More aggressive scaling
+            } else if (i == 7) { // 16Hz (onset detection)
+                filterOutputs[i] = std::clamp(rawOutput * 0.1f, 0.0f, 0.4f); // Less aggressive scaling for visibility
+            } else {
+                filterOutputs[i] = std::clamp(rawOutput * 0.03f, 0.0f, 0.3f); // Default scaling
+            }
         } else {
             // Low-frequency filters use average (rhythmogram correlation)
             // Apply both GUI-visible gain and internal boost
