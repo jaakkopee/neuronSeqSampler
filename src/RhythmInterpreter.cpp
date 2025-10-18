@@ -891,28 +891,28 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     processedAudioBuffer.clear();
     processedAudioBuffer.resize(audioData.size(), 0.0f);
     
-    // Per-band scaling factors - AGGRESSIVE SUPPRESSION for highest bands
+    // Per-band scaling factors - ANTI-STUCK approach
     const std::vector<float> BAND_SCALING = {
         1.0f,    // 0.125Hz - phrase structure
         1.0f,    // 0.25Hz  - whole notes  
         1.0f,    // 0.5Hz   - half notes
         1.0f,    // 1.0Hz   - quarter notes
         1.2f,    // 2.0Hz   - eighth notes (slight boost)
-        1.5f,    // 4.0Hz   - sixteenth notes (moderate boost)
-        0.1f,    // 8.0Hz   - ULTRA LOW (10% scaling)
-        0.05f    // 16.0Hz  - ULTRA LOW (5% scaling)
+    2.0f,    // 4.0Hz   - sixteenth notes (boosted)
+    2.5f,    // 8.0Hz   - boosted
+    3.0f     // 16.0Hz  - boosted
     };
     
-    // Maximum output limits - AGGRESSIVE LIMITS for highest bands
+    // Maximum output limits - ULTRA RESTRICTIVE for all problematic bands
     const std::vector<float> BAND_LIMITS = {
         1.0f,    // 0.125Hz - up to 100%
         1.0f,    // 0.25Hz  - up to 100%
         1.0f,    // 0.5Hz   - up to 100%
         1.0f,    // 1.0Hz   - up to 100%
         1.0f,    // 2.0Hz   - up to 100%
-        1.0f,    // 4.0Hz   - up to 100%
-        0.3f,    // 8.0Hz   - up to 30% MAX
-        0.2f     // 16.0Hz  - up to 20% MAX
+    0.7f,    // 4.0Hz   - boosted (70% max)
+    0.8f,    // 8.0Hz   - boosted (80% max)
+    0.9f     // 16.0Hz  - boosted (90% max)
     };
     
     // Temporary buffers for audio processing
@@ -939,35 +939,60 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
             peakLevel = std::max(peakLevel, std::abs(filteredSample));
         }
         
-        // Step 2: Calculate stable RMS energy level with frequency normalization
+        // Step 2: ANTI-STUCK SYSTEM - Force dynamic behavior for high-frequency bands
+        static std::vector<float> adaptiveThresholds(filterBank.size(), 0.1f);
+        static std::vector<int> stuckCounters(filterBank.size(), 0);
+        static int frameCounter = 0;
+        frameCounter++;
+        
+        // Calculate basic RMS energy
         float rmsEnergy = audioData.empty() ? 0.0f : std::sqrt(rmsSum / audioData.size());
         
-        // Step 3: AGGRESSIVE frequency-dependent normalization for highest bands
-        const std::vector<float> FREQUENCY_NORMALIZATION = {
-            1.0f,     // 0.125Hz - baseline
-            1.0f,     // 0.25Hz  - baseline
-            1.0f,     // 0.5Hz   - baseline
-            1.0f,     // 1.0Hz   - baseline
-            0.8f,     // 2.0Hz   - slight reduction
-            0.6f,     // 4.0Hz   - moderate reduction
-            0.05f,    // 8.0Hz   - ULTRA AGGRESSIVE (5% energy)
-            0.03f     // 16.0Hz  - ULTRA AGGRESSIVE (3% energy)
-        };
+        // Step 3: EXPANDED Anti-stuck mechanism for ALL problematic bands (4Hz, 8Hz, 16Hz)
+        float processedEnergy = rmsEnergy;
         
-        float frequencyNormalizedEnergy = rmsEnergy;
-        if (bandIndex < FREQUENCY_NORMALIZATION.size()) {
-            frequencyNormalizedEnergy *= FREQUENCY_NORMALIZATION[bandIndex];
+        if (bandIndex >= 5) { // 4Hz, 8Hz, and 16Hz bands (indices 5, 6, 7)
+            // Force cycling behavior instead of getting stuck
+            float cyclePhase = std::sin(frameCounter * 0.05f + bandIndex * 1.0f); // Slower, different phases
+            
+            // More sensitive stuck detection - lower thresholds
+            float stuckThreshold = 0.4f + bandIndex * 0.1f; // 0.4f, 0.5f, 0.6f for bands 5,6,7
+            
+            if (filterOutputs[bandIndex] > stuckThreshold) {
+                stuckCounters[bandIndex]++;
+            } else {
+                stuckCounters[bandIndex] = 0;
+            }
+            
+            // More aggressive reset - shorter wait time
+            if (stuckCounters[bandIndex] > 20) { // Reduced from 50 to 20
+                // ULTRA aggressive reset - force to near zero
+                processedEnergy = 0.0001f * (0.1f + 0.9f * std::abs(cyclePhase));
+                stuckCounters[bandIndex] = 0;
+            } else {
+                // BOOSTED normal processing
+                float baseReduction = 0.005f; // Less aggressive reduction (boost)
+                float modulation = 0.5f + 0.5f * std::abs(cyclePhase); // Wider range (boost)
+                processedEnergy = rmsEnergy * baseReduction * modulation;
+            }
+        } else {
+            // Normal frequency normalization for lower bands only
+            const std::vector<float> FREQUENCY_NORMALIZATION = {
+                1.0f,     // 0.125Hz - baseline
+                1.0f,     // 0.25Hz  - baseline
+                1.0f,     // 0.5Hz   - baseline
+                1.0f,     // 1.0Hz   - baseline
+                0.8f      // 2.0Hz   - slight reduction
+            };
+            
+            if (bandIndex < FREQUENCY_NORMALIZATION.size()) {
+                processedEnergy *= FREQUENCY_NORMALIZATION[bandIndex];
+            }
         }
         
-        // Step 3.5: Additional suppression for problematic bands
-        if (bandIndex == 6 || bandIndex == 7) { // 8Hz and 16Hz bands
-            // Apply logarithmic compression to prevent saturation
-            frequencyNormalizedEnergy = std::log10(1.0f + frequencyNormalizedEnergy * 9.0f) / 1.0f;
-        }
-        
-        // Step 4: Apply user-controlled gains with normalized energy
+        // Step 4: Apply user-controlled gains
         float userGain = filterGains[bandIndex] * internalBoosts[bandIndex];
-        float scaledOutput = frequencyNormalizedEnergy * userGain;
+        float scaledOutput = processedEnergy * userGain;
         
         // Step 5: Apply band-specific scaling and limits
         float normalizedOutput = scaledOutput * BAND_SCALING[bandIndex];
