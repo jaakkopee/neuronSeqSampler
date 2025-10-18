@@ -75,7 +75,7 @@ const std::vector<float> RhythmInterpreter::DEFAULT_RESONANCES = {
 
 AdaptiveFilter::AdaptiveFilter(float freq, float bw, float adaptRate, float res)
     : centerFrequency(freq), bandwidth(bw), adaptationRate(adaptRate), resonance(res),
-      currentEnergy(0.0f), adaptiveGain(1.0f), sampleCount(0.0f), smoothedOutput(0.0f) {
+      currentEnergy(0.0f), adaptiveGain(1.0f), sampleCount(0.0f), smoothedOutput(0.0f), previousEnergy(0.0f) {
     
     // Initialize simple bandpass filter coefficients
     coefficients.resize(5); // Biquad filter
@@ -155,52 +155,63 @@ float AdaptiveFilter::process(float input) {
         
     } else {
         // ENHANCED HIGH-FREQUENCY PROCESSING (>= 4Hz) for rhythm detection
-        // Use envelope detection and onset enhancement for better rhythm capture
         
         if (centerFrequency >= 8.0f) {
             // ONSET DETECTION for 8Hz+ (32nd notes and micro-rhythmic onsets)
-            // Use envelope detection with onset emphasis
             
-            // Calculate input envelope (absolute value with some smoothing)
+            // Calculate input envelope
             float envelope = std::abs(input);
             
-            // Onset detection using differentiation (emphasis on attacks)
-            float onsetStrength = envelope - delayLine[0] * 0.7f;  // Differentiate envelope
-            onsetStrength = std::max(0.0f, onsetStrength);         // Half-wave rectification
+            // Smooth the envelope for better onset detection
+            float smoothedEnv = 0.8f * delayLine[0] + 0.2f * envelope;
+            delayLine[0] = smoothedEnv;
             
-            // Update delay line for envelope history
-            delayLine[0] = envelope;
+            // Onset strength using rate of change
+            float onsetStrength = std::max(0.0f, smoothedEnv - delayLine[1] * 0.9f);
+            delayLine[1] = smoothedEnv;
             
-            // Scale for frequency-specific emphasis
-            float frequencyScale = centerFrequency / 8.0f;  // Relative to minimum onset freq
-            output = onsetStrength * frequencyScale * 2.0f;  // Boost for visibility
+            // Apply frequency-specific scaling (higher frequencies get more boost)
+            float freqBoost = 1.0f + (centerFrequency - 8.0f) / 8.0f; // 1.0 to 2.0 range
+            output = onsetStrength * freqBoost;
             
         } else {
-            // RHYTHMIC ENVELOPE DETECTION for 4-8Hz (16th notes)
-            // Use smoothed envelope detection with rhythmic emphasis
+            // ENVELOPE DETECTION for 4-8Hz (16th notes) and 8Hz+ (32nd/onset)
             
-            // Envelope following with frequency-appropriate time constant
+            // Simple envelope following with proper decay
             float envelope = std::abs(input);
-            float timeConstant = 0.98f - (centerFrequency / 16.0f) * 0.2f; // Faster for higher freq
-            currentEnergy = timeConstant * currentEnergy + (1.0f - timeConstant) * envelope;
             
-            // Apply some rhythmic modulation detection
-            sampleCount += 1.0f;
-            float referencePhase = 2.0f * M_PI * centerFrequency * sampleCount / 44100.0f;
-            float rhythmicRef = (sin(referencePhase) + 1.0f) * 0.5f;
+            // Use exponential decay envelope follower with proper decay rates
+            float attack = 0.05f;  // Fast attack for responsiveness
+            float decay = 0.95f;   // Much faster decay to prevent accumulation
             
-            // Combine envelope with rhythmic correlation
-            output = currentEnergy * (0.7f + 0.3f * rhythmicRef);
+            if (envelope > currentEnergy) {
+                currentEnergy = attack * envelope + (1.0f - attack) * currentEnergy;
+            } else {
+                currentEnergy = decay * currentEnergy;
+            }
+            
+            // Clamp currentEnergy to prevent runaway accumulation
+            currentEnergy = std::clamp(currentEnergy, 0.0f, 1.0f);
+            
+            // For high frequencies (>= 8Hz), add onset detection
+            if (centerFrequency >= 8.0f) {
+                // Onset detection: look for rapid energy increases
+                float energyDiff = currentEnergy - previousEnergy;
+                float onsetBoost = std::max(0.0f, energyDiff * 5.0f); // Emphasize sudden increases
+                previousEnergy = currentEnergy * 0.9f; // Smooth previous energy
+                
+                output = currentEnergy + onsetBoost;
+            } else {
+                // For 4-8Hz, use clean envelope
+                output = currentEnergy;
+            }
         }
         
-        // Apply adaptive gain
+        // Apply adaptive gain (conservative)
         output *= adaptiveGain;
         
-        // Final scaling boost for high-frequency filters
-        output *= 3.0f;  // Significant boost to make outputs visible
-        
-        // Update energy estimate
-        currentEnergy = 0.95f * currentEnergy + 0.05f * (output * output);
+        // Modest boost for visibility
+        output *= 1.2f;
     }
     
     return output;

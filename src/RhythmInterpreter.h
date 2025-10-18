@@ -27,6 +27,7 @@ private:
     // Rhythmogram processing state for low-frequency detection
     float sampleCount;          // For phase tracking in rhythmogram analysis
     float smoothedOutput;       // Smoothed correlation output for rhythmogram
+    float previousEnergy;       // For onset detection in high-frequency filters
     
     void updateFilterCoefficients(); // Update coefficients when parameters change
 
