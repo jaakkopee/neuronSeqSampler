@@ -123,6 +123,25 @@ void AdaptiveFilter::updateFilterCoefficients() {
 float AdaptiveFilter::process(float input) {
     float output = 0.0f;
     
+    // Apply biquad bandpass filter first for high frequencies (>= 4Hz)
+    float filteredInput = input;
+    if (centerFrequency >= 4.0f) {
+        // Apply biquad bandpass filter
+        float filtered = coefficients[0] * input + 
+                        coefficients[1] * delayLine[0] + 
+                        coefficients[2] * delayLine[1] -
+                        coefficients[3] * delayLine[2] - 
+                        coefficients[4] * delayLine[3];
+        
+        // Update delay line
+        delayLine[1] = delayLine[0];
+        delayLine[0] = input;
+        delayLine[3] = delayLine[2];
+        delayLine[2] = filtered;
+        
+        filteredInput = filtered;
+    }
+    
     if (centerFrequency < 4.0f) {
         // RHYTHMOGRAM LOW-FREQUENCY PROCESSING
         // For frequencies < 4Hz, use envelope following and rhythm detection
@@ -176,17 +195,20 @@ float AdaptiveFilter::process(float input) {
             
         } else {
             // ENVELOPE DETECTION for 4-8Hz (16th notes) and 8Hz+ (32nd/onset)
+            // Use the bandpass-filtered input for proper frequency-specific envelope detection
             
-            // Simple envelope following with proper decay
-            float envelope = std::abs(input);
+            // Simple envelope following with aggressive decay for responsiveness
+            float envelope = std::abs(filteredInput); // Use filtered input instead of raw input
             
-            // Use exponential decay envelope follower with proper decay rates
-            float attack = 0.05f;  // Fast attack for responsiveness
-            float decay = 0.95f;   // Much faster decay to prevent accumulation
+            // Use very fast attack and release for high-frequency responsiveness
+            float attack = 0.2f;   // Faster attack for immediate response
+            float decay = 0.85f;   // Much faster decay to show dynamics
             
             if (envelope > currentEnergy) {
+                // Attack: follow increases quickly
                 currentEnergy = attack * envelope + (1.0f - attack) * currentEnergy;
             } else {
+                // Release: decay quickly to show changes
                 currentEnergy = decay * currentEnergy;
             }
             
@@ -197,12 +219,12 @@ float AdaptiveFilter::process(float input) {
             if (centerFrequency >= 8.0f) {
                 // Onset detection: look for rapid energy increases
                 float energyDiff = currentEnergy - previousEnergy;
-                float onsetBoost = std::max(0.0f, energyDiff * 5.0f); // Emphasize sudden increases
-                previousEnergy = currentEnergy * 0.9f; // Smooth previous energy
+                float onsetBoost = std::max(0.0f, energyDiff * 10.0f); // More aggressive onset detection
+                previousEnergy = 0.8f * previousEnergy + 0.2f * currentEnergy; // Faster previous energy update
                 
                 output = currentEnergy + onsetBoost;
             } else {
-                // For 4-8Hz, use clean envelope
+                // For 4-8Hz, use clean envelope but with some modulation to show activity
                 output = currentEnergy;
             }
         }
