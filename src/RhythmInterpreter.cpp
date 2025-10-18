@@ -894,14 +894,20 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         }
         
         // Use the same approach for all filters (rhythmogram correlation based on average)
-        float rawOutput = (sum / audioData.size()) * filterGains[i] * internalBoosts[i];
+        // Apply reduced effective gains for problematic high-frequency bands
+        float effectiveGain = filterGains[i] * internalBoosts[i];
+        if (i == 6) { // 8Hz (32nd notes) - reduce effective gain dramatically
+            effectiveGain *= 0.01f; // Reduce gain by 99% to prevent saturation before scaling
+        }
+        
+        float rawOutput = (sum / audioData.size()) * effectiveGain;
         
         if (i >= 5) { // High-frequency filters need scaling to prevent saturation
             // Different scaling for different high-frequency bands to prevent saturation
             if (i == 5) { // 4Hz (16th notes)
                 filterOutputs[i] = std::clamp(rawOutput * 0.05f, 0.0f, 0.3f); // Moderate scaling
             } else if (i == 6) { // 8Hz (32nd notes) 
-                filterOutputs[i] = std::clamp(rawOutput * 0.005f, 0.0f, 0.15f); // Extremely aggressive scaling and lower clamp to prevent 3000% saturation
+                filterOutputs[i] = std::clamp(rawOutput * 0.1f, 0.0f, 0.15f); // Normal scaling since we reduced gain above
             } else if (i == 7) { // 16Hz (onset detection)
                 filterOutputs[i] = std::clamp(rawOutput * 0.1f, 0.0f, 0.4f); // Less aggressive scaling for visibility
             } else {
