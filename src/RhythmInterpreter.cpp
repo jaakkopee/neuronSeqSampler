@@ -629,7 +629,7 @@ RhythmInterpreter::RhythmInterpreter(NeuronNetwork* network, AudioManager* audio
     audioBuffer.resize(bufferSize);
     filterOutputs.resize(filterBank.size());
     
-    // Initialize filter gains with sensible defaults for each frequency band
+    // Initialize filter gains - ALIGNED with overall signal levels
     filterGains.resize(filterBank.size());
     if (filterGains.size() >= 8) {
         filterGains[0] = 1.0f;   // 0.125Hz - normal gain
@@ -637,9 +637,9 @@ RhythmInterpreter::RhythmInterpreter(NeuronNetwork* network, AudioManager* audio
         filterGains[2] = 1.0f;   // 0.5Hz   - normal gain
         filterGains[3] = 1.0f;   // 1.0Hz   - normal gain
         filterGains[4] = 1.0f;   // 2.0Hz   - normal gain
-        filterGains[5] = 0.5f;   // 4.0Hz   - reduced gain (sixteenth notes)
-        filterGains[6] = 0.2f;   // 8.0Hz   - low gain (thirty-second notes)
-        filterGains[7] = 0.3f;   // 16.0Hz  - low gain (onset detection)
+        filterGains[5] = 1.0f;   // 4.0Hz   - ALIGNED (was 0.5f)
+        filterGains[6] = 1.0f;   // 8.0Hz   - ALIGNED (was 0.2f)
+        filterGains[7] = 1.0f;   // 16.0Hz  - ALIGNED (was 0.3f)
     } else {
         // Fallback for different filter bank sizes
         std::fill(filterGains.begin(), filterGains.end(), 1.0f);
@@ -891,28 +891,28 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     processedAudioBuffer.clear();
     processedAudioBuffer.resize(audioData.size(), 0.0f);
     
-    // Per-band scaling factors to normalize output levels
+    // Per-band scaling factors - AGGRESSIVE SUPPRESSION for highest bands
     const std::vector<float> BAND_SCALING = {
-        1.0f,    // 0.125Hz - phrase structure (normal)
-        1.0f,    // 0.25Hz  - whole notes (normal)
-        1.0f,    // 0.5Hz   - half notes (normal)
-        1.0f,    // 1.0Hz   - quarter notes (normal)
-        1.0f,    // 2.0Hz   - eighth notes (normal)
-        0.3f,    // 4.0Hz   - sixteenth notes (reduced)
-        0.001f,  // 8.0Hz   - thirty-second notes (ULTRA EXTREME - 0.1%)
-        0.5f     // 16.0Hz  - onset detection (moderately reduced)
+        1.0f,    // 0.125Hz - phrase structure
+        1.0f,    // 0.25Hz  - whole notes  
+        1.0f,    // 0.5Hz   - half notes
+        1.0f,    // 1.0Hz   - quarter notes
+        1.2f,    // 2.0Hz   - eighth notes (slight boost)
+        1.5f,    // 4.0Hz   - sixteenth notes (moderate boost)
+        0.1f,    // 8.0Hz   - ULTRA LOW (10% scaling)
+        0.05f    // 16.0Hz  - ULTRA LOW (5% scaling)
     };
     
-    // Maximum output limits per band (as percentage 0.0-1.0)
+    // Maximum output limits - AGGRESSIVE LIMITS for highest bands
     const std::vector<float> BAND_LIMITS = {
         1.0f,    // 0.125Hz - up to 100%
         1.0f,    // 0.25Hz  - up to 100%
         1.0f,    // 0.5Hz   - up to 100%
         1.0f,    // 1.0Hz   - up to 100%
         1.0f,    // 2.0Hz   - up to 100%
-        0.5f,    // 4.0Hz   - up to 50%
-        0.05f,   // 8.0Hz   - up to 5% (ULTRA low limit - max 500 per mille)
-        0.6f     // 16.0Hz  - up to 60%
+        1.0f,    // 4.0Hz   - up to 100%
+        0.3f,    // 8.0Hz   - up to 30% MAX
+        0.2f     // 16.0Hz  - up to 20% MAX
     };
     
     // Temporary buffers for audio processing
@@ -924,9 +924,9 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     // Process each frequency band
     for (size_t bandIndex = 0; bandIndex < filterBank.size() && bandIndex < filterOutputs.size(); ++bandIndex) {
         
-        // Step 1: Process audio through band filter
-        float bandSum = 0.0f;
-        float bandMax = 0.0f;
+        // Step 1: Process audio through band filter and calculate RMS energy
+        float rmsSum = 0.0f;
+        float peakLevel = 0.0f;
         
         for (size_t sampleIndex = 0; sampleIndex < audioData.size(); ++sampleIndex) {
             float filteredSample = filterBank[bandIndex]->process(audioData[sampleIndex]);
@@ -934,23 +934,46 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
             // Store processed audio for potential solo output
             filterAudioOutputs[bandIndex][sampleIndex] = filteredSample * globalGain * filterGains[bandIndex];
             
-            // Accumulate for rhythmogram calculation
-            bandSum += std::abs(filteredSample);  // Use absolute value for energy
-            bandMax = std::max(bandMax, std::abs(filteredSample));
+            // Calculate RMS energy (root mean square for stable energy detection)
+            rmsSum += filteredSample * filteredSample;  // Square for RMS calculation
+            peakLevel = std::max(peakLevel, std::abs(filteredSample));
         }
         
-        // Step 2: Calculate rhythmogram correlation (Todd 1994 approach)
-        float rhythmogramValue = audioData.empty() ? 0.0f : (bandSum / audioData.size());
+        // Step 2: Calculate stable RMS energy level with frequency normalization
+        float rmsEnergy = audioData.empty() ? 0.0f : std::sqrt(rmsSum / audioData.size());
         
-        // Step 3: Apply user-controlled gains (unified processing for all bands)
+        // Step 3: AGGRESSIVE frequency-dependent normalization for highest bands
+        const std::vector<float> FREQUENCY_NORMALIZATION = {
+            1.0f,     // 0.125Hz - baseline
+            1.0f,     // 0.25Hz  - baseline
+            1.0f,     // 0.5Hz   - baseline
+            1.0f,     // 1.0Hz   - baseline
+            0.8f,     // 2.0Hz   - slight reduction
+            0.6f,     // 4.0Hz   - moderate reduction
+            0.05f,    // 8.0Hz   - ULTRA AGGRESSIVE (5% energy)
+            0.03f     // 16.0Hz  - ULTRA AGGRESSIVE (3% energy)
+        };
+        
+        float frequencyNormalizedEnergy = rmsEnergy;
+        if (bandIndex < FREQUENCY_NORMALIZATION.size()) {
+            frequencyNormalizedEnergy *= FREQUENCY_NORMALIZATION[bandIndex];
+        }
+        
+        // Step 3.5: Additional suppression for problematic bands
+        if (bandIndex == 6 || bandIndex == 7) { // 8Hz and 16Hz bands
+            // Apply logarithmic compression to prevent saturation
+            frequencyNormalizedEnergy = std::log10(1.0f + frequencyNormalizedEnergy * 9.0f) / 1.0f;
+        }
+        
+        // Step 4: Apply user-controlled gains with normalized energy
         float userGain = filterGains[bandIndex] * internalBoosts[bandIndex];
-        float scaledOutput = rhythmogramValue * userGain;
+        float scaledOutput = frequencyNormalizedEnergy * userGain;
         
-        // Step 4: Apply band-specific normalization and limits
+        // Step 5: Apply band-specific scaling and limits
         float normalizedOutput = scaledOutput * BAND_SCALING[bandIndex];
         filterOutputs[bandIndex] = std::clamp(normalizedOutput, 0.0f, BAND_LIMITS[bandIndex]);
         
-        // Step 5: Adapt filter based on rhythm strength
+        // Step 6: Adapt filter based on rhythm strength
         float rhythmStrength = 0.0f;
         if (useBeatRoot && beatRoot) {
             rhythmStrength = beatRoot->getBeatStrength();
@@ -962,7 +985,7 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         // Debug logging for problematic bands
         if (debugCounter % 100 == 0 && (bandIndex == 5 || bandIndex == 6 || bandIndex == 7)) {
             DEBUG_PRINT_STREAM("🎛️ Band " << bandIndex << " (" << DEFAULT_FREQUENCIES[bandIndex] << "Hz): "
-                             << "Input=" << rhythmogramValue 
+                             << "RMS=" << rmsEnergy 
                              << ", Final=" << filterOutputs[bandIndex] 
                              << ", Gain=" << filterGains[bandIndex]);
         }
