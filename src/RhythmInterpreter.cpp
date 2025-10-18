@@ -867,75 +867,91 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     //     processedAudio = outerEarFilter->process(audioData);
     // }
     
-    // Process audio through filterbank and generate output
+    // ============================================================================
+    // REWRITTEN FILTER PROCESSING - Clean and Robust Implementation
+    // ============================================================================
+    
+    // Initialize output arrays
     std::fill(filterOutputs.begin(), filterOutputs.end(), 0.0f);
     processedAudioBuffer.clear();
     processedAudioBuffer.resize(audioData.size(), 0.0f);
     
-    // Temporary buffers to store per-filter processed audio
+    // Per-band scaling factors to normalize output levels
+    const std::vector<float> BAND_SCALING = {
+        1.0f,    // 0.125Hz - phrase structure (normal)
+        1.0f,    // 0.25Hz  - whole notes (normal)
+        1.0f,    // 0.5Hz   - half notes (normal)
+        1.0f,    // 1.0Hz   - quarter notes (normal)
+        1.0f,    // 2.0Hz   - eighth notes (normal)
+        0.3f,    // 4.0Hz   - sixteenth notes (reduced)
+        0.1f,    // 8.0Hz   - thirty-second notes (heavily reduced)
+        0.5f     // 16.0Hz  - onset detection (moderately reduced)
+    };
+    
+    // Maximum output limits per band (as percentage 0.0-1.0)
+    const std::vector<float> BAND_LIMITS = {
+        1.0f,    // 0.125Hz - up to 100%
+        1.0f,    // 0.25Hz  - up to 100%
+        1.0f,    // 0.5Hz   - up to 100%
+        1.0f,    // 1.0Hz   - up to 100%
+        1.0f,    // 2.0Hz   - up to 100%
+        0.5f,    // 4.0Hz   - up to 50%
+        0.3f,    // 8.0Hz   - up to 30%
+        0.6f     // 16.0Hz  - up to 60%
+    };
+    
+    // Temporary buffers for audio processing
     std::vector<std::vector<float>> filterAudioOutputs(filterBank.size());
     for (size_t i = 0; i < filterBank.size(); ++i) {
         filterAudioOutputs[i].resize(audioData.size());
     }
     
-    // Process each filter
-    for (size_t i = 0; i < filterBank.size() && i < filterOutputs.size(); ++i) {
-        float sum = 0.0f;
-        float maxFilteredSample = 0.0f;
-        float lastFilteredSample = 0.0f; // Keep track of the last sample for envelope filters
+    // Process each frequency band
+    for (size_t bandIndex = 0; bandIndex < filterBank.size() && bandIndex < filterOutputs.size(); ++bandIndex) {
         
-        for (size_t j = 0; j < audioData.size(); ++j) {
-            // Use original audioData directly to debug high-frequency issue
-            float filteredSample = filterBank[i]->process(audioData[j]);
-            maxFilteredSample = std::max(maxFilteredSample, std::abs(filteredSample));
-            filterAudioOutputs[i][j] = filteredSample * globalGain * filterGains[i] * internalBoosts[i];
-            sum += filteredSample;
-            lastFilteredSample = filteredSample; // Update last sample
+        // Step 1: Process audio through band filter
+        float bandSum = 0.0f;
+        float bandMax = 0.0f;
+        
+        for (size_t sampleIndex = 0; sampleIndex < audioData.size(); ++sampleIndex) {
+            float filteredSample = filterBank[bandIndex]->process(audioData[sampleIndex]);
+            
+            // Store processed audio for potential solo output
+            filterAudioOutputs[bandIndex][sampleIndex] = filteredSample * globalGain * filterGains[bandIndex];
+            
+            // Accumulate for rhythmogram calculation
+            bandSum += std::abs(filteredSample);  // Use absolute value for energy
+            bandMax = std::max(bandMax, std::abs(filteredSample));
         }
         
-        // Use the same approach for all filters (rhythmogram correlation based on average)
-        // Apply reduced effective gains for problematic high-frequency bands
-        float effectiveGain = filterGains[i] * internalBoosts[i];
-        if (i == 6) { // 8Hz (32nd notes) - reduce effective gain dramatically
-            effectiveGain *= 0.01f; // Reduce gain by 99% to prevent saturation before scaling
-        }
+        // Step 2: Calculate rhythmogram correlation (Todd 1994 approach)
+        float rhythmogramValue = audioData.empty() ? 0.0f : (bandSum / audioData.size());
         
-        float rawOutput = (sum / audioData.size()) * effectiveGain;
+        // Step 3: Apply user-controlled gains
+        float userGain = filterGains[bandIndex] * internalBoosts[bandIndex];
+        float scaledOutput = rhythmogramValue * userGain;
         
-        if (i >= 5) { // High-frequency filters need scaling to prevent saturation
-            // Different scaling for different high-frequency bands to prevent saturation
-            if (i == 5) { // 4Hz (16th notes)
-                filterOutputs[i] = std::clamp(rawOutput * 0.05f, 0.0f, 0.3f); // Moderate scaling
-            } else if (i == 6) { // 8Hz (32nd notes) 
-                filterOutputs[i] = std::clamp(rawOutput * 0.1f, 0.0f, 0.15f); // Normal scaling since we reduced gain above
-            } else if (i == 7) { // 16Hz (onset detection)
-                filterOutputs[i] = std::clamp(rawOutput * 0.1f, 0.0f, 0.4f); // Less aggressive scaling for visibility
-            } else {
-                filterOutputs[i] = std::clamp(rawOutput * 0.03f, 0.0f, 0.3f); // Default scaling
-            }
-        } else {
-            // Low-frequency filters use normal scaling
-            filterOutputs[i] = std::clamp(rawOutput, 0.0f, 1.0f); // Normal clamp for low-frequency bands
-        }
+        // Step 4: Apply band-specific normalization and limits
+        float normalizedOutput = scaledOutput * BAND_SCALING[bandIndex];
+        filterOutputs[bandIndex] = std::clamp(normalizedOutput, 0.0f, BAND_LIMITS[bandIndex]);
         
-        // Debug: Log filter output levels frequently for high-frequency filters
-        if (debugCounter % 50 == 0 && i >= 5) { // Very frequent logging for high-frequency filters
-            float maxAudio = audioData.empty() ? 0.0f : *std::max_element(audioData.begin(), audioData.end(),
-                [](float a, float b) { return std::abs(a) < std::abs(b); });
-            ESSENTIAL_PRINT_STREAM("🔥 HF Filter " << i << " (" << DEFAULT_FREQUENCIES[i] << "Hz)"
-                      << " - Input: " << maxAudio
-                      << ", Raw: " << lastFilteredSample 
-                      << ", FINAL: " << filterOutputs[i] << ", Gain: " << filterGains[i]);
-        }
-        
-        // Adapt filter based on rhythm strength
-        float rhythmStrength;
+        // Step 5: Adapt filter based on rhythm strength
+        float rhythmStrength = 0.0f;
         if (useBeatRoot && beatRoot) {
             rhythmStrength = beatRoot->getBeatStrength();
-        } else {
-            rhythmStrength = rhythmDetector ? rhythmDetector->getBeatStrength() : 0.0f;
+        } else if (rhythmDetector) {
+            rhythmStrength = rhythmDetector->getBeatStrength();
         }
-        filterBank[i]->adaptToRhythm(rhythmStrength);
+        filterBank[bandIndex]->adaptToRhythm(rhythmStrength);
+        
+        // Debug logging for problematic bands
+        if (debugCounter % 100 == 0 && (bandIndex == 5 || bandIndex == 6 || bandIndex == 7)) {
+            DEBUG_PRINT_STREAM("🎛️ Band " << bandIndex << " (" << DEFAULT_FREQUENCIES[bandIndex] << "Hz): "
+                             << "Raw=" << scaledOutput 
+                             << ", Scale=" << BAND_SCALING[bandIndex]
+                             << ", Final=" << filterOutputs[bandIndex] 
+                             << ", Gain=" << filterGains[bandIndex]);
+        }
     }
     
     // Generate processed audio output based on solo state
