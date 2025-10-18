@@ -893,12 +893,10 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
             lastFilteredSample = filteredSample; // Update last sample
         }
         
-        // For GUI display, use different approaches based on filter type:
-        if (i >= 5) { // High-frequency filters (5, 6, 7) use envelope detection
-            // Use the last processed sample which contains the current envelope state
-            // Apply both GUI-visible gain and internal boost
-            float rawOutput = lastFilteredSample * filterGains[i] * internalBoosts[i];
-            
+        // Use the same approach for all filters (rhythmogram correlation based on average)
+        float rawOutput = (sum / audioData.size()) * filterGains[i] * internalBoosts[i];
+        
+        if (i >= 5) { // High-frequency filters need scaling to prevent saturation
             // Different scaling for different high-frequency bands to prevent saturation
             if (i == 5) { // 4Hz (16th notes)
                 filterOutputs[i] = std::clamp(rawOutput * 0.05f, 0.0f, 0.3f); // Moderate scaling
@@ -910,9 +908,7 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
                 filterOutputs[i] = std::clamp(rawOutput * 0.03f, 0.0f, 0.3f); // Default scaling
             }
         } else {
-            // Low-frequency filters use average (rhythmogram correlation)
-            // Apply both GUI-visible gain and internal boost
-            float rawOutput = (sum / audioData.size()) * filterGains[i] * internalBoosts[i];
+            // Low-frequency filters use normal scaling
             filterOutputs[i] = std::clamp(rawOutput, 0.0f, 1.0f); // Normal clamp for low-frequency bands
         }
         
