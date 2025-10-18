@@ -901,7 +901,7 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
             if (i == 5) { // 4Hz (16th notes)
                 filterOutputs[i] = std::clamp(rawOutput * 0.05f, 0.0f, 0.3f); // Moderate scaling
             } else if (i == 6) { // 8Hz (32nd notes) 
-                filterOutputs[i] = std::clamp(rawOutput * 0.02f, 0.0f, 0.3f); // More aggressive scaling
+                filterOutputs[i] = std::clamp(rawOutput * 0.005f, 0.0f, 0.15f); // Extremely aggressive scaling and lower clamp to prevent 3000% saturation
             } else if (i == 7) { // 16Hz (onset detection)
                 filterOutputs[i] = std::clamp(rawOutput * 0.1f, 0.0f, 0.4f); // Less aggressive scaling for visibility
             } else {
