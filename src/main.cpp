@@ -107,6 +107,9 @@ public:
         // Set up internal recording connection
         audioManager.setInternalRecorder(&recorder);
         
+        // CRITICAL: Connect AudioManager to RhythmInterpreter for audio analysis
+        audioManager.setRhythmInterpreter(network.getRhythmInterpreter());
+        
         // Start with an empty network - users can add neurons via the menu
         
         // Set up visualizer canvas area (left side of window)

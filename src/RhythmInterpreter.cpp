@@ -596,6 +596,11 @@ RhythmInterpreter::RhythmInterpreter(NeuronNetwork* network, AudioManager* audio
     audioBuffer.resize(bufferSize);
     filterOutputs.resize(filterBank.size());
     filterGains.resize(filterBank.size(), 1.0f); // Initialize all filter gains to 1.0
+    
+    // Boost high-frequency filter gains to help with visibility
+    for (size_t i = 5; i < filterGains.size(); ++i) {
+        filterGains[i] = 10.0f; // 10x boost for high-frequency filters (5, 6, 7)
+    }
     filterSoloEnabled.resize(filterBank.size(), false); // Initialize all solo states to false
     anyFilterSoloed = false; // No filters soloed initially
     audioOutputEnabled = true; // Audio output ENABLED by default for debugging
@@ -715,12 +720,19 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     
     // Debug: Check if we're receiving audio data
     debugCounter++;
-    if (debugCounter % 100 == 0 && !audioData.empty()) {
+    if (debugCounter % 50 == 0 && !audioData.empty()) { // More frequent logging
         float maxSample = 0.0f;
         for (float sample : audioData) {
             maxSample = std::max(maxSample, std::abs(sample));
         }
         DEBUG_PRINT_STREAM("📢 Audio input: " << audioData.size() << " samples, max: " << maxSample);
+        
+        // Always show high-frequency filter status when we have audio
+        if (maxSample > 0.0001f) { // Only when there's actual audio
+            for (size_t i = 5; i < filterBank.size() && i < filterOutputs.size(); ++i) {
+                DEBUG_PRINT_STREAM("🔍 HF Filter " << i << " (" << DEFAULT_FREQUENCIES[i] << "Hz) output: " << filterOutputs[i]);
+            }
+        }
     }
     
     // Process audio through rhythm analysis systems
@@ -813,14 +825,15 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     }
     
     // ============================================================================
-    // LIGHTWEIGHT BIOLOGICAL AUDITORY PROCESSING
+    // LIGHTWEIGHT BIOLOGICAL AUDITORY PROCESSING (TEMPORARILY DISABLED FOR DEBUGGING)
     // Outer ear filtering for biological enhancement without computational overhead
     // ============================================================================
     
     std::vector<float> processedAudio = audioData;
-    if (outerEarFilter) {
-        processedAudio = outerEarFilter->process(audioData);
-    }
+    // Temporarily disable outer ear filter to debug high-frequency issue
+    // if (outerEarFilter) {
+    //     processedAudio = outerEarFilter->process(audioData);
+    // }
     
     // Process audio through filterbank and generate output
     std::fill(filterOutputs.begin(), filterOutputs.end(), 0.0f);
@@ -840,8 +853,8 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         float lastFilteredSample = 0.0f; // Keep track of the last sample for envelope filters
         
         for (size_t j = 0; j < audioData.size(); ++j) {
-            float inputSample = (j < processedAudio.size()) ? processedAudio[j] : audioData[j];
-            float filteredSample = filterBank[i]->process(inputSample);
+            // Use original audioData directly to debug high-frequency issue
+            float filteredSample = filterBank[i]->process(audioData[j]);
             maxFilteredSample = std::max(maxFilteredSample, std::abs(filteredSample));
             filterAudioOutputs[i][j] = filteredSample * globalGain * filterGains[i];
             sum += filteredSample;
@@ -858,8 +871,12 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         }
         
         // Debug: Log filter output levels occasionally
-        if (debugCounter % 1000 == 0 && i >= 5) { // Log high-frequency filters
-            DEBUG_PRINT_STREAM("🎛️  HF Filter " << i << " - Last sample: " << lastFilteredSample 
+        if (debugCounter % 200 == 0 && i >= 5) { // More frequent logging for high-frequency filters
+            float maxAudio = *std::max_element(audioData.begin(), audioData.end(),
+                [](float a, float b) { return std::abs(a) < std::abs(b); });
+            DEBUG_PRINT_STREAM("🎛️  HF Filter " << i << " (" << DEFAULT_FREQUENCIES[i] << "Hz)"
+                      << " - Input max: " << maxAudio
+                      << ", Last sample: " << lastFilteredSample 
                       << ", Final output: " << filterOutputs[i] << ", Gain: " << filterGains[i]);
         }
         
