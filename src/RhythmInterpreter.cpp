@@ -200,10 +200,10 @@ float AdaptiveFilter::process(float input) {
             // Simple envelope following - start with basic approach
             float envelope = std::abs(filteredInput);
             
-            // Apply very aggressive boost for high frequencies since bandpass output is extremely weak
-            float boost = 1000.0f; // Much more aggressive boost
+            // Apply extremely aggressive boost for high frequencies since bandpass output is extremely weak
+            float boost = 10000.0f; // Massive boost for visibility
             if (centerFrequency >= 8.0f) {
-                boost = 5000.0f; // Even more for highest frequencies
+                boost = 50000.0f; // Enormous boost for highest frequencies (8Hz, 16Hz)
             }
             envelope *= boost;
             
@@ -227,8 +227,10 @@ float AdaptiveFilter::process(float input) {
         // Apply adaptive gain (conservative)
         output *= adaptiveGain;
         
-        // Modest boost for visibility
-        output *= 1.2f;
+        // Massive visibility boost for high frequencies
+        if (centerFrequency >= 4.0f) {
+            output *= 100.0f; // 100x additional boost for all high frequencies
+        }
     }
     
     return output;
@@ -597,9 +599,9 @@ RhythmInterpreter::RhythmInterpreter(NeuronNetwork* network, AudioManager* audio
     filterOutputs.resize(filterBank.size());
     filterGains.resize(filterBank.size(), 1.0f); // Initialize all filter gains to 1.0
     
-    // Boost high-frequency filter gains to help with visibility
+    // Massive boost for high-frequency filter gains to ensure visibility
     for (size_t i = 5; i < filterGains.size(); ++i) {
-        filterGains[i] = 10.0f; // 10x boost for high-frequency filters (5, 6, 7)
+        filterGains[i] = 1000.0f; // 1000x boost for high-frequency filters (5, 6, 7)
     }
     filterSoloEnabled.resize(filterBank.size(), false); // Initialize all solo states to false
     anyFilterSoloed = false; // No filters soloed initially
@@ -870,14 +872,14 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
             filterOutputs[i] = (sum / audioData.size()) * filterGains[i];
         }
         
-        // Debug: Log filter output levels occasionally
-        if (debugCounter % 200 == 0 && i >= 5) { // More frequent logging for high-frequency filters
-            float maxAudio = *std::max_element(audioData.begin(), audioData.end(),
+        // Debug: Log filter output levels frequently for high-frequency filters
+        if (debugCounter % 50 == 0 && i >= 5) { // Very frequent logging for high-frequency filters
+            float maxAudio = audioData.empty() ? 0.0f : *std::max_element(audioData.begin(), audioData.end(),
                 [](float a, float b) { return std::abs(a) < std::abs(b); });
-            DEBUG_PRINT_STREAM("🎛️  HF Filter " << i << " (" << DEFAULT_FREQUENCIES[i] << "Hz)"
-                      << " - Input max: " << maxAudio
-                      << ", Last sample: " << lastFilteredSample 
-                      << ", Final output: " << filterOutputs[i] << ", Gain: " << filterGains[i]);
+            ESSENTIAL_PRINT_STREAM("🔥 HF Filter " << i << " (" << DEFAULT_FREQUENCIES[i] << "Hz)"
+                      << " - Input: " << maxAudio
+                      << ", Raw: " << lastFilteredSample 
+                      << ", FINAL: " << filterOutputs[i] << ", Gain: " << filterGains[i]);
         }
         
         // Adapt filter based on rhythm strength

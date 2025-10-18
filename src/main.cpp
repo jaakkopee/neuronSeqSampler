@@ -110,6 +110,10 @@ public:
         // CRITICAL: Connect AudioManager to RhythmInterpreter for audio analysis
         audioManager.setRhythmInterpreter(network.getRhythmInterpreter());
         
+        // Enable adaptive filter mode by default for high-frequency filter processing
+        audioManager.setAdaptiveFilterMode(true);
+        ESSENTIAL_PRINT("🎛️ Adaptive Filter Mode ENABLED by default for high-frequency processing");
+        
         // Start with an empty network - users can add neurons via the menu
         
         // Set up visualizer canvas area (left side of window)
