@@ -200,13 +200,6 @@ float AdaptiveFilter::process(float input) {
             // Simple envelope following - start with basic approach
             float envelope = std::abs(filteredInput);
             
-            // Debug: Check if we're getting any filtered input at all
-            static int debugCounter = 0;
-            if ((debugCounter++ % 2000 == 0) && centerFrequency >= 4.0f) {
-                printf("Filter %.1fHz: raw=%.6f, filtered=%.6f, envelope=%.6f\n", 
-                       centerFrequency, input, filteredInput, envelope);
-            }
-            
             // Apply very aggressive boost for high frequencies since bandpass output is extremely weak
             float boost = 1000.0f; // Much more aggressive boost
             if (centerFrequency >= 8.0f) {
@@ -759,19 +752,28 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     for (size_t i = 0; i < filterBank.size() && i < filterOutputs.size(); ++i) {
         float sum = 0.0f;
         float maxFilteredSample = 0.0f;
+        float lastFilteredSample = 0.0f; // Keep track of the last sample for envelope filters
+        
         for (size_t j = 0; j < audioData.size(); ++j) {
             float filteredSample = filterBank[i]->process(audioData[j]);
             maxFilteredSample = std::max(maxFilteredSample, std::abs(filteredSample));
             filterAudioOutputs[i][j] = filteredSample * globalGain * filterGains[i];
             sum += filteredSample;
+            lastFilteredSample = filteredSample; // Update last sample
         }
-        // For GUI display, we want the actual filter response regardless of globalGain
-        // globalGain controls audio output mixing, but GUI should show actual filter levels
-        filterOutputs[i] = (sum / audioData.size()) * filterGains[i]; // Remove globalGain from GUI display calculation
+        
+        // For GUI display, use different approaches based on filter type:
+        if (i >= 5) { // High-frequency filters (5, 6, 7) use envelope detection
+            // Use the last processed sample which contains the current envelope state
+            filterOutputs[i] = lastFilteredSample * filterGains[i];
+        } else {
+            // Low-frequency filters use average (rhythmogram correlation)
+            filterOutputs[i] = (sum / audioData.size()) * filterGains[i];
+        }
         
         // Debug: Log filter output levels occasionally
-        if (debugCounter % 1000 == 0 && i == 0) { // Only log for first filter to avoid spam
-            DEBUG_PRINT_STREAM("🎛️  Filter " << i << " - Raw sum: " << sum << ", Max sample: " << maxFilteredSample 
+        if (debugCounter % 1000 == 0 && i >= 5) { // Log high-frequency filters
+            DEBUG_PRINT_STREAM("🎛️  HF Filter " << i << " - Last sample: " << lastFilteredSample 
                       << ", Final output: " << filterOutputs[i] << ", Gain: " << filterGains[i]);
         }
         
