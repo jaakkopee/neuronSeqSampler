@@ -53,9 +53,9 @@ const std::vector<float> RhythmInterpreter::DEFAULT_BANDWIDTHS = {
     0.12f,    // Narrow for 0.5Hz (captures half note timing)
     0.25f,    // Narrow for 1.0Hz (captures quarter note timing)
     0.5f,     // Medium for 2.0Hz (captures eighth note timing)
-    1.0f,     // Medium for 4.0Hz (captures sixteenth note timing)
-    2.0f,     // Medium-wide for 8.0Hz (captures thirty-second notes)
-    4.0f      // Wide for 16.0Hz (captures micro-timing and onsets)
+    1.5f,     // Wider for 4.0Hz (more stable sixteenth note timing)
+    3.0f,     // Wide for 8.0Hz (stable thirty-second notes)
+    6.0f      // Very wide for 16.0Hz (stable micro-timing and onsets)
 };
 
 const std::vector<float> RhythmInterpreter::DEFAULT_RESONANCES = {
@@ -63,10 +63,10 @@ const std::vector<float> RhythmInterpreter::DEFAULT_RESONANCES = {
     6.0f,     // High Q for 0.25Hz (precise whole note detection)
     5.0f,     // High Q for 0.5Hz (precise half note detection)
     4.0f,     // Medium-high Q for 1.0Hz (quarter note detection)
-    3.5f,     // Medium Q for 2.0Hz (eighth note detection)
-    3.0f,     // Medium Q for 4.0Hz (sixteenth note detection)
-    2.5f,     // Lower Q for 8.0Hz (thirty-second note detection)
-    2.0f      // Moderate Q for 16.0Hz (onset detection, allow some bandwidth)
+    3.0f,     // Medium Q for 2.0Hz (eighth note detection)
+    2.0f,     // Lower Q for 4.0Hz (stable sixteenth note detection)
+    1.5f,     // Low Q for 8.0Hz (very stable thirty-second note detection)
+    1.2f      // Very low Q for 16.0Hz (ultra-stable onset detection)
 };
 
 // ============================================================================
@@ -628,7 +628,22 @@ RhythmInterpreter::RhythmInterpreter(NeuronNetwork* network, AudioManager* audio
     
     audioBuffer.resize(bufferSize);
     filterOutputs.resize(filterBank.size());
-    filterGains.resize(filterBank.size(), 1.0f); // Initialize all filter gains to 1.0x
+    
+    // Initialize filter gains with sensible defaults for each frequency band
+    filterGains.resize(filterBank.size());
+    if (filterGains.size() >= 8) {
+        filterGains[0] = 1.0f;   // 0.125Hz - normal gain
+        filterGains[1] = 1.0f;   // 0.25Hz  - normal gain
+        filterGains[2] = 1.0f;   // 0.5Hz   - normal gain
+        filterGains[3] = 1.0f;   // 1.0Hz   - normal gain
+        filterGains[4] = 1.0f;   // 2.0Hz   - normal gain
+        filterGains[5] = 0.5f;   // 4.0Hz   - reduced gain (sixteenth notes)
+        filterGains[6] = 0.2f;   // 8.0Hz   - low gain (thirty-second notes)
+        filterGains[7] = 0.3f;   // 16.0Hz  - low gain (onset detection)
+    } else {
+        // Fallback for different filter bank sizes
+        std::fill(filterGains.begin(), filterGains.end(), 1.0f);
+    }
     
     // Initialize internal processing boosts (separate from GUI-visible gains)
     internalBoosts.resize(filterBank.size(), 1.0f);
@@ -927,33 +942,13 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         // Step 2: Calculate rhythmogram correlation (Todd 1994 approach)
         float rhythmogramValue = audioData.empty() ? 0.0f : (bandSum / audioData.size());
         
-        // Step 3: Special handling for problematic 32nd band
-        if (bandIndex == 6) { // 8Hz (32nd notes) - controlled synthetic response
-            // Generate a small, variable output that never saturates
-            // Use a combination of input energy and time-based variation to create dynamic response
-            static float smoothedEnergy = 0.0f;
-            static int frameCounter = 0;
-            
-            // Smooth the input energy over time to reduce spikes
-            float currentEnergy = rhythmogramValue * 0.001f; // Heavily attenuated
-            smoothedEnergy = smoothedEnergy * 0.95f + currentEnergy * 0.05f; // Slow smoothing
-            
-            // Add subtle time-based variation to prevent complete stagnation
-            frameCounter++;
-            float timeVariation = std::sin(frameCounter * 0.01f) * 0.005f; // Very small oscillation
-            
-            // Combine smoothed energy with user gain control
-            float syntheticOutput = (smoothedEnergy + timeVariation) * filterGains[bandIndex] * 0.1f;
-            filterOutputs[bandIndex] = std::clamp(syntheticOutput, 0.0f, 0.02f); // Max 2% = 200 per mille
-        } else {
-            // Step 3: Apply user-controlled gains (normal processing for other bands)
-            float userGain = filterGains[bandIndex] * internalBoosts[bandIndex];
-            float scaledOutput = rhythmogramValue * userGain;
-            
-            // Step 4: Apply band-specific normalization and limits
-            float normalizedOutput = scaledOutput * BAND_SCALING[bandIndex];
-            filterOutputs[bandIndex] = std::clamp(normalizedOutput, 0.0f, BAND_LIMITS[bandIndex]);
-        }
+        // Step 3: Apply user-controlled gains (unified processing for all bands)
+        float userGain = filterGains[bandIndex] * internalBoosts[bandIndex];
+        float scaledOutput = rhythmogramValue * userGain;
+        
+        // Step 4: Apply band-specific normalization and limits
+        float normalizedOutput = scaledOutput * BAND_SCALING[bandIndex];
+        filterOutputs[bandIndex] = std::clamp(normalizedOutput, 0.0f, BAND_LIMITS[bandIndex]);
         
         // Step 5: Adapt filter based on rhythm strength
         float rhythmStrength = 0.0f;
