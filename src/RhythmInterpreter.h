@@ -10,6 +10,96 @@ class AudioManager;
 class BeatRoot;
 
 /**
+ * Auditory Processing Pipeline Classes
+ * Implements biological auditory model: Outer Ear → Gammatone → Inner Hair Cells → Multi-Scale → Peak Detection
+ */
+
+// Outer ear filtering (approximates HRTF and ear canal resonance)
+class OuterEarFilter {
+private:
+    std::vector<float> coefficients;
+    std::vector<float> delayLine;
+    float sampleRate;
+
+public:
+    OuterEarFilter(float fs = 44100.0f);
+    std::vector<float> process(const std::vector<float>& input);
+    float processSample(float input);
+};// Single gammatone filter (4th order)
+class GammatoneFilter {
+private:
+    float centerFreq;
+    float bandwidth;
+    std::complex<float> pole;
+    std::vector<std::complex<float>> delayLine;
+    float sampleRate;
+    
+public:
+    GammatoneFilter(float freq, float bw, float fs = 44100.0f);
+    float process(float input);
+    void reset();
+};
+
+// Gammatone filter bank (cochlear model)
+class GammatoneFilterBank {
+private:
+    std::vector<std::unique_ptr<GammatoneFilter>> filters;
+    std::vector<float> centerFrequencies;
+    float minFreq, maxFreq;
+    size_t numFilters;
+    
+public:
+    GammatoneFilterBank(float minF, float maxF, size_t numBands, float fs = 44100.0f);
+    std::vector<std::vector<float>> process(const std::vector<float>& input);
+    std::vector<float> processSample(float input);
+    size_t getNumFilters() const { return numFilters; }
+};
+
+// Inner hair cell model (half-wave rectification + low-pass)
+class InnerHairCell {
+private:
+    float lowpassState;
+    float cutoffFreq;
+    float alpha;
+    
+public:
+    InnerHairCell(float cutoff = 1000.0f, float fs = 44100.0f);
+    std::vector<float> process(const std::vector<float>& input);
+    float processSample(float input);
+    void reset();
+};
+
+// Multi-scale temporal filtering for rhythm extraction
+class MultiScaleFilter {
+private:
+    std::vector<float> scales;
+    std::vector<std::vector<float>> delayLines;
+    std::vector<float> outputs;
+    
+public:
+    MultiScaleFilter(const std::vector<float>& timeScales, float fs = 44100.0f);
+    std::vector<float> process(const std::vector<float>& input);
+    std::vector<float> processSample(float input);
+    size_t getNumScales() const { return scales.size(); }
+};
+
+// Peak detection and summation for rhythm extraction
+class RhythmPeakDetector {
+private:
+    std::vector<float> peakHistory;
+    std::vector<float> thresholds;
+    float adaptiveThreshold;
+    size_t historySize;
+    
+public:
+    RhythmPeakDetector(float fs = 44100.0f, size_t history = 100);
+    std::vector<float> process(const std::vector<float>& multiScaleOutput);
+    std::vector<float> detectPeaks(const std::vector<float>& multiScaleOutput);
+    float getSummatedRhythm() const;
+    void adaptThresholds(const std::vector<float>& recentActivity);
+};
+
+/**
  * Adaptive filterbank for rhythm analysis
  * Each filter represents a different frequency band that adapts to detected rhythms
  */
@@ -144,6 +234,13 @@ private:
     std::unique_ptr<ConnectionMatrix> connectionMatrix;
     std::unique_ptr<BeatRoot> beatRoot; // BeatRoot beat tracking system
     
+    // Auditory Processing Pipeline (biological model)
+    std::unique_ptr<OuterEarFilter> outerEarFilter;
+    std::unique_ptr<GammatoneFilterBank> gammatoneBank;
+    std::vector<std::unique_ptr<InnerHairCell>> innerHairCells;
+    std::unique_ptr<MultiScaleFilter> multiScaleFilter;
+    std::unique_ptr<RhythmPeakDetector> peakDetector;
+    
     // Network integration
     NeuronNetwork* neuronNetwork;
     AudioManager* audioManager;
@@ -175,6 +272,9 @@ private:
     static const std::vector<float> DEFAULT_RESONANCES;
     
     void initializeFilterBank();
+    void initializeAuditoryPipeline();  // Initialize biological auditory processing
+    void initializeLightweightAuditoryPipeline(); // Lightweight biological processing
+    std::vector<float> processAuditoryPipeline(const std::vector<float>& audioData); // Biological processing
     void processAudioBuffer();
     void updateNeuronInputs();
     void updateFilterBankForBPM(); // Update filter frequencies based on current BPM

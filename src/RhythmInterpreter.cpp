@@ -585,6 +585,9 @@ RhythmInterpreter::RhythmInterpreter(NeuronNetwork* network, AudioManager* audio
     rhythmDetector = std::make_unique<RhythmDetector>();
     beatRoot = std::make_unique<BeatRoot>(neuronNetwork); // Initialize BeatRoot
     
+    // Initialize Lightweight Auditory Processing Pipeline (optimized biological model)
+    initializeLightweightAuditoryPipeline();
+    
     if (neuronNetwork) {
         size_t numNeurons = neuronNetwork->getNeurons().size();
         connectionMatrix = std::make_unique<ConnectionMatrix>(filterBank.size(), numNeurons);
@@ -619,6 +622,78 @@ void RhythmInterpreter::initializeFilterBank() {
         );
         filterBank.push_back(std::move(filter));
     }
+}
+
+void RhythmInterpreter::initializeAuditoryPipeline() {
+    // Initialize Outer Ear Filter (high-pass around 1kHz, models ear canal resonance)
+    outerEarFilter = std::make_unique<OuterEarFilter>(static_cast<float>(sampleRate));
+    
+    // Initialize Gammatone Filter Bank (20Hz - 8kHz, 64 channels)
+    const int numChannels = 64;
+    const float minFreq = 20.0f;
+    const float maxFreq = 8000.0f;
+    gammatoneBank = std::make_unique<GammatoneFilterBank>(minFreq, maxFreq, numChannels, static_cast<float>(sampleRate));
+    
+    // Initialize Inner Hair Cells (one per gammatone channel)
+    innerHairCells.clear();
+    innerHairCells.resize(numChannels);
+    for (int i = 0; i < numChannels; ++i) {
+        innerHairCells[i] = std::make_unique<InnerHairCell>(1000.0f, static_cast<float>(sampleRate));
+    }
+    
+    // Initialize Multi-Scale Filter (rhythmic analysis across multiple time scales)
+    multiScaleFilter = std::make_unique<MultiScaleFilter>(DEFAULT_FREQUENCIES, static_cast<float>(sampleRate));
+    
+    // Initialize Peak Detector (find rhythmic peaks in multi-scale output)
+    peakDetector = std::make_unique<RhythmPeakDetector>(static_cast<float>(sampleRate));
+}
+
+void RhythmInterpreter::initializeLightweightAuditoryPipeline() {
+    // Initialize only the outer ear filter for lightweight processing
+    // This provides some biological enhancement without the computational cost
+    outerEarFilter = std::make_unique<OuterEarFilter>(static_cast<float>(sampleRate));
+}
+
+std::vector<float> RhythmInterpreter::processAuditoryPipeline(const std::vector<float>& audioData) {
+    // Step 1: Outer Ear Filtering (models ear canal resonance and filtering)
+    std::vector<float> outerEarOutput = outerEarFilter->process(audioData);
+    
+    // Step 2: Gammatone Filter Bank (cochlear frequency decomposition)
+    std::vector<std::vector<float>> gammatoneOutputs = gammatoneBank->process(outerEarOutput);
+    
+    // Step 3: Inner Hair Cell Processing (transduction and compression)
+    std::vector<std::vector<float>> hairCellOutputs(gammatoneOutputs.size());
+    for (size_t channel = 0; channel < gammatoneOutputs.size(); ++channel) {
+        hairCellOutputs[channel] = innerHairCells[channel]->process(gammatoneOutputs[channel]);
+    }
+    
+    // Step 4: Signal Sum (combine all cochlear channels into unified signal)
+    std::vector<float> combinedSignal(audioData.size(), 0.0f);
+    for (const auto& channelOutput : hairCellOutputs) {
+        for (size_t i = 0; i < combinedSignal.size() && i < channelOutput.size(); ++i) {
+            combinedSignal[i] += channelOutput[i];
+        }
+    }
+    
+    // Normalize combined signal
+    if (!combinedSignal.empty()) {
+        float maxVal = *std::max_element(combinedSignal.begin(), combinedSignal.end(),
+            [](float a, float b) { return std::abs(a) < std::abs(b); });
+        if (maxVal > 0.0f) {
+            float scale = 1.0f / std::abs(maxVal);
+            for (float& sample : combinedSignal) {
+                sample *= scale;
+            }
+        }
+    }
+    
+    // Step 5: Multi-Scale Filtering (rhythmic analysis across time scales)
+    std::vector<float> multiScaleOutput = multiScaleFilter->process(combinedSignal);
+    
+    // Step 6: Peak Detection and Summation (extract rhythmic features)
+    std::vector<float> rhythmFeatures = peakDetector->process(multiScaleOutput);
+    
+    return rhythmFeatures;
 }
 
 void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
@@ -737,6 +812,16 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         }
     }
     
+    // ============================================================================
+    // LIGHTWEIGHT BIOLOGICAL AUDITORY PROCESSING
+    // Outer ear filtering for biological enhancement without computational overhead
+    // ============================================================================
+    
+    std::vector<float> processedAudio = audioData;
+    if (outerEarFilter) {
+        processedAudio = outerEarFilter->process(audioData);
+    }
+    
     // Process audio through filterbank and generate output
     std::fill(filterOutputs.begin(), filterOutputs.end(), 0.0f);
     processedAudioBuffer.clear();
@@ -755,7 +840,8 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         float lastFilteredSample = 0.0f; // Keep track of the last sample for envelope filters
         
         for (size_t j = 0; j < audioData.size(); ++j) {
-            float filteredSample = filterBank[i]->process(audioData[j]);
+            float inputSample = (j < processedAudio.size()) ? processedAudio[j] : audioData[j];
+            float filteredSample = filterBank[i]->process(inputSample);
             maxFilteredSample = std::max(maxFilteredSample, std::abs(filteredSample));
             filterAudioOutputs[i][j] = filteredSample * globalGain * filterGains[i];
             sum += filteredSample;
@@ -1213,4 +1299,230 @@ void RhythmInterpreter::setBeatRootAutoInitialize(bool enable) {
 
 bool RhythmInterpreter::getBeatRootAutoInitialize() const {
     return beatRoot ? beatRoot->getAutoInitialize() : true;
+}
+
+// ============================================================================
+// Biological Auditory Processing Implementations
+// ============================================================================
+
+// OuterEarFilter Implementation
+OuterEarFilter::OuterEarFilter(float fs) : sampleRate(fs) {
+    // Initialize high-pass filter coefficients (ear canal resonance ~1-4kHz)
+    coefficients.resize(3); // Simple high-pass IIR
+    delayLine.resize(2, 0.0f);
+    
+    // High-pass filter at 200Hz (models outer ear filtering)
+    float fc = 200.0f / sampleRate;
+    float alpha = 1.0f / (1.0f + 2.0f * M_PI * fc);
+    coefficients[0] = alpha;      // b0
+    coefficients[1] = -alpha;     // b1  
+    coefficients[2] = alpha;      // a1
+}
+
+std::vector<float> OuterEarFilter::process(const std::vector<float>& input) {
+    std::vector<float> output(input.size());
+    for (size_t i = 0; i < input.size(); ++i) {
+        output[i] = processSample(input[i]);
+    }
+    return output;
+}
+
+float OuterEarFilter::processSample(float input) {
+    // Simple high-pass filter
+    float output = coefficients[0] * input + coefficients[1] * delayLine[0] - coefficients[2] * delayLine[1];
+    delayLine[1] = delayLine[0];
+    delayLine[0] = output;
+    return output;
+}
+
+// GammatoneFilter Implementation  
+GammatoneFilter::GammatoneFilter(float freq, float bw, float fs) 
+    : centerFreq(freq), bandwidth(bw), sampleRate(fs), delayLine(4, std::complex<float>(0,0)) {
+    
+    // Calculate gammatone filter pole
+    float erb = 24.7f * (4.37f * freq / 1000.0f + 1.0f); // ERB calculation
+    float b = 1.019f * 2.0f * M_PI * erb;
+    pole = std::complex<float>(-b, 2.0f * M_PI * freq);
+}
+
+float GammatoneFilter::process(float input) {
+    // 4th order gammatone filter implementation
+    std::complex<float> x(input, 0.0f);
+    std::complex<float> y = x;
+    
+    // Apply 4 cascaded complex poles
+    for (int i = 0; i < 4; ++i) {
+        y = y + pole * delayLine[i] / sampleRate;
+        delayLine[i] = y;
+    }
+    
+    return y.real(); // Take real part as output
+}
+
+void GammatoneFilter::reset() {
+    std::fill(delayLine.begin(), delayLine.end(), std::complex<float>(0,0));
+}
+
+// GammatoneFilterBank Implementation
+GammatoneFilterBank::GammatoneFilterBank(float minF, float maxF, size_t numBands, float fs) 
+    : minFreq(minF), maxFreq(maxF), numFilters(numBands) {
+    
+    // Create logarithmically spaced center frequencies
+    centerFrequencies.resize(numBands);
+    filters.resize(numBands);
+    
+    for (size_t i = 0; i < numBands; ++i) {
+        float logMin = std::log(minF);
+        float logMax = std::log(maxF);
+        float logFreq = logMin + (logMax - logMin) * i / (numBands - 1);
+        float centerFreq = std::exp(logFreq);
+        centerFrequencies[i] = centerFreq;
+        
+        float bandwidth = centerFreq * 0.1f; // 10% bandwidth
+        filters[i] = std::make_unique<GammatoneFilter>(centerFreq, bandwidth, fs);
+    }
+}
+
+std::vector<std::vector<float>> GammatoneFilterBank::process(const std::vector<float>& input) {
+    std::vector<std::vector<float>> outputs(numFilters);
+    
+    for (size_t i = 0; i < numFilters; ++i) {
+        outputs[i].resize(input.size());
+        for (size_t j = 0; j < input.size(); ++j) {
+            outputs[i][j] = filters[i]->process(input[j]);
+        }
+    }
+    
+    return outputs;
+}
+
+std::vector<float> GammatoneFilterBank::processSample(float input) {
+    std::vector<float> outputs(numFilters);
+    for (size_t i = 0; i < numFilters; ++i) {
+        outputs[i] = filters[i]->process(input);
+    }
+    return outputs;
+}
+
+// InnerHairCell Implementation
+InnerHairCell::InnerHairCell(float cutoff, float fs) : cutoffFreq(cutoff), lowpassState(0.0f) {
+    // Calculate low-pass filter coefficient
+    alpha = 2.0f * M_PI * cutoffFreq / fs;
+    if (alpha > 1.0f) alpha = 1.0f;
+}
+
+std::vector<float> InnerHairCell::process(const std::vector<float>& input) {
+    std::vector<float> output(input.size());
+    for (size_t i = 0; i < input.size(); ++i) {
+        output[i] = processSample(input[i]);
+    }
+    return output;
+}
+
+float InnerHairCell::processSample(float input) {
+    // Half-wave rectification + low-pass filtering
+    float rectified = std::max(0.0f, input);
+    lowpassState += alpha * (rectified - lowpassState);
+    return lowpassState;
+}
+
+void InnerHairCell::reset() {
+    lowpassState = 0.0f;
+}
+
+// MultiScaleFilter Implementation
+MultiScaleFilter::MultiScaleFilter(const std::vector<float>& timeScales, float fs) : scales(timeScales) {
+    delayLines.resize(scales.size());
+    outputs.resize(scales.size(), 0.0f);
+    
+    for (size_t i = 0; i < scales.size(); ++i) {
+        size_t delaySize = static_cast<size_t>(fs / scales[i]);
+        delayLines[i].resize(delaySize, 0.0f);
+    }
+}
+
+std::vector<float> MultiScaleFilter::process(const std::vector<float>& input) {
+    std::vector<float> combinedOutput(input.size(), 0.0f);
+    
+    for (size_t i = 0; i < input.size(); ++i) {
+        std::vector<float> scaleOutputs = processSample(input[i]);
+        for (float output : scaleOutputs) {
+            combinedOutput[i] += output;
+        }
+    }
+    
+    return combinedOutput;
+}
+
+std::vector<float> MultiScaleFilter::processSample(float input) {
+    std::vector<float> scaleOutputs(scales.size());
+    
+    for (size_t i = 0; i < scales.size(); ++i) {
+        // Circular delay line
+        auto& delay = delayLines[i];
+        if (!delay.empty()) {
+            outputs[i] = delay.back(); // Output delayed signal
+            
+            // Shift delay line
+            for (size_t j = delay.size() - 1; j > 0; --j) {
+                delay[j] = delay[j-1];
+            }
+            delay[0] = input; // Input new sample
+        }
+        scaleOutputs[i] = outputs[i];
+    }
+    
+    return scaleOutputs;
+}
+
+// RhythmPeakDetector Implementation
+RhythmPeakDetector::RhythmPeakDetector(float fs, size_t history) 
+    : historySize(history), adaptiveThreshold(0.1f) {
+    peakHistory.reserve(history);
+    thresholds.resize(8, 0.05f); // Initialize thresholds for 8 scale bands
+}
+
+std::vector<float> RhythmPeakDetector::process(const std::vector<float>& multiScaleOutput) {
+    return detectPeaks(multiScaleOutput);
+}
+
+std::vector<float> RhythmPeakDetector::detectPeaks(const std::vector<float>& multiScaleOutput) {
+    std::vector<float> peaks(multiScaleOutput.size());
+    
+    for (size_t i = 0; i < multiScaleOutput.size(); ++i) {
+        float sample = multiScaleOutput[i];
+        
+        // Simple peak detection: value above adaptive threshold
+        if (sample > adaptiveThreshold) {
+            peaks[i] = sample;
+            
+            // Add to peak history for threshold adaptation
+            peakHistory.push_back(sample);
+            if (peakHistory.size() > historySize) {
+                peakHistory.erase(peakHistory.begin());
+            }
+            
+            // Adapt threshold based on recent peak levels
+            if (peakHistory.size() > 10) {
+                float avgPeak = std::accumulate(peakHistory.begin(), peakHistory.end(), 0.0f) / peakHistory.size();
+                adaptiveThreshold = 0.3f * avgPeak; // Threshold is 30% of average peak
+            }
+        } else {
+            peaks[i] = 0.0f;
+        }
+    }
+    
+    return peaks;
+}
+
+float RhythmPeakDetector::getSummatedRhythm() const {
+    if (peakHistory.empty()) return 0.0f;
+    return std::accumulate(peakHistory.begin(), peakHistory.end(), 0.0f) / peakHistory.size();
+}
+
+void RhythmPeakDetector::adaptThresholds(const std::vector<float>& recentActivity) {
+    // Adapt thresholds based on recent activity levels
+    for (size_t i = 0; i < thresholds.size() && i < recentActivity.size(); ++i) {
+        thresholds[i] = 0.5f * thresholds[i] + 0.5f * (0.3f * recentActivity[i]);
+    }
 }
