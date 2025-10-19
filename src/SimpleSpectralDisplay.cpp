@@ -37,7 +37,8 @@ void SimpleSpectralDisplay::initializeFrequencyBands() {
 void SimpleSpectralDisplay::updateFrequencyBands() {
     if (!rhythmInterpreter) return;
     
-    float currentBPM = rhythmInterpreter->getBPM();
+    // Minimal RhythmInterpreter: getBPM method not supported, use fixed BPM
+    float currentBPM = 120.0f;  // Default BPM
     
     // Only update if BPM has changed
     if (std::abs(currentBPM - lastKnownBPM) < 0.01f) return;

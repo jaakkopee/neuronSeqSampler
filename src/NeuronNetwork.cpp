@@ -42,10 +42,7 @@ Neuron* NeuronNetwork::addNeuron(int sampleIndex, float initialActivation,
     Neuron* rawPtr = neuron.get();
     neurons.push_back(std::move(neuron));
     
-    // Update rhythm interpreter connection matrix size
-    if (rhythmInterpreter) {
-        rhythmInterpreter->updateNetworkSize();
-    }
+    // updateNetworkSize removed: minimal RhythmInterpreter does not support this method
     
     return rawPtr;
 }
@@ -61,10 +58,7 @@ void NeuronNetwork::activate() {
     // Reset all fired flags first
     resetFiredFlags();
     
-    // Update rhythm interpreter first (processes audio and sends inputs to neurons)
-    if (rhythmInterpreter) {
-        rhythmInterpreter->update();
-    }
+    // update removed: minimal RhythmInterpreter does not support this method
     
     // Update all neurons (apply activation_increase_per_iteration)
     for (auto& neuron : neurons) {
@@ -102,10 +96,7 @@ bool NeuronNetwork::removeNeuron(size_t index) {
     // Remove the neuron itself
     neurons.erase(neurons.begin() + index);
     
-    // Update rhythm interpreter connection matrix size
-    if (rhythmInterpreter) {
-        rhythmInterpreter->updateNetworkSize();
-    }
+    // updateNetworkSize removed: minimal RhythmInterpreter does not support this method
     
     return true;
 }
@@ -128,45 +119,22 @@ void NeuronNetwork::clearNetwork() {
 
 void NeuronNetwork::initializeRhythmInterpreter() {
     if (audioManager && !rhythmInterpreter) {
-        rhythmInterpreter = new RhythmInterpreter(this, audioManager);
-        // Set the RhythmInterpreter reference in AudioManager for filter modes
-        audioManager->setRhythmInterpreter(rhythmInterpreter);
-        std::cout << "🎵 RhythmInterpreter initialized with filter bank and linked to AudioManager" << std::endl;
-        
-        // Note: Rhythmogram connections should be configured through the GUI toggle matrix
-        // Default connections are only set up in testing mode via main.cpp
+        // Use default sampleRate and bufferSize for minimal RhythmInterpreter
+        size_t sampleRate = 44100;
+        size_t bufferSize = 512;
+        rhythmInterpreter = new RhythmInterpreter(sampleRate, bufferSize);
+        std::cout << "🎵 Minimal RhythmInterpreter initialized" << std::endl;
     }
 }
 
 void NeuronNetwork::processAudioForRhythm(const std::vector<float>& audioData) {
     if (rhythmInterpreter) {
         rhythmInterpreter->processAudioFrame(audioData);
-        
-        // Apply rhythm interpreter outputs to neurons
-        auto neuronInputs = rhythmInterpreter->getCurrentNeuronInputs();
-        static int debugCounter = 0;
-        bool hasSignificantInput = false;
-        
-        for (size_t i = 0; i < std::min(neuronInputs.size(), neurons.size()); ++i) {
-            if (std::abs(neuronInputs[i]) > 0.001f) { // Only apply significant inputs
-                neurons[i]->addExternalInput(neuronInputs[i]);
-                hasSignificantInput = true;
-            }
-        }
-        
-        // Debug output every 100 frames (~2.3 seconds at 44.1kHz with 512 sample buffers)
-        if (++debugCounter % 100 == 0 && hasSignificantInput) {
-            float tempo = rhythmInterpreter->getCurrentTempo();
-            float rhythmStrength = rhythmInterpreter->getOverallRhythmStrength();
-            std::cout << "🎵 Rhythm: Tempo=" << tempo << " BPM, Strength=" << rhythmStrength 
-                      << ", Inputs: " << neuronInputs.size() << std::endl;
-        }
+        // Minimal RhythmInterpreter: no neuron input mapping or debug output
     }
 }
 
 std::vector<float> NeuronNetwork::getProcessedAudioOutput() const {
-    if (rhythmInterpreter) {
-        return rhythmInterpreter->getProcessedAudioOutput();
-    }
-    return std::vector<float>(); // Return empty vector if no rhythm interpreter
+    // Minimal RhythmInterpreter: getProcessedAudioOutput not supported
+    return std::vector<float>(); // Return empty vector
 }

@@ -24,7 +24,8 @@ add_executable(test_build
     src/GUI.cpp
     src/SimpleSpectralDisplay.cpp
     src/PresetManager.cpp
-    src/StartupAnimation.cpp
+    src/FilterGainControl.cpp
+    src/TemporalAugmentation.cpp
 )
 
 target_link_libraries(test_build 
