@@ -362,8 +362,10 @@ sf::Color SimpleSpectralDisplay::amplitudeToColor(float amplitude, size_t bandIn
     // Get base color for this frequency band
     sf::Color baseColor = bandColors[bandIndex % bandColors.size()];
     
-    // Use a brighter color mapping with minimum visibility
-    float brightness = 0.2f + (normalizedAmplitude * 0.8f); // Range from 20% to 100% brightness
+    // Apply contrast enhancement with gamma curve and lower minimum brightness
+    float contrastPower = 2.2f;  // Gamma correction for higher contrast
+    float enhancedAmplitude = std::pow(normalizedAmplitude, 1.0f / contrastPower);
+    float brightness = 0.05f + (enhancedAmplitude * 0.95f); // Range from 5% to 100% brightness (higher contrast)
     
     // Convert opacity percentage to 0-255 range
     std::uint8_t alpha = static_cast<std::uint8_t>(config.opacity * 2.55f);  // 100% -> 255, 0% -> 0

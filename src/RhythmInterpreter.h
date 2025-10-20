@@ -26,7 +26,17 @@ private:
     std::vector<float> qValues;
     std::vector<float> filterOutputs;
     std::vector<int> stuckCounters;
+    
+    // Adaptive sensitivity system
+    std::vector<float> adaptiveSensitivities;  // Current adaptive sensitivity for each band
+    std::vector<float> energyBaselines;        // Running average of quiet periods
+    std::vector<float> energyPeaks;            // Running maximum of active periods  
+    std::vector<float> noiseFloors;            // Estimated noise floor for each band
+    std::vector<float> dynamicRanges;          // Current dynamic range estimates
+    std::vector<int> adaptationCounters;       // Frames since last adaptation update
 
     void initializeBands();
+    void updateAdaptiveSensitivity(size_t bandIndex, float rawEnergy);
+    float applyContrastEnhancement(size_t bandIndex, float energy);
     std::vector<float> bandpassFilter(const std::vector<float>& data, float freq, float bw);
 };
