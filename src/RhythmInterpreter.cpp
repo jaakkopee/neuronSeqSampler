@@ -22,53 +22,35 @@ RhythmInterpreter::RhythmInterpreter(size_t sampleRate, size_t bufferSize)
 }
 
 void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
-    // Calculate overall audio energy for this frame
-    float totalEnergy = 0.0f;
-    for (float sample : audioData) {
-        totalEnergy += sample * sample;
-    }
-    totalEnergy = std::sqrt(totalEnergy / audioData.size());
-    
-    // For rhythm detection, we need to work with onset detection and temporal patterns
-    // rather than traditional frequency filtering
-    
-    for (size_t band = 0; band < bandCount; ++band) {
-        // Use the total energy and apply different temporal smoothing for each band
-        float smoothingFactor = 0.95f - (band * 0.05f); // More responsive for higher bands
-        
-        // Simple onset detection based on energy changes
-        static std::vector<float> previousEnergy(bandCount, 0.0f);
-        float energyDelta = totalEnergy - previousEnergy[band];
-        previousEnergy[band] = previousEnergy[band] * smoothingFactor + totalEnergy * (1.0f - smoothingFactor);
-        
-        // Detect energy increases (onsets)
-        float onset = std::max(0.0f, energyDelta);
-        
-        // Apply band-specific scaling and processing
-        float rawBandEnergy = onset * bandScalings[band];
-        
-        // Add some base level from total energy for continuous detection
-        rawBandEnergy += totalEnergy * 0.1f * bandScalings[band];
-        
-        // Update adaptive sensitivity for this band
-        updateAdaptiveSensitivity(band, rawBandEnergy);
-        
-        // Apply contrast enhancement heuristics
-        float enhancedEnergy = applyContrastEnhancement(band, rawBandEnergy);
-        
-        // Anti-stuck: if output stuck high, force cycling
-        if (filterOutputs[band] > bandLimits[band] * 0.8f) stuckCounters[band]++;
-        else stuckCounters[band] = 0;
-        if (stuckCounters[band] > 20) {
-            enhancedEnergy = 0.01f * (0.5f + 0.5f * std::sin(frameCounter * 0.1f + band));
-            stuckCounters[band] = 0;
-        }
-        
-        // Apply user sensitivity multiplier and filter gain
-        float output = enhancedEnergy * bandGains[band] * filterGains[band];
-        filterOutputs[band] = std::clamp(output, 0.0f, bandLimits[band]);
-    }
     frameCounter++;
+    
+    // Process each band
+    for (size_t bandIndex = 0; bandIndex < bandCount; ++bandIndex) {
+        // Bandpass filter the audio data for this band
+        std::vector<float> bandData = bandpassFilter(audioData, bandFrequencies[bandIndex], bandBandwidths[bandIndex]);
+        
+        // Envelope detection
+        std::vector<float> envelope = envelopeDetection(bandData, static_cast<int>(bandIndex));
+        
+        // Calculate raw energy for this band
+        float rawEnergy = std::accumulate(envelope.begin(), envelope.end(), 0.0f) / static_cast<float>(envelope.size());
+        
+        // Update adaptive sensitivity
+        updateAdaptiveSensitivity(bandIndex, rawEnergy);
+        
+        // Apply contrast enhancement
+        float enhancedEnergy = applyContrastEnhancement(bandIndex, rawEnergy);
+        
+        // Apply user sensitivity and adaptive sensitivity
+        float effectiveSensitivity = getSensitivity(bandIndex);
+        float adjustedEnergy = enhancedEnergy * effectiveSensitivity;
+        
+        // Limit to band limit
+        adjustedEnergy = std::min(adjustedEnergy, bandLimits[bandIndex]);
+        
+        // Apply filter gain
+        filterOutputs[bandIndex] = adjustedEnergy * filterGains[bandIndex];
+    }
 }
 
 std::vector<float> RhythmInterpreter::getFilterOutputs() const {
@@ -83,9 +65,13 @@ void RhythmInterpreter::initializeBands() {
     qValues = {8.0f, 8.0f, 8.0f, 8.0f, 6.0f, 4.0f, 3.0f, 2.0f};
 }
 
-void RhythmInterpreter::setSensitivity(size_t bandIndex, float gain) {
+void RhythmInterpreter::setSensitivity(size_t bandIndex, float gain, float sigmoidGain) {
     if (bandIndex < bandGains.size()) {
-        bandGains[bandIndex] = gain;
+        // run through a sigmoid to map gain from [0.0, 2.0] to [0.5, 2.0] smoothly
+        float minGain = 0.5f;
+        float maxGain = 2.0f;
+        float sigmoidGain = minGain + (maxGain - minGain) / (1.0f + std::exp(- (gain - 1.0f) * 5.0f));
+        bandGains[bandIndex] = sigmoidGain;
         // Reset adaptive sensitivity when user changes it to allow re-adaptation
         if (bandIndex < adaptiveSensitivities.size()) {
             adaptiveSensitivities[bandIndex] = 1.0f;
@@ -117,47 +103,159 @@ float RhythmInterpreter::getFilterGain(size_t bandIndex) const {
     return 1.0f;
 }
 
+// Band frequency control
+void RhythmInterpreter::setBandFrequency(size_t bandIndex, float frequency) {
+    if (bandIndex < bandFrequencies.size()) {
+        bandFrequencies[bandIndex] = frequency;
+    }
+}
+
+float RhythmInterpreter::getBandFrequency(size_t bandIndex) const {
+    if (bandIndex < bandFrequencies.size()) {
+        return bandFrequencies[bandIndex];
+    }
+    return 1.0f;
+}
+
+// Band bandwidth control
+void RhythmInterpreter::setBandBandwidth(size_t bandIndex, float bandwidth) {
+    if (bandIndex < bandBandwidths.size()) {
+        bandBandwidths[bandIndex] = bandwidth;
+    }
+}
+
+float RhythmInterpreter::getBandBandwidth(size_t bandIndex) const {
+    if (bandIndex < bandBandwidths.size()) {
+        return bandBandwidths[bandIndex];
+    }
+    return 0.1f;
+}
+
+// Band scaling control
+void RhythmInterpreter::setBandScaling(size_t bandIndex, float scaling) {
+    if (bandIndex < bandScalings.size()) {
+        bandScalings[bandIndex] = scaling;
+    }
+}
+
+float RhythmInterpreter::getBandScaling(size_t bandIndex) const {
+    if (bandIndex < bandScalings.size()) {
+        return bandScalings[bandIndex];
+    }
+    return 1.0f;
+}
+
+// Band limit control
+void RhythmInterpreter::setBandLimit(size_t bandIndex, float limit) {
+    if (bandIndex < bandLimits.size()) {
+        bandLimits[bandIndex] = limit;
+    }
+}
+
+float RhythmInterpreter::getBandLimit(size_t bandIndex) const {
+    if (bandIndex < bandLimits.size()) {
+        return bandLimits[bandIndex];
+    }
+    return 1.0f;
+}
+
+// Q value control
+void RhythmInterpreter::setQValue(size_t bandIndex, float q) {
+    if (bandIndex < qValues.size()) {
+        qValues[bandIndex] = q;
+    }
+}
+
+float RhythmInterpreter::getQValue(size_t bandIndex) const {
+    if (bandIndex < qValues.size()) {
+        return qValues[bandIndex];
+    }
+    return 1.0f;
+}
+
+// Adaptive sensitivity system getters (read-only for monitoring)
+float RhythmInterpreter::getAdaptiveSensitivity(size_t bandIndex) const {
+    if (bandIndex < adaptiveSensitivities.size()) {
+        return adaptiveSensitivities[bandIndex];
+    }
+    return 1.0f;
+}
+
+float RhythmInterpreter::getEnergyBaseline(size_t bandIndex) const {
+    if (bandIndex < energyBaselines.size()) {
+        return energyBaselines[bandIndex];
+    }
+    return 0.0f;
+}
+
+float RhythmInterpreter::getEnergyPeak(size_t bandIndex) const {
+    if (bandIndex < energyPeaks.size()) {
+        return energyPeaks[bandIndex];
+    }
+    return 0.0f;
+}
+
+float RhythmInterpreter::getNoiseFloor(size_t bandIndex) const {
+    if (bandIndex < noiseFloors.size()) {
+        return noiseFloors[bandIndex];
+    }
+    return 0.001f;
+}
+
+float RhythmInterpreter::getDynamicRange(size_t bandIndex) const {
+    if (bandIndex < dynamicRanges.size()) {
+        return dynamicRanges[bandIndex];
+    }
+    return 1.0f;
+}
+
 void RhythmInterpreter::updateAdaptiveSensitivity(size_t bandIndex, float rawEnergy) {
     if (bandIndex >= bandCount) return;
     
-    const float adaptationRate = 0.001f;  // Slow adaptation
-    const float peakDecay = 0.999f;       // Peak values decay slowly
-    const float baselineRate = 0.0005f;   // Very slow baseline adaptation
+    // Update energy baselines and peaks
+    float& baseline = energyBaselines[bandIndex];
+    float& peak = energyPeaks[bandIndex];
+    float& noiseFloor = noiseFloors[bandIndex];
+    float& dynamicRange = dynamicRanges[bandIndex];
+    int& adaptCounter = adaptationCounters[bandIndex];
     
-    // Update noise floor (minimum energy seen recently)
-    noiseFloors[bandIndex] = std::min(noiseFloors[bandIndex] * 0.9999f + rawEnergy * 0.0001f, rawEnergy);
+    // Simple running average for baseline
+    baseline = 0.99f * baseline + 0.01f * rawEnergy;
     
-    // Update energy peaks (maximum energy seen recently)  
-    if (rawEnergy > energyPeaks[bandIndex]) {
-        energyPeaks[bandIndex] = rawEnergy;
+    // Update peak
+    if (rawEnergy > peak) {
+        peak = rawEnergy;
     } else {
-        energyPeaks[bandIndex] *= peakDecay;  // Slowly decay peaks
+        peak *= 0.995f; // Slow decay
     }
     
-    // Update baseline (average quiet period energy)
-    if (rawEnergy < energyBaselines[bandIndex] * 2.0f) {  // Only update during quiet periods
-        energyBaselines[bandIndex] = energyBaselines[bandIndex] * (1.0f - baselineRate) + rawEnergy * baselineRate;
+    // Estimate noise floor
+    if (rawEnergy < noiseFloor) {
+        noiseFloor = 0.99f * noiseFloor + 0.01f * rawEnergy;
+    } else {
+        noiseFloor *= 0.999f; // Slow decay
     }
     
-    // Calculate dynamic range
-    dynamicRanges[bandIndex] = std::max(0.001f, energyPeaks[bandIndex] - energyBaselines[bandIndex]);
+    // Update dynamic range
+    dynamicRange = peak - baseline;
+    dynamicRange = std::max(dynamicRange, 0.001f); // Prevent too small range
     
-    // Update adaptive sensitivity every 100 frames to avoid too frequent changes
-    adaptationCounters[bandIndex]++;
-    if (adaptationCounters[bandIndex] >= 100) {
-        adaptationCounters[bandIndex] = 0;
-        
-        // Calculate optimal sensitivity for maximum contrast
-        float targetDynamicRange = 0.8f;  // We want 80% of the output range to be used
-        float currentUtilization = dynamicRanges[bandIndex] / bandLimits[bandIndex];
-        
-        if (currentUtilization < 0.1f) {
-            // Too quiet - increase sensitivity
-            adaptiveSensitivities[bandIndex] = std::min(10.0f, adaptiveSensitivities[bandIndex] * 1.1f);
-        } else if (currentUtilization > 0.9f) {
-            // Too loud - decrease sensitivity  
-            adaptiveSensitivities[bandIndex] = std::max(0.1f, adaptiveSensitivities[bandIndex] * 0.9f);
+    // Adaptation logic
+    adaptCounter++;
+    if (adaptCounter >= 100) { // Update every 100 frames
+        // Adjust adaptive sensitivity based on recent energy levels
+        if (rawEnergy < baseline + noiseFloor * 2.0f) {
+            // Quiet period - increase sensitivity
+            adaptiveSensitivities[bandIndex] *= 1.05f;
+        } else if (rawEnergy > peak * 0.8f) {
+            // Loud period - decrease sensitivity
+            adaptiveSensitivities[bandIndex] *= 0.95f;
         }
+        
+        // Clamp adaptive sensitivity
+        adaptiveSensitivities[bandIndex] = std::clamp(adaptiveSensitivities[bandIndex], 0.1f, 10.0f);
+        
+        adaptCounter = 0;
     }
 }
 
@@ -196,33 +294,62 @@ std::vector<float> RhythmInterpreter::bandpassFilter(const std::vector<float>& d
     // Simple resonant bandpass filter implementation
     // For rhythm detection, we need to work with envelope detection rather than direct filtering
     // This means we will not apply a traditional filter but rather detect the envelope of the signal
-    
+    // use an resonant filters. First the coefficients
+    float c0 = 1.0f / std::tan(M_PI * bw / sampleRate);
+    for (size_t i = 0; i < qValues.size(); ++i) {
+        if (bandFrequencies[i] == freq) {
+            c0 = 1.0f / std::tan(M_PI * bw / sampleRate);
+            break;
+        }
+    }
+    float a0 = 1.0f / (1.0f + c0 / qValues[0] + c0 * c0);
+    float a1 = 2.0f * a0;
+    float a2 = a0;
+    float b1 = 2.0f * a0 * (1.0f - c0 * c0);
+    float b2 = a0 * (1.0f - c0 / qValues[0] + c0 * c0);
+
     std::vector<float> filteredData(data.size());
     
-    // For very low frequencies like rhythm detection, we use envelope-based detection
-    // Calculate running RMS with a window appropriate for the frequency
-    float windowSizeMs = 1000.0f / freq; // Window size in milliseconds based on frequency
-    size_t windowSize = static_cast<size_t>((windowSizeMs / 1000.0f) * sampleRate);
-    windowSize = std::max(windowSize, static_cast<size_t>(32)); // Minimum window
-    windowSize = std::min(windowSize, data.size() / 2); // Maximum window
+    // Simple Direct Form II implementation
+    for (size_t i = 0; i < data.size(); ++i) {
+        // Filter processing
+        std::vector<float> x(3, 0.0f); // input samples
+        std::vector<float> y(3, 0.0f); // output samples
+        x[0] = data[i];
+        y[0] = a0 * x[0] + a1 * x[1] + a2 * x[2] - b1 * y[1] - b2 * y[2];
+        // Shift samples
+        x[2] = x[1];
+        x[1] = x[0];
+        y[2] = y[1];
+        y[1] = y[0];
+    }
+
+    return filteredData;
+}
+
+std::vector<float> RhythmInterpreter::envelopeDetection(const std::vector<float>& data, int bandIndex) {
+    // Simple envelope detection using RMS over a sliding window
+    std::vector<float> envelope(data.size());
     
-    // Calculate envelope using a sliding window RMS
+    size_t windowSize = static_cast<size_t>((0.1f * sampleRate)); // 100ms window
+    windowSize = std::max(windowSize, static_cast<size_t>(32));
+    windowSize = std::min(windowSize, data.size() / 2);
+    
     for (size_t i = 0; i < data.size(); ++i) {
         float sum = 0.0f;
         size_t count = 0;
         
-        // Calculate RMS over the window
         for (size_t j = (i >= windowSize) ? i - windowSize : 0; j <= i && j < data.size(); ++j) {
             sum += data[j] * data[j];
             count++;
         }
         
         if (count > 0) {
-            filteredData[i] = std::sqrt(sum / count);
+            envelope[i] = std::sqrt(sum / count);
         } else {
-            filteredData[i] = 0.0f;
+            envelope[i] = 0.0f;
         }
     }
     
-    return filteredData;
+    return envelope;
 }
