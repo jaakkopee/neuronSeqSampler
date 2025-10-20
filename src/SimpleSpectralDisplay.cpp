@@ -37,13 +37,8 @@ void SimpleSpectralDisplay::initializeFrequencyBands() {
 void SimpleSpectralDisplay::updateFrequencyBands() {
     if (!rhythmInterpreter) return;
     
-    // Minimal RhythmInterpreter: getBPM method not supported, use fixed BPM
-    float currentBPM = 120.0f;  // Default BPM
-    
-    // Only update if BPM has changed
-    if (std::abs(currentBPM - lastKnownBPM) < 0.01f) return;
-    
-    lastKnownBPM = currentBPM;
+    // Use the stored BPM (set by setManualBPM or defaults to 120.0f)
+    float currentBPM = lastKnownBPM;
     
     // Calculate tempo scaling factor (same as RhythmInterpreter)
     float tempoScale = currentBPM / 120.0f;
@@ -132,6 +127,14 @@ void SimpleSpectralDisplay::setOpacity(float opacity) {
 
 void SimpleSpectralDisplay::setContrast(float contrast) {
     config.contrast = std::clamp(contrast, 0.1f, 3.0f);
+}
+
+void SimpleSpectralDisplay::setManualBPM(float bpm) {
+    // Update BPM and force frequency band update
+    if (std::abs(bpm - lastKnownBPM) >= 0.01f) {
+        lastKnownBPM = bpm;
+        updateFrequencyBands();
+    }
 }
 
 float SimpleSpectralDisplay::getOpacity() const {

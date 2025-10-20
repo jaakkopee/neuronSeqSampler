@@ -21,6 +21,66 @@ RhythmInterpreter::RhythmInterpreter(size_t sampleRate, size_t bufferSize)
     filterGains.resize(bandCount, 1.0f);
     stuckCounters.resize(bandCount, 0);
     // qValues is already initialized in initializeBands() - don't override it
+    
+    // Initialize auto-tempo parameters
+    autoTempoEnabled = false;
+    baseTempoFrequency = 2.0f;        // 2 Hz corresponds to 120 BPM (120/60 = 2)
+    tempoSensitivity = 1.0f;
+    detectedTempo = 120.0f;           // Default to 120 BPM
+    tempoSmoothingFactor = 0.95f;     // Smooth tempo changes
+    lastStableTempo = 120.0f;
+    
+    // Store default frequencies for tempo scaling
+    defaultFrequencies = bandFrequencies;
+}
+
+void RhythmInterpreter::setTempoSensitivity(float sensitivity) {
+    tempoSensitivity = sensitivity;
+}
+
+float RhythmInterpreter::getDetectedTempo() const {
+    return detectedTempo;
+}
+
+float RhythmInterpreter::getTempoSensitivity() const {
+    return tempoSensitivity;
+}
+
+std::vector<float> RhythmInterpreter::getBeatPositions() const {
+    std::vector<float> currentBeatPositions;
+    //calculate beat positions based on internal analysis
+    for (size_t i = 0; i < bandCount; ++i) {
+        if (filterOutputs[i] > 0.7f * bandLimits[i]) {
+            // Detected a beat in this band
+            float currentTime = static_cast<float>(frameCounter * bufferSize) / static_cast<float>(sampleRate);
+            if (currentBeatPositions.empty() || (currentTime - currentBeatPositions.back()) > 0.3f) {
+                currentBeatPositions.push_back(currentTime);
+            }
+        }
+    }
+    return currentBeatPositions;
+}
+
+void RhythmInterpreter::setAutoTempoEnabled(bool enabled) {
+    autoTempoEnabled = enabled;
+    if (!enabled) {
+        // Restore default frequencies when auto-tempo is disabled
+        for (size_t i = 0; i < bandCount; ++i) {
+            setBandFrequency(i, defaultFrequencies[i]);
+        }
+    }
+}
+
+bool RhythmInterpreter::isAutoTempoEnabled() const {
+    return autoTempoEnabled;
+}
+
+void RhythmInterpreter::setBaseTempoFrequency(float frequency) {
+    baseTempoFrequency = frequency;
+}
+
+float RhythmInterpreter::getBaseTempoFrequency() const {
+    return baseTempoFrequency;
 }
 
 void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
@@ -153,6 +213,52 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         filterOutputs[bandIndex] *= filterGains[bandIndex];
         // Only prevent negative values, allow dynamic range above 1.0
         filterOutputs[bandIndex] = std::max(0.0f, filterOutputs[bandIndex]);
+    }
+    
+    // Auto-tempo detection and frequency adjustment
+    if (autoTempoEnabled) {
+        // Detect tempo based on rhythmic activity patterns every few frames
+        static int tempoAnalysisCounter = 0;
+        tempoAnalysisCounter++;
+        
+        if (tempoAnalysisCounter >= 100) { // Analyze tempo every 100 frames for stability
+            tempoAnalysisCounter = 0;
+            
+            // Calculate tempo from strongest rhythmic bands (low-mid frequencies)
+            float tempoIndicator = 0.0f;
+            float totalActivity = 0.0f;
+            
+            // Focus on bands 2-5 (0.5Hz-4Hz) which contain most rhythmic information
+            for (size_t i = 2; i < 6 && i < bandCount; ++i) {
+                float bandActivity = filterOutputs[i];
+                tempoIndicator += bandActivity * bandFrequencies[i]; // Weighted by frequency
+                totalActivity += bandActivity;
+            }
+            
+            if (totalActivity > 0.1f) { // Only update if there's significant activity
+                float estimatedFrequency = tempoIndicator / totalActivity;
+                float estimatedTempo = estimatedFrequency * 60.0f; // Convert Hz to BPM
+                
+                // Clamp tempo to reasonable range (60-200 BPM)
+                estimatedTempo = std::max(60.0f, std::min(200.0f, estimatedTempo));
+                
+                // Apply smoothing to prevent erratic changes
+                detectedTempo = tempoSmoothingFactor * detectedTempo + 
+                               (1.0f - tempoSmoothingFactor) * estimatedTempo;
+                
+                // Update filter frequencies based on detected tempo
+                float tempoRatio = detectedTempo / 120.0f; // Scale relative to 120 BPM base
+                
+                for (size_t bandIndex = 0; bandIndex < bandCount; ++bandIndex) {
+                    float newFreq = defaultFrequencies[bandIndex] * tempoRatio;
+                    // Clamp to reasonable frequency range
+                    newFreq = std::max(0.1f, std::min(20.0f, newFreq));
+                    setBandFrequency(bandIndex, newFreq);
+                }
+                
+                lastStableTempo = detectedTempo;
+            }
+        }
     }
 }
 

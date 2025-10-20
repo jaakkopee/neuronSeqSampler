@@ -88,6 +88,7 @@ private:
     tgui::Slider::Ptr bpmSlider; // Vertical slider for BPM control (tempo-relative frequencies)
     tgui::Label::Ptr bpmLabel; // Label showing current BPM value
     tgui::Button::Ptr autodetectTempoToggle; // Toggle for automatic tempo detection
+    tgui::Label::Ptr detectedTempoLabel; // Label showing detected tempo when auto-tempo is enabled
     
     // BeatRoot controls
     tgui::Button::Ptr beatRootToggle; // Toggle for BeatRoot system

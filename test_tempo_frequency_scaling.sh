@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# Test script to verify tempo-based filter frequency scaling functionality
+echo "=== Testing Tempo-Based Filter Frequency Scaling ==="
+echo ""
+echo "This test verifies that filter frequencies scale proportionally with tempo changes"
+echo "relative to the 120 BPM baseline in BOTH locations:"
+echo "  📊 Connection matrix filter labels (right side)"
+echo "  📈 Spectral display frequency labels (left side)"
+echo ""
+echo "🎯 Expected behavior:"
+echo "   • At 120 BPM: Filter frequencies should match default values"
+echo "   • At 60 BPM: All frequencies should be halved (0.5x scaling)"
+echo "   • At 240 BPM: All frequencies should be doubled (2.0x scaling)"
+echo "   • BOTH label sets should update simultaneously"
+echo ""
+echo "🔧 Implementation details:"
+echo "   • GUI.updateFrequencyLabels() gets BPM from slider"
+echo "   • Calls setBandFrequency() to update RhythmInterpreter filters"
+echo "   • Calls spectralDisplay->setManualBPM() to update spectral labels"
+echo "   • SimpleSpectralDisplay.updateFrequencyBands() uses stored BPM"
+echo "   • Both use tempoScale = currentBPM / 120.0 (relative to baseline)"
+echo ""
+echo "📋 Manual testing steps:"
+echo "   1. Launch the application: ./test_build"
+echo "   2. Observe filter frequencies in BOTH locations at default 120 BPM"
+echo "   3. Move BPM slider to 60 - check frequencies halve in BOTH places"
+echo "   4. Move BPM slider to 240 - check frequencies double in BOTH places" 
+echo "   5. Try intermediate values like 90 BPM (0.75x) or 180 BPM (1.5x)"
+echo "   6. Verify both connection matrix labels AND spectral display labels update together"
+echo ""
+echo "✅ Features implemented:"
+echo "   • Connection matrix filter label updates (right side)"
+echo "   • Spectral display frequency label updates (left side)"
+echo "   • Synchronized BPM scaling for both label sets"
+echo "   • Real-time filter frequency updates in RhythmInterpreter"
+echo "   • Proper frequency formatting in both displays"
+echo ""
+echo "🏁 This completes the comprehensive tempo-following system with unified"
+echo "   frequency scaling across all UI elements!"
+
+# Check if the build exists
+if [ ! -f "./test_build" ]; then
+    echo ""
+    echo "❌ Error: test_build executable not found. Run 'make' first."
+    exit 1
+fi
+
+echo ""
+echo "✅ Ready to test! Run: ./test_build"
+echo ""

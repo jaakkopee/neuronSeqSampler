@@ -13,6 +13,8 @@
 #include <chrono>
 #include <iomanip>
 #include <sstream>
+#include <cstdlib>
+#include <ctime>
 
 GUI::GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, Visualizer* visualizerPtr, Recorder* recorderPtr, AudioManager* audioMgr, SimpleSpectralDisplay* spectralDisplayPtr, float* activationIntervalPtr)
     : gui(tguiGui)
@@ -416,6 +418,25 @@ void GUI::updateStatusDisplay() {
     std::string status = "Neurons: " + std::to_string(network->getNeuronCount()) + 
                         " | Connections: " + std::to_string(network->getConnectionCount());
     statusLabel->setText(status);
+    
+    // Update tempo displays when auto-tempo is enabled
+    if (network->getRhythmInterpreter() && autodetectTempoToggle && bpmLabel && detectedTempoLabel) {
+        auto rhythmInterpreter = network->getRhythmInterpreter();
+        if (rhythmInterpreter->isAutoTempoEnabled()) {
+            float detectedTempo = rhythmInterpreter->getDetectedTempo();
+            std::ostringstream stream;
+            stream << std::fixed << std::setprecision(1) << detectedTempo;
+            bpmLabel->setText(stream.str());
+            
+            // Update detected tempo display
+            std::ostringstream detectedStream;
+            detectedStream << "Detected: " << std::fixed << std::setprecision(1) << detectedTempo;
+            detectedTempoLabel->setText(detectedStream.str());
+        } else {
+            // Clear detected tempo display when auto-tempo is off
+            detectedTempoLabel->setText("Detected: --");
+        }
+    }
 }
 
 void GUI::render() {
@@ -1576,6 +1597,7 @@ void GUI::createConnectionMatrixPanel() {
         bpmSlider = nullptr;
         bpmLabel = nullptr;
         autodetectTempoToggle = nullptr;
+        detectedTempoLabel = nullptr;
         // BeatRoot controls
         beatRootToggle = nullptr;
         beatRootSensitivitySlider = nullptr;
@@ -1612,9 +1634,9 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixPanel->getRenderer()->setBorders(1);
     connectionMatrixPanel->setVisible(matrixVisible);
     
-    // Set content size to accommodate all filters, neurons, and control sliders (Scale + BPM)
+    // Set content size to accommodate all filters, neurons, and control sliders (Scale + BPM + Tempo)
     float contentWidth = std::max(350.0f, static_cast<float>(270 + numNeurons * 80 + 280)); // Space for sliders and controls (BeatRoot controls removed)
-    float contentHeight = std::max(400.0f, static_cast<float>(150 + numFilters * 60));
+    float contentHeight = std::max(550.0f, static_cast<float>(150 + numFilters * 60 + 150)); // Extra space for better spaced tempo controls
     static_cast<tgui::ScrollablePanel*>(connectionMatrixPanel.get())->setContentSize(tgui::Vector2f(contentWidth, contentHeight));
     
     gui->add(connectionMatrixPanel, "ConnectionMatrixPanel");
@@ -1635,8 +1657,29 @@ void GUI::createConnectionMatrixPanel() {
     clearAllButton->setTextSize(10);
     clearAllButton->getRenderer()->setBackgroundColor(tgui::Color(80, 40, 40));
     clearAllButton->onPress([this]() {
-        // Minimal RhythmInterpreter: connection matrix not available
-        DEBUG_PRINT("Clear All: minimal RhythmInterpreter does not support connection matrix");
+        if (!network) return;
+        
+        // Clear all rhythm connections
+        for (size_t f = 0; f < matrixToggleButtons.size(); ++f) {
+            for (size_t n = 0; n < matrixToggleButtons[f].size(); ++n) {
+                network->clearRhythmConnection(f, n);
+                
+                // Update button appearance
+                matrixToggleButtons[f][n]->setText("○");
+                matrixToggleButtons[f][n]->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+                matrixToggleButtons[f][n]->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
+                
+                // Hide gain controls
+                if (f < matrixGainSliders.size() && n < matrixGainSliders[f].size()) {
+                    matrixGainSliders[f][n]->setValue(30.0f);
+                    matrixGainSliders[f][n]->setVisible(false);
+                }
+                if (f < matrixGainDisplays.size() && n < matrixGainDisplays[f].size()) {
+                    matrixGainDisplays[f][n]->setVisible(false);
+                }
+            }
+        }
+        std::cout << "🔄 Cleared all rhythm connections" << std::endl;
     });
     connectionMatrixPanel->add(clearAllButton);
     
@@ -1646,8 +1689,55 @@ void GUI::createConnectionMatrixPanel() {
     randomizeButton->setTextSize(10);
     randomizeButton->getRenderer()->setBackgroundColor(tgui::Color(40, 80, 40));
     randomizeButton->onPress([this]() {
-        // Minimal RhythmInterpreter: randomizeConnections not available
-        DEBUG_PRINT("Randomize: minimal RhythmInterpreter does not support connection matrix");
+        if (!network) return;
+        
+        // Randomize rhythm connections (30% chance per connection)
+        std::srand(static_cast<unsigned>(std::time(nullptr))); // Seed random number generator
+        
+        for (size_t f = 0; f < matrixToggleButtons.size(); ++f) {
+            for (size_t n = 0; n < matrixToggleButtons[f].size(); ++n) {
+                bool shouldConnect = (std::rand() % 100) < 30; // 30% chance
+                
+                if (shouldConnect) {
+                    // Create random connection with random gain (0.1 to 0.8)
+                    float randomGain = 0.1f + (static_cast<float>(std::rand()) / RAND_MAX) * 0.7f;
+                    network->setRhythmConnection(f, n, randomGain);
+                    
+                    // Update button appearance
+                    matrixToggleButtons[f][n]->setText("●");
+                    matrixToggleButtons[f][n]->getRenderer()->setBackgroundColor(tgui::Color(60, 120, 60));
+                    matrixToggleButtons[f][n]->getRenderer()->setTextColor(tgui::Color::White);
+                    
+                    // Show and set gain controls
+                    if (f < matrixGainSliders.size() && n < matrixGainSliders[f].size()) {
+                        matrixGainSliders[f][n]->setValue(randomGain * 100.0f);
+                        matrixGainSliders[f][n]->setVisible(true);
+                    }
+                    if (f < matrixGainDisplays.size() && n < matrixGainDisplays[f].size()) {
+                        matrixGainDisplays[f][n]->setText(std::to_string(static_cast<int>(randomGain * 100)));
+                        matrixGainDisplays[f][n]->setVisible(true);
+                    }
+                } else {
+                    // Clear connection
+                    network->clearRhythmConnection(f, n);
+                    
+                    // Update button appearance
+                    matrixToggleButtons[f][n]->setText("○");
+                    matrixToggleButtons[f][n]->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+                    matrixToggleButtons[f][n]->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
+                    
+                    // Hide gain controls
+                    if (f < matrixGainSliders.size() && n < matrixGainSliders[f].size()) {
+                        matrixGainSliders[f][n]->setValue(30.0f);
+                        matrixGainSliders[f][n]->setVisible(false);
+                    }
+                    if (f < matrixGainDisplays.size() && n < matrixGainDisplays[f].size()) {
+                        matrixGainDisplays[f][n]->setVisible(false);
+                    }
+                }
+            }
+        }
+        std::cout << "🎲 Randomized rhythm connections (30% density)" << std::endl;
     });
     connectionMatrixPanel->add(randomizeButton);
     
@@ -1657,10 +1747,32 @@ void GUI::createConnectionMatrixPanel() {
     connectAllButton->setTextSize(10);
     connectAllButton->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 80));
     connectAllButton->onPress([this]() {
-        if (network && network->getRhythmInterpreter()) {
-            // Minimal RhythmInterpreter: connection matrix not available
-            DEBUG_PRINT("Connect All: minimal RhythmInterpreter does not support connection matrix");
+        if (!network) return;
+        
+        // Connect all rhythm connections with default gain
+        float defaultGain = 0.3f;
+        
+        for (size_t f = 0; f < matrixToggleButtons.size(); ++f) {
+            for (size_t n = 0; n < matrixToggleButtons[f].size(); ++n) {
+                network->setRhythmConnection(f, n, defaultGain);
+                
+                // Update button appearance
+                matrixToggleButtons[f][n]->setText("●");
+                matrixToggleButtons[f][n]->getRenderer()->setBackgroundColor(tgui::Color(60, 120, 60));
+                matrixToggleButtons[f][n]->getRenderer()->setTextColor(tgui::Color::White);
+                
+                // Show and set gain controls
+                if (f < matrixGainSliders.size() && n < matrixGainSliders[f].size()) {
+                    matrixGainSliders[f][n]->setValue(defaultGain * 100.0f);
+                    matrixGainSliders[f][n]->setVisible(true);
+                }
+                if (f < matrixGainDisplays.size() && n < matrixGainDisplays[f].size()) {
+                    matrixGainDisplays[f][n]->setText(std::to_string(static_cast<int>(defaultGain * 100)));
+                    matrixGainDisplays[f][n]->setVisible(true);
+                }
+            }
         }
+        std::cout << "🔗 Connected all rhythm connections (30% gain)" << std::endl;
     });
     connectionMatrixPanel->add(connectAllButton);
     
@@ -1953,9 +2065,9 @@ void GUI::createConnectionMatrixPanel() {
         }
     }
     
-    // Add rhythmogram scale slider and BPM slider at the right end of the matrix
-    float scaleSliderX = contentWidth - 80; // Position scale slider
-    float bpmSliderX = contentWidth - 50; // Position BPM slider to the right of scale slider
+    // Add rhythmogram scale slider and BPM slider with better spacing from the right edge
+    float scaleSliderX = contentWidth - 120; // Move scale slider further left  
+    float bpmSliderX = contentWidth - 80; // Move BPM slider further left with more space
     
     // Scale control label
     auto scaleLabel = tgui::Label::create("Scale");
@@ -2002,18 +2114,18 @@ void GUI::createConnectionMatrixPanel() {
     
     connectionMatrixPanel->add(rhythmogramScaleLabel);
     
-    // BPM control label  
+    // BPM control label - make more prominent with better spacing
     auto bpmLabelTitle = tgui::Label::create("BPM");
-    bpmLabelTitle->setPosition(bpmSliderX - 10, 50);
-    bpmLabelTitle->setTextSize(10);
-    bpmLabelTitle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+    bpmLabelTitle->setPosition(bpmSliderX - 20, 45); // Move left and up slightly
+    bpmLabelTitle->setTextSize(12); // Larger text
+    bpmLabelTitle->getRenderer()->setTextColor(tgui::Color(200, 200, 100)); // Yellowish for visibility
     connectionMatrixPanel->add(bpmLabelTitle);
     
     // Vertical BPM slider (30.0 - 300.0, default 120.0, step 0.1) - expanded range for better autodetect
     bpmSlider = tgui::Slider::create(30.0f, 300.0f);
     bpmSlider->setValue(120.0f); // Default BPM for minimal RhythmInterpreter
     bpmSlider->setStep(0.1f);
-    bpmSlider->setPosition(bpmSliderX, 70);
+    bpmSlider->setPosition(bpmSliderX - 10, 65); // Move left and up slightly  
     bpmSlider->setSize(20, 300); // Original slider size
     bpmSlider->setOrientation(tgui::Orientation::Vertical);
     bpmSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
@@ -2036,13 +2148,13 @@ void GUI::createConnectionMatrixPanel() {
     
     // BPM value display - LARGE for easy reading
     bpmLabel = tgui::Label::create("120.0");
-    bpmLabel->setPosition(bpmSliderX - 20, 375); // Centered under original slider position
-    bpmLabel->setSize(60, 30); // Wider to fit 3-digit numbers, slightly shorter
-    bpmLabel->setTextSize(13); // Reduced text size to fit better
-    bpmLabel->getRenderer()->setTextColor(tgui::Color(140, 200, 140));
-    bpmLabel->getRenderer()->setBackgroundColor(tgui::Color(15, 25, 15));
-    bpmLabel->getRenderer()->setBorderColor(tgui::Color(40, 60, 40));
-    bpmLabel->getRenderer()->setBorders(1);
+    bpmLabel->setPosition(bpmSliderX - 35, 370); // Centered under moved slider position  
+    bpmLabel->setSize(70, 35); // Larger for better visibility
+    bpmLabel->setTextSize(16); // Larger text for better readability
+    bpmLabel->getRenderer()->setTextColor(tgui::Color(150, 255, 150)); // Brighter green
+    bpmLabel->getRenderer()->setBackgroundColor(tgui::Color(20, 40, 20)); // Darker background
+    bpmLabel->getRenderer()->setBorderColor(tgui::Color(60, 120, 60)); // Brighter border
+    bpmLabel->getRenderer()->setBorders(2); // Thicker border
     
     // Initialize BPM display with current value
     std::ostringstream bpmInitStream;
@@ -2051,43 +2163,50 @@ void GUI::createConnectionMatrixPanel() {
     
     connectionMatrixPanel->add(bpmLabel);
     
-    // Add Autodetect Tempo toggle button positioned below BPM slider
-    autodetectTempoToggle = tgui::Button::create("Autodetect Tempo");
-    autodetectTempoToggle->setPosition(bpmSliderX - 25, 420); // Below enlarged value displays
-    autodetectTempoToggle->setSize(70, 25);
-    autodetectTempoToggle->setTextSize(9);
-    autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
-    autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
-    autodetectTempoToggle->getRenderer()->setBorderColor(tgui::Color(80, 80, 80));
-    autodetectTempoToggle->getRenderer()->setBorders(1);
+    // Add tempo control section label for better visibility with proper spacing
+    auto tempoSectionLabel = tgui::Label::create("TEMPO CONTROLS");
+    tempoSectionLabel->setPosition(bpmSliderX - 50, 415); // Move further left and down
+    tempoSectionLabel->setTextSize(10);
+    tempoSectionLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 100));
+    connectionMatrixPanel->add(tempoSectionLabel);
     
-    // Set initial state (default is now ON)
-    if (false) { // Minimal RhythmInterpreter: autodetect tempo disabled
-        autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(80, 140, 80));
-        autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
-    }
+    // Add Autodetect Tempo toggle button with better spacing
+    autodetectTempoToggle = tgui::Button::create("AUTO TEMPO");
+    autodetectTempoToggle->setPosition(bpmSliderX - 40, 440); // More space below section label
+    autodetectTempoToggle->setSize(80, 30); // Larger for better visibility
+    autodetectTempoToggle->setTextSize(10); // Larger text
+    autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 60)); // Lighter background
+    autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(220, 220, 100)); // Yellowish text
+    autodetectTempoToggle->getRenderer()->setBorderColor(tgui::Color(120, 120, 60)); // Yellow border
+    autodetectTempoToggle->getRenderer()->setBorders(2); // Thicker border
+    
+    // Set initial state (default is OFF)
+    // Auto-tempo is available now with the enhanced RhythmInterpreter
     
     // Connect autodetect toggle to tempo control
     autodetectTempoToggle->onPress([this]() {
         if (network && network->getRhythmInterpreter()) {
             auto rhythmInterpreter = network->getRhythmInterpreter();
-            bool currentState = false; // Minimal RhythmInterpreter: autodetect disabled
+            bool currentState = rhythmInterpreter->isAutoTempoEnabled();
             bool newState = !currentState;
             
-            // Minimal RhythmInterpreter: setAutodetectTempo method not supported
+            // Enable/disable auto-tempo functionality
+            rhythmInterpreter->setAutoTempoEnabled(newState);
             
             // Update toggle appearance
             if (newState) {
-                autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(80, 140, 80));
+                autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(100, 200, 100)); // Bright green when active
                 autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
+                autodetectTempoToggle->setText("AUTO ON");
                 
                 // Disable BPM slider when autodetect is ON
                 if (bpmSlider) {
                     bpmSlider->getRenderer()->setThumbColor(tgui::Color(60, 60, 60)); // Grayed out
                 }
             } else {
-                autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
-                autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+                autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 60)); // Default gray
+                autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(220, 220, 100));
+                autodetectTempoToggle->setText("AUTO TEMPO");
                 
                 // Re-enable BPM slider when autodetect is OFF
                 if (bpmSlider) {
@@ -2098,6 +2217,17 @@ void GUI::createConnectionMatrixPanel() {
     });
     
     connectionMatrixPanel->add(autodetectTempoToggle);
+    
+    // Add detected tempo status display with better spacing
+    detectedTempoLabel = tgui::Label::create("Detected: --");
+    detectedTempoLabel->setPosition(bpmSliderX - 45, 480); // More space below auto-tempo button
+    detectedTempoLabel->setSize(90, 25); // Slightly taller
+    detectedTempoLabel->setTextSize(10); // Slightly larger text
+    detectedTempoLabel->getRenderer()->setTextColor(tgui::Color(150, 150, 255)); // Blue for detected tempo
+    detectedTempoLabel->getRenderer()->setBackgroundColor(tgui::Color(10, 10, 30));
+    detectedTempoLabel->getRenderer()->setBorderColor(tgui::Color(50, 50, 100));
+    detectedTempoLabel->getRenderer()->setBorders(1);
+    connectionMatrixPanel->add(detectedTempoLabel);
     
     // ============================================================================
     // BeatRoot Controls - DISABLED BY DEFAULT
@@ -2240,26 +2370,32 @@ void GUI::updateConnectionMatrix() {
         }
     }
     
-    // Update rhythmogram scale slider and display
+    // Update rhythmogram scale display (but don't override slider value)
     if (rhythmogramScaleSlider && rhythmogramScaleLabel) {
-        float currentScale = 1.0f; // Minimal RhythmInterpreter: default scale
-        rhythmogramScaleSlider->setValue(currentScale);
+        float currentScale = rhythmogramScaleSlider->getValue(); // Get current slider value
         std::ostringstream scaleStream;
         scaleStream << std::fixed << std::setprecision(1) << currentScale;
         rhythmogramScaleLabel->setText(scaleStream.str());
     }
     
-    // Update BPM slider and display
+    // Update BPM display (but don't override slider value unless auto-tempo is active)
     if (bpmSlider && bpmLabel) {
-        float currentBPM = 120.0f; // Minimal RhythmInterpreter: default BPM
-        bool autodetectActive = false; // Minimal RhythmInterpreter: autodetect disabled
+        bool autodetectActive = network && network->getRhythmInterpreter() && 
+                               network->getRhythmInterpreter()->isAutoTempoEnabled();
+        
+        float currentBPM;
+        if (autodetectActive) {
+            // When auto-tempo is active, show detected tempo and update slider
+            currentBPM = network->getRhythmInterpreter()->getDetectedTempo();
+            bpmSlider->setValue(currentBPM);
+        } else {
+            // When manual control, get BPM from slider (don't override user input)
+            currentBPM = bpmSlider->getValue();
+        }
         
         // Check if BPM has changed (for frequency label updates)
         static float lastBPM = currentBPM;
         bool bpmChanged = (std::abs(currentBPM - lastBPM) > 0.1f);
-        
-        // Always update the slider position to show current BPM
-        bpmSlider->setValue(currentBPM);
         
         // Format BPM display with autodetect indicator
         std::ostringstream bpmStream;
@@ -2285,13 +2421,16 @@ void GUI::updateConnectionMatrix() {
     
     // Update autodetect toggle button appearance
     if (autodetectTempoToggle) {
-        bool autodetectActive = false; // Minimal RhythmInterpreter: autodetect disabled
+        bool autodetectActive = network && network->getRhythmInterpreter() && 
+                               network->getRhythmInterpreter()->isAutoTempoEnabled();
         if (autodetectActive) {
-            autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(80, 140, 80));
+            autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(100, 200, 100)); // Bright green when active
             autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
+            autodetectTempoToggle->setText("AUTO ON");
         } else {
-            autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
-            autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+            autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 60)); // Default gray
+            autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(220, 220, 100));
+            autodetectTempoToggle->setText("AUTO TEMPO");
         }
     }
     
@@ -2323,10 +2462,15 @@ void GUI::updateFrequencyLabels() {
         return;
     }
     
-    // Get current BPM and calculate scaling factor
+    // Get current BPM from slider and calculate scaling factor
     auto rhythmInterpreter = network->getRhythmInterpreter();
-    float currentBPM = 120.0f; // Default BPM for minimal RhythmInterpreter
-    float tempoScale = currentBPM / 120.0f;
+    float currentBPM = bpmSlider ? bpmSlider->getValue() : 120.0f;
+    float tempoScale = currentBPM / 120.0f; // Scale relative to 120 BPM baseline
+    
+    // Update spectral display frequency labels too
+    if (spectralDisplay) {
+        spectralDisplay->setManualBPM(currentBPM);
+    }
     
     // Base frequencies from Todd (1994) rhythmogram
     const std::vector<float> baseFrequencies = {
@@ -2337,9 +2481,12 @@ void GUI::updateFrequencyLabels() {
         "Phrase", "Whole", "Half", "Quarter", "Eighth", "16th", "32nd", "Onset"
     };
     
-    // Update each label with scaled frequency
+    // Update each label with scaled frequency and update RhythmInterpreter filter frequencies
     for (size_t i = 0; i < filterLabels.size() && i < baseFrequencies.size(); ++i) {
         float scaledFrequency = baseFrequencies[i] * tempoScale;
+        
+        // Update the actual filter frequency in RhythmInterpreter
+        rhythmInterpreter->setBandFrequency(i, scaledFrequency);
         
         // Format frequency display (1 decimal place for small values, integer for large)
         std::string freqText;

@@ -36,6 +36,7 @@ public:
     void setRhythmInterpreter(RhythmInterpreter* rhythmInterp);
     void setOpacity(float opacity);  // Set opacity in range 0-100%
     void setContrast(float contrast); // Set contrast multiplier in range 0.1-3.0
+    void setManualBPM(float bpm);    // Set manual BPM for frequency label updates
     float getOpacity() const;        // Get current opacity in range 0-100%
     void update();
     void render(sf::RenderWindow& window);

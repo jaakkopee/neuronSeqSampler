@@ -126,7 +126,24 @@ public:
     // Q-factor control (filter resonance/sharpness)
     void setQValue(size_t bandIndex, float q);
     float getQValue(size_t bandIndex) const;
-    
+    // ========================= Tempo and Beat Detection Controls =========================
+
+    // Set the tempo detection sensitivity
+    void setTempoSensitivity(float sensitivity);
+    float getTempoSensitivity() const;
+
+    // Get the current detected tempo
+    float getDetectedTempo() const;
+
+    // Get the current beat positions
+    std::vector<float> getBeatPositions() const;
+
+    // Auto-tempo following controls
+    void setAutoTempoEnabled(bool enabled);
+    bool isAutoTempoEnabled() const;
+    void setBaseTempoFrequency(float frequency);
+    float getBaseTempoFrequency() const;
+
     // ========================= UTILITY METHODS =========================
     
     /**
@@ -151,7 +168,19 @@ private:
     std::vector<float> bandScalings;         // Pre-amplification factors
     std::vector<float> bandLimits;           // Maximum output levels
     std::vector<float> qValues;              // Filter Q-factors (resonance)
+
+    // Tempo and beat detection parameters
+    float tempoSensitivity;
+    float detectedTempo;
+    std::vector<float> beatPositions;
     
+    // Auto-tempo following parameters
+    bool autoTempoEnabled;
+    float baseTempoFrequency;             // Base frequency for 120 BPM
+    std::vector<float> defaultFrequencies; // Original band frequencies for scaling
+    float tempoSmoothingFactor;           // Smoothing for tempo changes
+    float lastStableTempo;                // Previously detected stable tempo
+
     // ========================= USER CONTROLS =========================
     std::vector<float> bandGains;            // User sensitivity settings
     std::vector<float> filterGains;          // User output gain settings
