@@ -126,7 +126,7 @@ void SimpleSpectralDisplay::setOpacity(float opacity) {
 }
 
 void SimpleSpectralDisplay::setContrast(float contrast) {
-    config.contrast = std::clamp(contrast, 0.1f, 3.0f);
+    config.contrast = std::clamp(contrast, 0.1f, 10.0f);
 }
 
 void SimpleSpectralDisplay::setManualBPM(float bpm) {
@@ -350,19 +350,19 @@ void SimpleSpectralDisplay::updateSpectrogramImage() {
 }
 
 sf::Color SimpleSpectralDisplay::amplitudeToColor(float amplitude, size_t bandIndex) {
+    // Apply contrast adjustment first to preserve dynamic range
+    float contrastedAmplitude = amplitude * config.contrast;
+    
     // Adaptive scaling: stronger boost for very small values, gentler for larger ones
     float scaledAmplitude;
-    if (amplitude < 0.01f) {
-        scaledAmplitude = amplitude * 15.0f; // Strong boost for quiet signals
-    } else if (amplitude < 0.1f) {
-        scaledAmplitude = 0.15f + (amplitude - 0.01f) * 5.0f; // Medium boost 
+    if (contrastedAmplitude < 0.01f) {
+        scaledAmplitude = contrastedAmplitude * 15.0f; // Strong boost for quiet signals
+    } else if (contrastedAmplitude < 0.1f) {
+        scaledAmplitude = 0.15f + (contrastedAmplitude - 0.01f) * 5.0f; // Medium boost 
     } else {
-        scaledAmplitude = 0.6f + (amplitude - 0.1f) * 2.0f; // Gentle boost for loud signals
+        scaledAmplitude = 0.6f + (contrastedAmplitude - 0.1f) * 2.0f; // Gentle boost for loud signals
     }
     float normalizedAmplitude = std::clamp(scaledAmplitude, 0.0f, 1.0f);
-    
-    // Apply contrast adjustment
-    normalizedAmplitude = std::clamp(normalizedAmplitude * config.contrast, 0.0f, 1.0f);
     
     // Apply gamma correction for better perceptual response with normalized levels
     float gamma = 0.5f; // Moderate gamma for balanced visibility across the range

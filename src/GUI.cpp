@@ -168,7 +168,7 @@ void GUI::createControlPanel() {
     spectralContrastSlider->setPosition("5%", "32%");
     spectralContrastSlider->setSize("90%", "3%");
     spectralContrastSlider->setMinimum(10.0f);    // 10% contrast (low contrast)
-    spectralContrastSlider->setMaximum(300.0f);   // 300% contrast (high contrast)
+    spectralContrastSlider->setMaximum(1000.0f);  // 1000% contrast (maximum contrast)
     spectralContrastSlider->setStep(5.0f);        // 5% increments
     spectralContrastSlider->setValue(100.0f);     // Default to normal contrast
     
@@ -2034,7 +2034,10 @@ void GUI::createConnectionMatrixPanel() {
     
     // Connect slider to rhythmogram scale control
     rhythmogramScaleSlider->onValueChange([this](float value) {
-        // Minimal RhythmInterpreter: setRhythmogramScale method not supported
+        // Apply the global rhythmogram scale to RhythmInterpreter
+        if (network && network->getRhythmInterpreter()) {
+            network->getRhythmInterpreter()->setRhythmogramScale(value);
+        }
         // Update scale display with proper formatting (one decimal place)
         std::ostringstream stream;
         stream << std::fixed << std::setprecision(1) << value;
@@ -2044,7 +2047,7 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixPanel->add(rhythmogramScaleSlider);
     
     // Scale value display - LARGE for easy reading
-    rhythmogramScaleLabel = tgui::Label::create("5.0");
+    rhythmogramScaleLabel = tgui::Label::create("1.0");
     rhythmogramScaleLabel->setPosition(scaleSliderX - 20, 375); // Centered under original slider position  
     rhythmogramScaleLabel->setSize(60, 30); // Match BPM label dimensions for consistency
     rhythmogramScaleLabel->setTextSize(13); // Match BPM label text size

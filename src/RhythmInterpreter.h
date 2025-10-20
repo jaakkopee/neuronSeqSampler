@@ -110,6 +110,7 @@ public:
     // Frequency control (center frequency of each band)
     void setBandFrequency(size_t bandIndex, float frequency);
     float getBandFrequency(size_t bandIndex) const;
+    std::vector<float> getBandFrequencies() const;
     
     // Bandwidth control (frequency range width)
     void setBandBandwidth(size_t bandIndex, float bandwidth);
@@ -126,6 +127,13 @@ public:
     // Q-factor control (filter resonance/sharpness)
     void setQValue(size_t bandIndex, float q);
     float getQValue(size_t bandIndex) const;
+    
+    // ========================= GLOBAL SCALE CONTROLS =========================
+    
+    // Global rhythmogram scale (applies to all bands)
+    void setRhythmogramScale(float scale);
+    float getRhythmogramScale() const;
+    
     // ========================= Tempo and Beat Detection Controls =========================
 
     // Set the tempo detection sensitivity
@@ -184,6 +192,7 @@ private:
     // ========================= USER CONTROLS =========================
     std::vector<float> bandGains;            // User sensitivity settings
     std::vector<float> filterGains;          // User output gain settings
+    float rhythmogramScale;                  // Global scaling multiplier for all bands
     
     // ========================= RUNTIME STATE =========================  
     std::vector<float> filterOutputs;        // Current output levels

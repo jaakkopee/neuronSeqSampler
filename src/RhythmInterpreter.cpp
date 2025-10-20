@@ -19,6 +19,7 @@ RhythmInterpreter::RhythmInterpreter(size_t sampleRate, size_t bufferSize)
     filterOutputs.resize(bandCount, 0.0f);
     bandGains.resize(bandCount, 1.0f);
     filterGains.resize(bandCount, 1.0f);
+    rhythmogramScale = 1.0f;          // Default scale multiplier
     stuckCounters.resize(bandCount, 0);
     // qValues is already initialized in initializeBands() - don't override it
     
@@ -83,6 +84,10 @@ float RhythmInterpreter::getBaseTempoFrequency() const {
     return baseTempoFrequency;
 }
 
+std::vector<float> RhythmInterpreter::getBandFrequencies() const {
+    return bandFrequencies;
+}
+
 void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     frameCounter++;
     
@@ -115,7 +120,7 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     
     // Normalize the audio data to prevent filter saturation
     std::vector<float> normalizedAudio = audioData;
-    float normalizationFactor = 0.1f; // Strong normalization to keep outputs reasonable
+    float normalizationFactor = 0.5f; // Less aggressive normalization for stronger outputs
     
     // Apply peak normalization if audio is too loud
     float maxSample = 0.0f;
@@ -124,7 +129,7 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     }
     
     if (maxSample > 0.001f) { // Avoid division by zero
-        float peakNormalization = std::min(1.0f, 0.2f / maxSample); // Normalize peak to 0.2 maximum
+        float peakNormalization = std::min(1.0f, 0.8f / maxSample); // Allow higher peaks for stronger signals
         for (size_t i = 0; i < normalizedAudio.size(); ++i) {
             normalizedAudio[i] *= (normalizationFactor * peakNormalization);
         }
@@ -139,54 +144,17 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         // Use frequency-specific processing for distinct rhythm patterns with normalized audio
         std::vector<float> bandData = bandpassFilter(normalizedAudio, freq, bw, q);
         
-        // Advanced rhythm detection with time-varying analysis
-        float rhythmActivity = 0.0f;
-        
-        if (!bandData.empty()) {
-            // Different processing based on frequency range for rhythm patterns
-            if (freq < 200.0f) {
-                // Low frequencies: Beat and kick drum detection
-                float peakEnergy = 0.0f;
-                for (size_t i = 0; i < bandData.size(); ++i) {
-                    peakEnergy = std::max(peakEnergy, std::abs(bandData[i]));
-                }
-                rhythmActivity = peakEnergy * 1.0f; // Reduced from 2.0f to 1.0f
-                
-            } else if (freq < 1000.0f) {
-                // Mid frequencies: Snare and vocal rhythms
-                float changeRate = 0.0f;
-                for (size_t i = 1; i < bandData.size(); ++i) {
-                    float change = std::abs(bandData[i] - bandData[i-1]);
-                    changeRate += change;
-                }
-                rhythmActivity = changeRate / bandData.size() * 1.5f; // Reduced from 3.0f to 1.5f
-                
-            } else if (freq < 4000.0f) {
-                // High-mid frequencies: Hi-hat and percussion
-                float transientEnergy = 0.0f;
-                for (size_t i = 2; i < bandData.size(); ++i) {
-                    float transient = std::abs(bandData[i] - 2.0f * bandData[i-1] + bandData[i-2]);
-                    transientEnergy += transient;
-                }
-                rhythmActivity = transientEnergy / bandData.size() * 2.0f; // Reduced from 4.0f to 2.0f
-                
-            } else {
-                // High frequencies: Cymbal crashes and sibilance
-                float highFreqActivity = 0.0f;
-                for (size_t i = 1; i < bandData.size(); ++i) {
-                    float highpass = bandData[i] - bandData[i-1];
-                    highFreqActivity += std::abs(highpass);
-                }
-                rhythmActivity = highFreqActivity / bandData.size() * 2.0f; // Reduced from 5.0f to 2.0f
-            }
-        }
-        
         // Apply faster temporal smoothing for more responsive rhythm detection
-        float smoothingFactor = 0.65f; // Much faster response (was 0.85f)
+        float smoothingFactor = 0.56f; // Much faster response (was 0.85f)
         static std::vector<float> smoothedOutputs(bandCount, 0.0f);
         if (smoothedOutputs.size() != bandCount) {
             smoothedOutputs.resize(bandCount, 0.0f);
         }
+        float rhythmActivity = 0.0f;
+        for (float sample : bandData) {
+            rhythmActivity += std::abs(sample);
+        }
+        rhythmActivity /= static_cast<float>(bandData.size()); // Average absolute value
         
         // More aggressive adaptive smoothing for faster envelope following
         if (rhythmActivity > smoothedOutputs[bandIndex]) {
@@ -213,6 +181,12 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         filterOutputs[bandIndex] *= filterGains[bandIndex];
         // Only prevent negative values, allow dynamic range above 1.0
         filterOutputs[bandIndex] = std::max(0.0f, filterOutputs[bandIndex]);
+    }
+    
+    // Apply global rhythmogram scale to all outputs
+    for (size_t bandIndex = 0; bandIndex < bandCount; ++bandIndex) {
+        filterOutputs[bandIndex] *= rhythmogramScale;
+        filterOutputs[bandIndex] = std::max(0.0f, filterOutputs[bandIndex]); // Ensure non-negative
     }
     
     // Auto-tempo detection and frequency adjustment
@@ -359,6 +333,15 @@ float RhythmInterpreter::getQValue(size_t bandIndex) const {
         return qValues[bandIndex];
     }
     return 1.0f;
+}
+
+// Global rhythmogram scale control
+void RhythmInterpreter::setRhythmogramScale(float scale) {
+    rhythmogramScale = std::max(0.1f, std::min(20.0f, scale)); // Clamp to reasonable range
+}
+
+float RhythmInterpreter::getRhythmogramScale() const {
+    return rhythmogramScale;
 }
 
 // Removed adaptive sensitivity system - using direct user controls only
