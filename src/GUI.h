@@ -71,10 +71,6 @@ private:
     std::vector<tgui::Label::Ptr> filterGainDisplays; // Display labels showing filter gain values
     // Frequency response visualization temporarily removed due to TGUI limitations
     
-    // Band sensitivity controls
-    std::vector<tgui::Slider::Ptr> sensitivitySliders; // Sensitivity control for each frequency band
-    std::vector<tgui::Label::Ptr> sensitivityLabels; // Display current sensitivity values
-    
     // Connection matrix GUI (8 filters × N neurons)
     tgui::ScrollablePanel::Ptr connectionMatrixPanel;
     tgui::Label::Ptr matrixTitleLabel;
@@ -92,8 +88,6 @@ private:
     
     // BeatRoot controls
     tgui::Button::Ptr beatRootToggle; // Toggle for BeatRoot system
-    tgui::Slider::Ptr beatRootSensitivitySlider; // BeatRoot sensitivity control
-    tgui::Label::Ptr beatRootSensitivityLabel; // Sensitivity value display
     tgui::Label::Ptr beatRootStatusLabel; // Status display (agents, tempo strength, etc.)
     tgui::Button::Ptr beatRootResetButton; // Manual reset button
     tgui::Button::Ptr beatRootInitButton; // Manual initialization button

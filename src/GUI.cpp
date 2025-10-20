@@ -1590,8 +1590,6 @@ void GUI::createConnectionMatrixPanel() {
         matrixGainSliders.clear();
         filterLabels.clear();
         neuronColumnLabels.clear();
-        sensitivitySliders.clear();
-        sensitivityLabels.clear();
         rhythmogramScaleSlider = nullptr;
         rhythmogramScaleLabel = nullptr;
         bpmSlider = nullptr;
@@ -1600,8 +1598,6 @@ void GUI::createConnectionMatrixPanel() {
         detectedTempoLabel = nullptr;
         // BeatRoot controls
         beatRootToggle = nullptr;
-        beatRootSensitivitySlider = nullptr;
-        beatRootSensitivityLabel = nullptr;
         beatRootStatusLabel = nullptr;
         beatRootOnsetThresholdSlider = nullptr;
         beatRootOnsetThresholdLabel = nullptr;
@@ -1861,57 +1857,7 @@ void GUI::createConnectionMatrixPanel() {
         connectionMatrixPanel->add(outputDisplay);
         filterOutputDisplays.push_back(outputDisplay);
         
-        // Add sensitivity slider for this frequency band
-        auto sensitivitySlider = tgui::Slider::create(-3.0f, 10.0f);
-        sensitivitySlider->setValue(1.0f); // Default sensitivity
-        sensitivitySlider->setStep(0.1f);
-        sensitivitySlider->setPosition(5, 125 + displayRow * 60); // Below the gain slider
-        sensitivitySlider->setSize(65, 15); // Same size as gain slider
-        sensitivitySlider->getRenderer()->setTrackColor(tgui::Color(80, 60, 60));
-        sensitivitySlider->getRenderer()->setThumbColor(tgui::Color(180, 100, 100));
-        
-        // Connect slider to sensitivity control  
-        sensitivitySlider->onValueChange([this, f](float value) {
-            if (network && network->getRhythmInterpreter()) {
-                // Set band scaling (sensitivity) for this frequency band
-                network->getRhythmInterpreter()->setBandScaling(f, value);
-                // Update sensitivity display with color coding
-                std::ostringstream stream;
-                stream << std::fixed << std::setprecision(1) << value;
-                sensitivityLabels[f]->setText(stream.str());
-                
-                // Color coding: red for negative, yellow for low positive, green for normal, blue for high
-                if (value < 0.0f) {
-                    sensitivityLabels[f]->getRenderer()->setTextColor(tgui::Color(255, 100, 100)); // Red for inverted
-                    sensitivityLabels[f]->getRenderer()->setBackgroundColor(tgui::Color(40, 15, 15));
-                } else if (value < 0.5f) {
-                    sensitivityLabels[f]->getRenderer()->setTextColor(tgui::Color(255, 200, 100)); // Yellow for low
-                    sensitivityLabels[f]->getRenderer()->setBackgroundColor(tgui::Color(35, 25, 10));
-                } else if (value <= 3.0f) {
-                    sensitivityLabels[f]->getRenderer()->setTextColor(tgui::Color(200, 140, 140)); // Normal red
-                    sensitivityLabels[f]->getRenderer()->setBackgroundColor(tgui::Color(25, 15, 15));
-                } else {
-                    sensitivityLabels[f]->getRenderer()->setTextColor(tgui::Color(100, 150, 255)); // Blue for high
-                    sensitivityLabels[f]->getRenderer()->setBackgroundColor(tgui::Color(15, 20, 40));
-                }
-            }
-        });
-        
-        connectionMatrixPanel->add(sensitivitySlider);
-        sensitivitySliders.push_back(sensitivitySlider);
-        
-        // Add sensitivity value display
-        auto sensitivityLabel = tgui::Label::create("1.0");
-        sensitivityLabel->setPosition(75, 125 + displayRow * 60); // Right of sensitivity slider
-        sensitivityLabel->setSize(25, 15);
-        sensitivityLabel->setTextSize(8);
-        sensitivityLabel->getRenderer()->setTextColor(tgui::Color(200, 140, 140));
-        sensitivityLabel->getRenderer()->setBackgroundColor(tgui::Color(25, 15, 15));
-        sensitivityLabel->getRenderer()->setBorderColor(tgui::Color(60, 40, 40));
-        sensitivityLabel->getRenderer()->setBorders(1);
-        
-        connectionMatrixPanel->add(sensitivityLabel);
-        sensitivityLabels.push_back(sensitivityLabel);
+
     }
     
     // Neuron column labels (horizontal) - only if we have neurons
@@ -2344,31 +2290,6 @@ void GUI::updateConnectionMatrix() {
     
     // Skip slider value updates if user is interacting (prevents overriding user input)
     // Only update displays, not the slider values themselves during normal operation
-    
-    // Update sensitivity labels to match slider values (without changing slider values)
-    for (size_t f = 0; f < std::min(numFilters, sensitivitySliders.size()); ++f) {
-        float currentSensitivity = sensitivitySliders[f]->getValue(); // Get current slider value instead of overriding it
-        
-        // Update sensitivity label with color coding
-        std::ostringstream stream;
-        stream << std::fixed << std::setprecision(1) << currentSensitivity;
-        sensitivityLabels[f]->setText(stream.str());
-        
-        // Apply color coding based on sensitivity value
-        if (currentSensitivity < 0.0f) {
-            sensitivityLabels[f]->getRenderer()->setTextColor(tgui::Color(255, 100, 100)); // Red for inverted
-            sensitivityLabels[f]->getRenderer()->setBackgroundColor(tgui::Color(40, 15, 15));
-        } else if (currentSensitivity < 0.5f) {
-            sensitivityLabels[f]->getRenderer()->setTextColor(tgui::Color(255, 200, 100)); // Yellow for low
-            sensitivityLabels[f]->getRenderer()->setBackgroundColor(tgui::Color(35, 25, 10));
-        } else if (currentSensitivity <= 3.0f) {
-            sensitivityLabels[f]->getRenderer()->setTextColor(tgui::Color(200, 140, 140)); // Normal red
-            sensitivityLabels[f]->getRenderer()->setBackgroundColor(tgui::Color(25, 15, 15));
-        } else {
-            sensitivityLabels[f]->getRenderer()->setTextColor(tgui::Color(100, 150, 255)); // Blue for high
-            sensitivityLabels[f]->getRenderer()->setBackgroundColor(tgui::Color(15, 20, 40));
-        }
-    }
     
     // Update rhythmogram scale display (but don't override slider value)
     if (rhythmogramScaleSlider && rhythmogramScaleLabel) {
