@@ -86,16 +86,17 @@ void SimpleSpectralDisplay::updateFrequencyBands() {
 }
 
 void SimpleSpectralDisplay::initializeColorMap() {
-    // Create distinct colors for each frequency band (lower frequencies warmer colors)
+    // Amplitude-based color map: smooth spectrum from black -> blue -> cyan -> green -> yellow -> orange -> red -> white
+    // This will be used as a lookup table for amplitude-to-color conversion
     bandColors = {
-        sf::Color(180, 50, 50),    // Deep red - Phrase
-        sf::Color(220, 80, 40),    // Red-orange - Whole  
-        sf::Color(240, 120, 30),   // Orange - Half
-        sf::Color(255, 180, 20),   // Yellow-orange - Quarter
-        sf::Color(200, 220, 40),   // Yellow-green - Eighth
-        sf::Color(100, 200, 80),   // Green - 16th
-        sf::Color(60, 150, 200),   // Blue - 32nd
-        sf::Color(120, 80, 220)    // Purple - Onset
+        sf::Color(255, 255, 255),  // White - maximum amplitude
+        sf::Color(255, 100, 100),  // Bright red - very high amplitude  
+        sf::Color(255, 200, 0),    // Orange-yellow - high amplitude
+        sf::Color(200, 255, 0),    // Yellow-green - medium-high amplitude
+        sf::Color(0, 255, 100),    // Cyan-green - medium amplitude
+        sf::Color(0, 200, 255),    // Light blue - medium-low amplitude
+        sf::Color(0, 100, 255),    // Blue - low amplitude
+        sf::Color(50, 50, 100)     // Dark blue - very low amplitude
     };
 }
 
@@ -127,6 +128,10 @@ void SimpleSpectralDisplay::setRhythmInterpreter(RhythmInterpreter* rhythmInterp
 
 void SimpleSpectralDisplay::setOpacity(float opacity) {
     config.opacity = std::clamp(opacity, 0.0f, 100.0f);
+}
+
+void SimpleSpectralDisplay::setContrast(float contrast) {
+    config.contrast = std::clamp(contrast, 0.1f, 3.0f);
 }
 
 float SimpleSpectralDisplay::getOpacity() const {
@@ -342,38 +347,83 @@ void SimpleSpectralDisplay::updateSpectrogramImage() {
 }
 
 sf::Color SimpleSpectralDisplay::amplitudeToColor(float amplitude, size_t bandIndex) {
-    // Use different scaling for different filter types
-    float normalizedAmplitude;
-    
-    if (bandIndex < 3) {
-        // Very low frequency filters (0-2): Phrase, Whole, Half
-        // These use rhythmogram correlation (typically 0.0001 to 0.001)
-        normalizedAmplitude = std::clamp(amplitude / 0.001f, 0.0f, 1.0f);
-    } else if (bandIndex < 5) {
-        // Low-mid frequency filters (3-4): Quarter, Eighth
-        // These use rhythmogram correlation (typically 0.001 to 0.01)
-        normalizedAmplitude = std::clamp(amplitude / 0.01f, 0.0f, 1.0f);
+    // Adaptive scaling: stronger boost for very small values, gentler for larger ones
+    float scaledAmplitude;
+    if (amplitude < 0.01f) {
+        scaledAmplitude = amplitude * 15.0f; // Strong boost for quiet signals
+    } else if (amplitude < 0.1f) {
+        scaledAmplitude = 0.15f + (amplitude - 0.01f) * 5.0f; // Medium boost 
     } else {
-        // High frequency filters (5-7): 16th, 32nd, Onset
-        // These now use 1000-5000x boost, so expect values 0-5 range
-        normalizedAmplitude = std::clamp(amplitude / 5.0f, 0.0f, 1.0f);
+        scaledAmplitude = 0.6f + (amplitude - 0.1f) * 2.0f; // Gentle boost for loud signals
+    }
+    float normalizedAmplitude = std::clamp(scaledAmplitude, 0.0f, 1.0f);
+    
+    // Apply contrast adjustment
+    normalizedAmplitude = std::clamp(normalizedAmplitude * config.contrast, 0.0f, 1.0f);
+    
+    // Apply gamma correction for better perceptual response with normalized levels
+    float gamma = 0.5f; // Moderate gamma for balanced visibility across the range
+    float correctedAmplitude = std::pow(normalizedAmplitude, gamma);
+    
+    // Create smooth amplitude-based color interpolation through spectrum
+    sf::Color resultColor;
+    
+    if (correctedAmplitude < 0.001f) {
+        // Near-silent: black
+        resultColor = sf::Color(0, 0, 0);
+    } else if (correctedAmplitude < 0.125f) {
+        // Very low: dark blue to blue
+        float t = correctedAmplitude / 0.125f;
+        resultColor = sf::Color(
+            static_cast<std::uint8_t>(0 + t * 50),     // R: 0 -> 50
+            static_cast<std::uint8_t>(0 + t * 50),     // G: 0 -> 50  
+            static_cast<std::uint8_t>(50 + t * 150)    // B: 50 -> 200
+        );
+    } else if (correctedAmplitude < 0.25f) {
+        // Low: blue to cyan
+        float t = (correctedAmplitude - 0.125f) / 0.125f;
+        resultColor = sf::Color(
+            static_cast<std::uint8_t>(50),                      // R: constant
+            static_cast<std::uint8_t>(50 + t * 150),           // G: 50 -> 200
+            static_cast<std::uint8_t>(200)                     // B: constant
+        );
+    } else if (correctedAmplitude < 0.5f) {
+        // Medium: cyan to green
+        float t = (correctedAmplitude - 0.25f) / 0.25f;
+        resultColor = sf::Color(
+            static_cast<std::uint8_t>(50),                     // R: constant
+            static_cast<std::uint8_t>(200 + t * 55),          // G: 200 -> 255
+            static_cast<std::uint8_t>(200 - t * 100)          // B: 200 -> 100
+        );
+    } else if (correctedAmplitude < 0.75f) {
+        // Medium-high: green to yellow
+        float t = (correctedAmplitude - 0.5f) / 0.25f;
+        resultColor = sf::Color(
+            static_cast<std::uint8_t>(50 + t * 205),          // R: 50 -> 255
+            static_cast<std::uint8_t>(255),                   // G: constant
+            static_cast<std::uint8_t>(100 - t * 100)         // B: 100 -> 0
+        );
+    } else if (correctedAmplitude < 0.9f) {
+        // High: yellow to red
+        float t = (correctedAmplitude - 0.75f) / 0.15f;
+        resultColor = sf::Color(
+            static_cast<std::uint8_t>(255),                   // R: constant
+            static_cast<std::uint8_t>(255 - t * 155),        // G: 255 -> 100
+            static_cast<std::uint8_t>(0)                     // B: constant
+        );
+    } else {
+        // Very high: red to white (maximum range)
+        float t = (correctedAmplitude - 0.9f) / 0.1f;
+        resultColor = sf::Color(
+            static_cast<std::uint8_t>(255),                   // R: constant
+            static_cast<std::uint8_t>(100 + t * 155),        // G: 100 -> 255
+            static_cast<std::uint8_t>(0 + t * 255)           // B: 0 -> 255
+        );
     }
     
-    // Get base color for this frequency band
-    sf::Color baseColor = bandColors[bandIndex % bandColors.size()];
+    // Apply configurable opacity
+    std::uint8_t alpha = static_cast<std::uint8_t>(config.opacity * 2.55f);
+    resultColor.a = alpha;
     
-    // Apply contrast enhancement with gamma curve and lower minimum brightness
-    float contrastPower = 2.2f;  // Gamma correction for higher contrast
-    float enhancedAmplitude = std::pow(normalizedAmplitude, 1.0f / contrastPower);
-    float brightness = 0.05f + (enhancedAmplitude * 0.95f); // Range from 5% to 100% brightness (higher contrast)
-    
-    // Convert opacity percentage to 0-255 range
-    std::uint8_t alpha = static_cast<std::uint8_t>(config.opacity * 2.55f);  // 100% -> 255, 0% -> 0
-    
-    return sf::Color(
-        static_cast<std::uint8_t>(baseColor.r * brightness),
-        static_cast<std::uint8_t>(baseColor.g * brightness),
-        static_cast<std::uint8_t>(baseColor.b * brightness),
-        alpha  // Configurable opacity
-    );
+    return resultColor;
 }

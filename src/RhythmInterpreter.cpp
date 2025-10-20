@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <numeric>
 #include <complex>
+#include <iostream>
 #include <fftw3.h>
 
 #ifndef M_PI
@@ -25,10 +26,23 @@ RhythmInterpreter::RhythmInterpreter(size_t sampleRate, size_t bufferSize)
 void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     frameCounter++;
     
+    // Debug: Log audio data status occasionally
+    if (frameCounter % 1000 == 0) {
+        float totalEnergy = 0.0f;
+        for (float sample : audioData) {
+            totalEnergy += sample * sample;
+        }
+        std::cout << "DEBUG: Frame " << frameCounter << " - Audio size: " << audioData.size() 
+                  << " - Energy: " << std::sqrt(totalEnergy / std::max(1.0f, (float)audioData.size())) << std::endl;
+    }
+    
     // Check if we have audio input
     if (audioData.empty()) {
         // No audio - set all outputs to zero
         std::fill(filterOutputs.begin(), filterOutputs.end(), 0.0f);
+        if (frameCounter % 1000 == 0) {
+            std::cout << "DEBUG: No audio data - setting outputs to zero" << std::endl;
+        }
         return;
     }
     
@@ -39,14 +53,31 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     }
     totalEnergy = std::sqrt(totalEnergy / audioData.size());
     
+    // Normalize the audio data to prevent filter saturation
+    std::vector<float> normalizedAudio = audioData;
+    float normalizationFactor = 0.1f; // Strong normalization to keep outputs reasonable
+    
+    // Apply peak normalization if audio is too loud
+    float maxSample = 0.0f;
+    for (float sample : audioData) {
+        maxSample = std::max(maxSample, std::abs(sample));
+    }
+    
+    if (maxSample > 0.001f) { // Avoid division by zero
+        float peakNormalization = std::min(1.0f, 0.2f / maxSample); // Normalize peak to 0.2 maximum
+        for (size_t i = 0; i < normalizedAudio.size(); ++i) {
+            normalizedAudio[i] *= (normalizationFactor * peakNormalization);
+        }
+    }
+    
     // Process each band independently for rhythm pattern detection
     for (size_t bandIndex = 0; bandIndex < bandCount; ++bandIndex) {
         float freq = bandFrequencies[bandIndex];
         float bw = bandBandwidths[bandIndex];
         float q = qValues[bandIndex];
         
-        // Use frequency-specific processing for distinct rhythm patterns
-        std::vector<float> bandData = bandpassFilter(audioData, freq, bw, q);
+        // Use frequency-specific processing for distinct rhythm patterns with normalized audio
+        std::vector<float> bandData = bandpassFilter(normalizedAudio, freq, bw, q);
         
         // Advanced rhythm detection with time-varying analysis
         float rhythmActivity = 0.0f;
@@ -59,7 +90,7 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
                 for (size_t i = 0; i < bandData.size(); ++i) {
                     peakEnergy = std::max(peakEnergy, std::abs(bandData[i]));
                 }
-                rhythmActivity = peakEnergy * 2.0f; // Emphasize bass hits
+                rhythmActivity = peakEnergy * 1.0f; // Reduced from 2.0f to 1.0f
                 
             } else if (freq < 1000.0f) {
                 // Mid frequencies: Snare and vocal rhythms
@@ -68,7 +99,7 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
                     float change = std::abs(bandData[i] - bandData[i-1]);
                     changeRate += change;
                 }
-                rhythmActivity = changeRate / bandData.size() * 3.0f;
+                rhythmActivity = changeRate / bandData.size() * 1.5f; // Reduced from 3.0f to 1.5f
                 
             } else if (freq < 4000.0f) {
                 // High-mid frequencies: Hi-hat and percussion
@@ -77,7 +108,7 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
                     float transient = std::abs(bandData[i] - 2.0f * bandData[i-1] + bandData[i-2]);
                     transientEnergy += transient;
                 }
-                rhythmActivity = transientEnergy / bandData.size() * 4.0f;
+                rhythmActivity = transientEnergy / bandData.size() * 2.0f; // Reduced from 4.0f to 2.0f
                 
             } else {
                 // High frequencies: Cymbal crashes and sibilance
@@ -86,32 +117,32 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
                     float highpass = bandData[i] - bandData[i-1];
                     highFreqActivity += std::abs(highpass);
                 }
-                rhythmActivity = highFreqActivity / bandData.size() * 5.0f;
+                rhythmActivity = highFreqActivity / bandData.size() * 2.0f; // Reduced from 5.0f to 2.0f
             }
         }
         
-        // Apply temporal smoothing to create rhythm patterns instead of blocks
-        float smoothingFactor = 0.85f; // Adjust for different response speeds
+        // Apply faster temporal smoothing for more responsive rhythm detection
+        float smoothingFactor = 0.65f; // Much faster response (was 0.85f)
         static std::vector<float> smoothedOutputs(bandCount, 0.0f);
         if (smoothedOutputs.size() != bandCount) {
             smoothedOutputs.resize(bandCount, 0.0f);
         }
         
-        // Adaptive smoothing based on activity level
+        // More aggressive adaptive smoothing for faster envelope following
         if (rhythmActivity > smoothedOutputs[bandIndex]) {
-            // Fast attack for new rhythmic events
-            smoothedOutputs[bandIndex] = 0.3f * smoothedOutputs[bandIndex] + 0.7f * rhythmActivity;
+            // Very fast attack for immediate rhythmic response
+            smoothedOutputs[bandIndex] = 0.2f * smoothedOutputs[bandIndex] + 0.8f * rhythmActivity;
         } else {
-            // Slower decay to maintain rhythm visibility
+            // Faster decay for quicker envelope following
             smoothedOutputs[bandIndex] = smoothingFactor * smoothedOutputs[bandIndex] + (1.0f - smoothingFactor) * rhythmActivity;
         }
         
         // Apply frequency-dependent scaling
         float scaledActivity = smoothedOutputs[bandIndex] * bandScalings[bandIndex];
         
-        // Apply limit and normalize to [0,1]
+        // Apply band-specific limit but allow values above 1.0 for dynamic range
         scaledActivity = std::min(scaledActivity, bandLimits[bandIndex]);
-        scaledActivity = std::max(0.0f, std::min(scaledActivity, 1.0f));
+        scaledActivity = std::max(0.0f, scaledActivity); // Only clamp minimum, not maximum
         
         // Store the rhythm pattern output
         filterOutputs[bandIndex] = scaledActivity;
@@ -120,8 +151,8 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     // Apply filter gains to the outputs
     for (size_t bandIndex = 0; bandIndex < bandCount; ++bandIndex) {
         filterOutputs[bandIndex] *= filterGains[bandIndex];
-        // Clamp output to [0.0, 1.0]
-        filterOutputs[bandIndex] = std::max(0.0f, std::min(filterOutputs[bandIndex], 1.0f));
+        // Only prevent negative values, allow dynamic range above 1.0
+        filterOutputs[bandIndex] = std::max(0.0f, filterOutputs[bandIndex]);
     }
 }
 
@@ -134,9 +165,9 @@ void RhythmInterpreter::initializeBands() {
     bandFrequencies = {0.125f, 0.25f, 0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f};
     bandBandwidths = {0.25f, 0.25f, 0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f};
     bandScalings = {1.0f, 1.0f, 1.0f, 1.0f, 1.2f, 2.0f, 2.5f, 3.0f};
-    bandLimits = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.7f, 0.8f, 0.9f};
-    // Higher Q-values for better frequency selectivity with proper biquad filtering
-    qValues = {12.0f, 10.0f, 8.0f, 6.0f, 5.0f, 4.0f, 3.5f, 3.0f};
+    bandLimits = {2.0f, 2.0f, 1.8f, 1.6f, 1.4f, 1.2f, 1.0f, 0.8f}; // Increased limits for more dynamic range
+    // Lower Q-values for faster response and broader frequency capture
+    qValues = {4.0f, 4.0f, 3.5f, 3.0f, 2.5f, 2.0f, 1.8f, 1.5f}; // Much lower Q for faster envelope following
 }
 
 // Removed setSensitivity and getSensitivity methods - direct access to bandGains only

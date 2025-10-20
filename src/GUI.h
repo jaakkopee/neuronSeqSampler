@@ -54,8 +54,8 @@ private:
     tgui::Label::Ptr viewModeLabel;
     
     // Spectral display controls
-    tgui::Slider::Ptr spectralOpacitySlider;
-    tgui::Label::Ptr spectralOpacityLabel;
+    tgui::Slider::Ptr spectralContrastSlider;
+    tgui::Label::Ptr spectralContrastLabel;
     
     // Rhythm interpreter controls
     tgui::Panel::Ptr rhythmPanel;

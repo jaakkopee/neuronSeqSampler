@@ -155,29 +155,29 @@ void GUI::createControlPanel() {
     });
     controlPanel->add(viewModeComboBox, "ViewModeComboBox");
     
-    // Spectral Display Opacity Control
-    spectralOpacityLabel = tgui::Label::create("Spectral Opacity: 100%");
-    spectralOpacityLabel->setPosition("5%", "29%");
-    spectralOpacityLabel->setTextSize(10);
-    spectralOpacityLabel->getRenderer()->setTextColor(tgui::Color::White);
-    controlPanel->add(spectralOpacityLabel, "SpectralOpacityLabel");
+    // Spectral Display Contrast Control
+    spectralContrastLabel = tgui::Label::create("Spectral Contrast: 100%");
+    spectralContrastLabel->setPosition("5%", "29%");
+    spectralContrastLabel->setTextSize(10);
+    spectralContrastLabel->getRenderer()->setTextColor(tgui::Color::White);
+    controlPanel->add(spectralContrastLabel, "SpectralContrastLabel");
     
-    spectralOpacitySlider = tgui::Slider::create();
-    spectralOpacitySlider->setPosition("5%", "32%");
-    spectralOpacitySlider->setSize("90%", "3%");
-    spectralOpacitySlider->setMinimum(0.0f);     // 0% opacity (fully transparent)
-    spectralOpacitySlider->setMaximum(100.0f);   // 100% opacity (fully opaque)
-    spectralOpacitySlider->setStep(1.0f);        // 1% increments
-    spectralOpacitySlider->setValue(100.0f);     // Default to full opacity
+    spectralContrastSlider = tgui::Slider::create();
+    spectralContrastSlider->setPosition("5%", "32%");
+    spectralContrastSlider->setSize("90%", "3%");
+    spectralContrastSlider->setMinimum(10.0f);    // 10% contrast (low contrast)
+    spectralContrastSlider->setMaximum(300.0f);   // 300% contrast (high contrast)
+    spectralContrastSlider->setStep(5.0f);        // 5% increments
+    spectralContrastSlider->setValue(100.0f);     // Default to normal contrast
     
     // Connect slider to callback
-    spectralOpacitySlider->onValueChange([this](float value) {
+    spectralContrastSlider->onValueChange([this](float value) {
         if (spectralDisplay) {
-            spectralDisplay->setOpacity(value);
-            spectralOpacityLabel->setText("Spectral Opacity: " + std::to_string(static_cast<int>(value)) + "%");
+            spectralDisplay->setContrast(value / 100.0f); // Convert percentage to factor
+            spectralContrastLabel->setText("Spectral Contrast: " + std::to_string(static_cast<int>(value)) + "%");
         }
     });
-    controlPanel->add(spectralOpacitySlider, "SpectralOpacitySlider");
+    controlPanel->add(spectralContrastSlider, "SpectralContrastSlider");
     
     // Create scrollable panel for sliders - adjusted position for new control
     slidersPanel = tgui::ScrollablePanel::create({"95%", "62%"}); // Reduced height to accommodate opacity control

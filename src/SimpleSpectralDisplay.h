@@ -24,6 +24,7 @@ struct SimpleDisplayConfig {
     bool showLabels = true;
     bool showGrid = true;
     float opacity = 100.0f;          // Opacity in percentage (0-100)
+    float contrast = 1.0f;           // Contrast multiplier (0.1-3.0, default 1.0)
 };
 
 class SimpleSpectralDisplay {
@@ -34,6 +35,7 @@ public:
     void setSize(float width, float height);
     void setRhythmInterpreter(RhythmInterpreter* rhythmInterp);
     void setOpacity(float opacity);  // Set opacity in range 0-100%
+    void setContrast(float contrast); // Set contrast multiplier in range 0.1-3.0
     float getOpacity() const;        // Get current opacity in range 0-100%
     void update();
     void render(sf::RenderWindow& window);
