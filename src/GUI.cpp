@@ -1569,6 +1569,8 @@ void GUI::createConnectionMatrixPanel() {
         matrixGainSliders.clear();
         filterLabels.clear();
         neuronColumnLabels.clear();
+        sensitivitySliders.clear();
+        sensitivityLabels.clear();
         rhythmogramScaleSlider = nullptr;
         rhythmogramScaleLabel = nullptr;
         bpmSlider = nullptr;
@@ -1632,7 +1634,7 @@ void GUI::createConnectionMatrixPanel() {
     clearAllButton->setSize(70, 20);
     clearAllButton->setTextSize(10);
     clearAllButton->getRenderer()->setBackgroundColor(tgui::Color(80, 40, 40));
-    clearAllButton->onPress([=, this]() {
+    clearAllButton->onPress([this]() {
         // Minimal RhythmInterpreter: connection matrix not available
         DEBUG_PRINT("Clear All: minimal RhythmInterpreter does not support connection matrix");
     });
@@ -1643,7 +1645,7 @@ void GUI::createConnectionMatrixPanel() {
     randomizeButton->setSize(70, 20);
     randomizeButton->setTextSize(10);
     randomizeButton->getRenderer()->setBackgroundColor(tgui::Color(40, 80, 40));
-    randomizeButton->onPress([=, this]() {
+    randomizeButton->onPress([this]() {
         // Minimal RhythmInterpreter: randomizeConnections not available
         DEBUG_PRINT("Randomize: minimal RhythmInterpreter does not support connection matrix");
     });
@@ -1654,7 +1656,7 @@ void GUI::createConnectionMatrixPanel() {
     connectAllButton->setSize(70, 20);
     connectAllButton->setTextSize(10);
     connectAllButton->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 80));
-    connectAllButton->onPress([=, this]() {
+    connectAllButton->onPress([this]() {
         if (network && network->getRhythmInterpreter()) {
             // Minimal RhythmInterpreter: connection matrix not available
             DEBUG_PRINT("Connect All: minimal RhythmInterpreter does not support connection matrix");
@@ -1709,12 +1711,13 @@ void GUI::createConnectionMatrixPanel() {
         
         // Connect slider to filter gain control
         gainSlider->onValueChange([this, f](float value) {
-            // Minimal RhythmInterpreter: setFilterGain method not supported
+            if (network && network->getRhythmInterpreter()) {
+                network->getRhythmInterpreter()->setFilterGain(f, value);
+            }
             // Update filter gain display with proper formatting (one decimal place)
             std::ostringstream stream;
             stream << std::fixed << std::setprecision(1) << value << "x";
             filterGainDisplays[f]->setText(stream.str());
-            // Frequency response display temporarily disabled
         });
         
         connectionMatrixPanel->add(gainSlider);
@@ -1745,6 +1748,57 @@ void GUI::createConnectionMatrixPanel() {
         
         connectionMatrixPanel->add(outputDisplay);
         filterOutputDisplays.push_back(outputDisplay);
+        
+        // Add sensitivity slider for this frequency band
+        auto sensitivitySlider = tgui::Slider::create(-3.0f, 10.0f);
+        sensitivitySlider->setValue(1.0f); // Default sensitivity
+        sensitivitySlider->setStep(0.1f);
+        sensitivitySlider->setPosition(5, 125 + displayRow * 60); // Below the gain slider
+        sensitivitySlider->setSize(65, 15); // Same size as gain slider
+        sensitivitySlider->getRenderer()->setTrackColor(tgui::Color(80, 60, 60));
+        sensitivitySlider->getRenderer()->setThumbColor(tgui::Color(180, 100, 100));
+        
+        // Connect slider to sensitivity control
+        sensitivitySlider->onValueChange([this, f](float value) {
+            if (network && network->getRhythmInterpreter()) {
+                network->getRhythmInterpreter()->setSensitivity(f, value);
+                // Update sensitivity display with color coding
+                std::ostringstream stream;
+                stream << std::fixed << std::setprecision(1) << value;
+                sensitivityLabels[f]->setText(stream.str());
+                
+                // Color coding: red for negative, yellow for low positive, green for normal, blue for high
+                if (value < 0.0f) {
+                    sensitivityLabels[f]->getRenderer()->setTextColor(tgui::Color(255, 100, 100)); // Red for inverted
+                    sensitivityLabels[f]->getRenderer()->setBackgroundColor(tgui::Color(40, 15, 15));
+                } else if (value < 0.5f) {
+                    sensitivityLabels[f]->getRenderer()->setTextColor(tgui::Color(255, 200, 100)); // Yellow for low
+                    sensitivityLabels[f]->getRenderer()->setBackgroundColor(tgui::Color(35, 25, 10));
+                } else if (value <= 3.0f) {
+                    sensitivityLabels[f]->getRenderer()->setTextColor(tgui::Color(200, 140, 140)); // Normal red
+                    sensitivityLabels[f]->getRenderer()->setBackgroundColor(tgui::Color(25, 15, 15));
+                } else {
+                    sensitivityLabels[f]->getRenderer()->setTextColor(tgui::Color(100, 150, 255)); // Blue for high
+                    sensitivityLabels[f]->getRenderer()->setBackgroundColor(tgui::Color(15, 20, 40));
+                }
+            }
+        });
+        
+        connectionMatrixPanel->add(sensitivitySlider);
+        sensitivitySliders.push_back(sensitivitySlider);
+        
+        // Add sensitivity value display
+        auto sensitivityLabel = tgui::Label::create("1.0");
+        sensitivityLabel->setPosition(75, 125 + displayRow * 60); // Right of sensitivity slider
+        sensitivityLabel->setSize(25, 15);
+        sensitivityLabel->setTextSize(8);
+        sensitivityLabel->getRenderer()->setTextColor(tgui::Color(200, 140, 140));
+        sensitivityLabel->getRenderer()->setBackgroundColor(tgui::Color(25, 15, 15));
+        sensitivityLabel->getRenderer()->setBorderColor(tgui::Color(60, 40, 40));
+        sensitivityLabel->getRenderer()->setBorders(1);
+        
+        connectionMatrixPanel->add(sensitivityLabel);
+        sensitivityLabels.push_back(sensitivityLabel);
     }
     
     // Neuron column labels (horizontal) - only if we have neurons
@@ -1804,7 +1858,7 @@ void GUI::createConnectionMatrixPanel() {
             }
             
             // Toggle connection callback
-            toggleButton->onPress([=, this]() {
+            toggleButton->onPress([this, f, n, toggleButton]() {
                 // Minimal RhythmInterpreter: no connection matrix available
                 DEBUG_PRINT("Connection toggle disabled for minimal RhythmInterpreter");
                 bool wasConnected = false;
@@ -1849,7 +1903,7 @@ void GUI::createConnectionMatrixPanel() {
             gainSlider->setVisible(isConnected);
             
             // Gain change callback
-            gainSlider->onValueChange([=, this](float value) {
+            gainSlider->onValueChange([this, f, n](float value) {
                 // Minimal RhythmInterpreter: connection matrix not available
                 float weight = value / 100.0f; // Convert from 0-100 to 0-1 range
                 
@@ -2108,7 +2162,7 @@ void GUI::updateConnectionMatrix() {
     
     // Update filter gain displays
     for (size_t f = 0; f < std::min(numFilters, filterGainDisplays.size()); ++f) {
-        float gainValue = 1.0f; // Minimal RhythmInterpreter: default gain
+        float gainValue = rhythmInterpreter->getFilterGain(f);
         std::ostringstream stream;
         stream << std::fixed << std::setprecision(1) << gainValue << "x";
         filterGainDisplays[f]->setText(stream.str());
@@ -2156,8 +2210,34 @@ void GUI::updateConnectionMatrix() {
     
     // Update filter gain sliders to match current values
     for (size_t f = 0; f < std::min(numFilters, filterGainSliders.size()); ++f) {
-        float currentGain = 1.0f; // Minimal RhythmInterpreter: default gain
+        float currentGain = rhythmInterpreter->getFilterGain(f);
         filterGainSliders[f]->setValue(currentGain);
+    }
+    
+    // Update sensitivity sliders and labels to match current values
+    for (size_t f = 0; f < std::min(numFilters, sensitivitySliders.size()); ++f) {
+        float currentSensitivity = rhythmInterpreter->getSensitivity(f);
+        sensitivitySliders[f]->setValue(currentSensitivity);
+        
+        // Update sensitivity label with color coding
+        std::ostringstream stream;
+        stream << std::fixed << std::setprecision(1) << currentSensitivity;
+        sensitivityLabels[f]->setText(stream.str());
+        
+        // Apply color coding based on sensitivity value
+        if (currentSensitivity < 0.0f) {
+            sensitivityLabels[f]->getRenderer()->setTextColor(tgui::Color(255, 100, 100)); // Red for inverted
+            sensitivityLabels[f]->getRenderer()->setBackgroundColor(tgui::Color(40, 15, 15));
+        } else if (currentSensitivity < 0.5f) {
+            sensitivityLabels[f]->getRenderer()->setTextColor(tgui::Color(255, 200, 100)); // Yellow for low
+            sensitivityLabels[f]->getRenderer()->setBackgroundColor(tgui::Color(35, 25, 10));
+        } else if (currentSensitivity <= 3.0f) {
+            sensitivityLabels[f]->getRenderer()->setTextColor(tgui::Color(200, 140, 140)); // Normal red
+            sensitivityLabels[f]->getRenderer()->setBackgroundColor(tgui::Color(25, 15, 15));
+        } else {
+            sensitivityLabels[f]->getRenderer()->setTextColor(tgui::Color(100, 150, 255)); // Blue for high
+            sensitivityLabels[f]->getRenderer()->setBackgroundColor(tgui::Color(15, 20, 40));
+        }
     }
     
     // Update rhythmogram scale slider and display
