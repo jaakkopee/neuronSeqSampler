@@ -14,6 +14,9 @@ private:
     std::vector<std::unique_ptr<Connection>> connections;
     AudioManager* audioManager;
     RhythmInterpreter* rhythmInterpreter; // Use raw pointer to avoid incomplete type issues
+    
+    // Rhythm-to-neuron connection matrix (filterIndex -> neuronIndex -> weight)
+    std::vector<std::vector<float>> rhythmConnectionMatrix;
 
 public:
     NeuronNetwork();
@@ -42,6 +45,12 @@ public:
     void processAudioForRhythm(const std::vector<float>& audioData);
     std::vector<float> getProcessedAudioOutput() const; // Get filtered audio output
     RhythmInterpreter* getRhythmInterpreter() const { return rhythmInterpreter; }
+    
+    // Rhythm-to-neuron connection matrix methods
+    void setRhythmConnection(size_t filterIndex, size_t neuronIndex, float weight);
+    float getRhythmConnection(size_t filterIndex, size_t neuronIndex) const;
+    void clearRhythmConnection(size_t filterIndex, size_t neuronIndex);
+    void applyRhythmConnections(); // Apply rhythm filter outputs to connected neurons
     
     // Getters
     const std::vector<std::unique_ptr<Neuron>>& getNeurons() const { return neurons; }

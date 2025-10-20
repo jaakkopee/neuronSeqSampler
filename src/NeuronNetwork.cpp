@@ -130,11 +130,56 @@ void NeuronNetwork::initializeRhythmInterpreter() {
 void NeuronNetwork::processAudioForRhythm(const std::vector<float>& audioData) {
     if (rhythmInterpreter) {
         rhythmInterpreter->processAudioFrame(audioData);
-        // Minimal RhythmInterpreter: no neuron input mapping or debug output
+        // Apply rhythm filter outputs to connected neurons
+        applyRhythmConnections();
     }
 }
 
 std::vector<float> NeuronNetwork::getProcessedAudioOutput() const {
     // Minimal RhythmInterpreter: getProcessedAudioOutput not supported
     return std::vector<float>(); // Return empty vector
+}
+
+// Rhythm-to-neuron connection matrix methods
+void NeuronNetwork::setRhythmConnection(size_t filterIndex, size_t neuronIndex, float weight) {
+    // Ensure matrix is large enough
+    if (rhythmConnectionMatrix.size() <= filterIndex) {
+        rhythmConnectionMatrix.resize(filterIndex + 1);
+    }
+    if (rhythmConnectionMatrix[filterIndex].size() <= neuronIndex) {
+        rhythmConnectionMatrix[filterIndex].resize(neuronIndex + 1, 0.0f);
+    }
+    
+    rhythmConnectionMatrix[filterIndex][neuronIndex] = weight;
+}
+
+float NeuronNetwork::getRhythmConnection(size_t filterIndex, size_t neuronIndex) const {
+    if (filterIndex < rhythmConnectionMatrix.size() && 
+        neuronIndex < rhythmConnectionMatrix[filterIndex].size()) {
+        return rhythmConnectionMatrix[filterIndex][neuronIndex];
+    }
+    return 0.0f;
+}
+
+void NeuronNetwork::clearRhythmConnection(size_t filterIndex, size_t neuronIndex) {
+    setRhythmConnection(filterIndex, neuronIndex, 0.0f);
+}
+
+void NeuronNetwork::applyRhythmConnections() {
+    if (!rhythmInterpreter) return;
+    
+    // Get current filter outputs
+    std::vector<float> filterOutputs = rhythmInterpreter->getFilterOutputs();
+    
+    // Apply connections to neurons
+    for (size_t f = 0; f < filterOutputs.size() && f < rhythmConnectionMatrix.size(); ++f) {
+        for (size_t n = 0; n < rhythmConnectionMatrix[f].size() && n < neurons.size(); ++n) {
+            float connectionWeight = rhythmConnectionMatrix[f][n];
+            if (std::abs(connectionWeight) > 0.001f) {
+                // Apply rhythm filter output to neuron activation
+                float rhythmInput = filterOutputs[f] * connectionWeight;
+                neurons[n]->addExternalInput(rhythmInput);
+            }
+        }
+    }
 }

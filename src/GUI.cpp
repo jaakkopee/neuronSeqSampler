@@ -1761,7 +1761,8 @@ void GUI::createConnectionMatrixPanel() {
         // Connect slider to sensitivity control  
         sensitivitySlider->onValueChange([this, f](float value) {
             if (network && network->getRhythmInterpreter()) {
-                // Direct access removed - sensitivity control disabled
+                // Set band scaling (sensitivity) for this frequency band
+                network->getRhythmInterpreter()->setBandScaling(f, value);
                 // Update sensitivity display with color coding
                 std::ostringstream stream;
                 stream << std::fixed << std::setprecision(1) << value;
@@ -1845,8 +1846,8 @@ void GUI::createConnectionMatrixPanel() {
             tooltip->setTextSize(10);
             toggleButton->setToolTip(tooltip);
             
-            // Check current connection state
-            float currentWeight = 0.0f; // Minimal RhythmInterpreter: no connection matrix
+            // Check current connection state using the new rhythm connection matrix
+            float currentWeight = network->getRhythmConnection(f, n);
             bool isConnected = std::abs(currentWeight) > 0.001f;
             
             if (isConnected) {
@@ -1859,25 +1860,27 @@ void GUI::createConnectionMatrixPanel() {
             
             // Toggle connection callback
             toggleButton->onPress([this, f, n, toggleButton]() {
-                // Minimal RhythmInterpreter: no connection matrix available
-                DEBUG_PRINT("Connection toggle disabled for minimal RhythmInterpreter");
-                bool wasConnected = false;
+                if (!network) return;
+                
+                // Get current connection state
+                float currentWeight = network->getRhythmConnection(f, n);
+                bool wasConnected = std::abs(currentWeight) > 0.001f;
                 
                 if (wasConnected) {
-                    // Deactivate: Return to virgin state (clear connection and reset gain)
-                    // Minimal RhythmInterpreter: connection matrix not available
+                    // Deactivate: Clear connection and reset gain
+                    network->clearRhythmConnection(f, n);
                     toggleButton->setText("○");
                     toggleButton->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
                     toggleButton->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
                     // Reset gain slider to default value and hide it
-                    matrixGainSliders[f][n]->setValue(30.0f); // Reset to default 30% (0.3 *  100)
+                    matrixGainSliders[f][n]->setValue(30.0f); // Reset to default 30% (0.3 * 100)
                     matrixGainSliders[f][n]->setVisible(false);
                     // Hide connection gain display
                     matrixGainDisplays[f][n]->setVisible(false);
                 } else {
                     // Connect with default gain
                     float defaultGain = 0.3f;
-                    // Minimal RhythmInterpreter: connection matrix not available
+                    network->setRhythmConnection(f, n, defaultGain);
                     toggleButton->setText("●");
                     toggleButton->getRenderer()->setBackgroundColor(tgui::Color(60, 120, 60));
                     toggleButton->getRenderer()->setTextColor(tgui::Color::White);
@@ -1904,16 +1907,18 @@ void GUI::createConnectionMatrixPanel() {
             
             // Gain change callback
             gainSlider->onValueChange([this, f, n](float value) {
-                // Minimal RhythmInterpreter: connection matrix not available
+                if (!network) return;
+                
                 float weight = value / 100.0f; // Convert from 0-100 to 0-1 range
                 
                 // Preserve sign if it was negative
-                float currentWeight = 0.0f; // No connection matrix in minimal version
-                if ( currentWeight < 0) {
+                float currentWeight = network->getRhythmConnection(f, n);
+                if (currentWeight < 0) {
                     weight = -weight;
                 }
                 
-                // Minimal RhythmInterpreter: connection matrix not available
+                // Update the rhythm connection weight
+                network->setRhythmConnection(f, n, weight);
                 
                 // Update connection gain display
                 matrixGainDisplays[f][n]->setText(std::to_string(static_cast<int>(value)));
@@ -2122,8 +2127,7 @@ void GUI::updateConnectionMatrix() {
     isUpdatingMatrix = true; // Prevent recursive calls
     
     auto rhythmInterpreter = network->getRhythmInterpreter();
-    // auto connectionMatrix = rhythmInterpreter->getConnectionMatrix(); // Minimal RhythmInterpreter: no connection matrix
-    size_t numFilters = 8; // Minimal RhythmInterpreter uses 8 frequency bands
+    size_t numFilters = 8; // FFT-based gamma-tone filter bank uses 8 frequency bands
     size_t numNeurons = network->getNeuronCount();
     
     // Update title
@@ -2134,8 +2138,8 @@ void GUI::updateConnectionMatrix() {
     // Update button states and slider values
     for (size_t f = 0; f < std::min(numFilters, matrixToggleButtons.size()); ++f) {
         for (size_t n = 0; n < std::min(numNeurons, matrixToggleButtons[f].size()); ++n) {
-            float weight = 0.0f; // Minimal RhythmInterpreter: no connection matrix
-            bool isConnected = false; // All connections disabled in minimal version
+            float weight = network->getRhythmConnection(f, n); // Get actual connection weight
+            bool isConnected = std::abs(weight) > 0.001f; // Connection exists if weight is non-zero
             
             // Update toggle button
             if (isConnected) {
@@ -2208,16 +2212,12 @@ void GUI::updateConnectionMatrix() {
         }
     }
     
-    // Update filter gain sliders to match current values
-    for (size_t f = 0; f < std::min(numFilters, filterGainSliders.size()); ++f) {
-        float currentGain = rhythmInterpreter->getFilterGain(f);
-        filterGainSliders[f]->setValue(currentGain);
-    }
+    // Skip slider value updates if user is interacting (prevents overriding user input)
+    // Only update displays, not the slider values themselves during normal operation
     
-    // Update sensitivity sliders and labels to match current values
+    // Update sensitivity labels to match slider values (without changing slider values)
     for (size_t f = 0; f < std::min(numFilters, sensitivitySliders.size()); ++f) {
-        float currentSensitivity = 1.0f; // Default value since getSensitivity removed
-        sensitivitySliders[f]->setValue(currentSensitivity);
+        float currentSensitivity = sensitivitySliders[f]->getValue(); // Get current slider value instead of overriding it
         
         // Update sensitivity label with color coding
         std::ostringstream stream;

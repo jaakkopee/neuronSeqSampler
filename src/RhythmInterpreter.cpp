@@ -39,37 +39,89 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     }
     totalEnergy = std::sqrt(totalEnergy / audioData.size());
     
-    // Process each band independently for proper frequency separation
+    // Process each band independently for rhythm pattern detection
     for (size_t bandIndex = 0; bandIndex < bandCount; ++bandIndex) {
         float freq = bandFrequencies[bandIndex];
         float bw = bandBandwidths[bandIndex];
         float q = qValues[bandIndex];
-        // Bandpass filter the audio for this specific band
+        
+        // Use frequency-specific processing for distinct rhythm patterns
         std::vector<float> bandData = bandpassFilter(audioData, freq, bw, q);
         
-        // Calculate RMS energy of the filtered band
-        float bandEnergy = 0.0f;
+        // Advanced rhythm detection with time-varying analysis
+        float rhythmActivity = 0.0f;
+        
         if (!bandData.empty()) {
-            for (float sample : bandData) {
-                bandEnergy += sample * sample;
+            // Different processing based on frequency range for rhythm patterns
+            if (freq < 200.0f) {
+                // Low frequencies: Beat and kick drum detection
+                float peakEnergy = 0.0f;
+                for (size_t i = 0; i < bandData.size(); ++i) {
+                    peakEnergy = std::max(peakEnergy, std::abs(bandData[i]));
+                }
+                rhythmActivity = peakEnergy * 2.0f; // Emphasize bass hits
+                
+            } else if (freq < 1000.0f) {
+                // Mid frequencies: Snare and vocal rhythms
+                float changeRate = 0.0f;
+                for (size_t i = 1; i < bandData.size(); ++i) {
+                    float change = std::abs(bandData[i] - bandData[i-1]);
+                    changeRate += change;
+                }
+                rhythmActivity = changeRate / bandData.size() * 3.0f;
+                
+            } else if (freq < 4000.0f) {
+                // High-mid frequencies: Hi-hat and percussion
+                float transientEnergy = 0.0f;
+                for (size_t i = 2; i < bandData.size(); ++i) {
+                    float transient = std::abs(bandData[i] - 2.0f * bandData[i-1] + bandData[i-2]);
+                    transientEnergy += transient;
+                }
+                rhythmActivity = transientEnergy / bandData.size() * 4.0f;
+                
+            } else {
+                // High frequencies: Cymbal crashes and sibilance
+                float highFreqActivity = 0.0f;
+                for (size_t i = 1; i < bandData.size(); ++i) {
+                    float highpass = bandData[i] - bandData[i-1];
+                    highFreqActivity += std::abs(highpass);
+                }
+                rhythmActivity = highFreqActivity / bandData.size() * 5.0f;
             }
-            bandEnergy = std::sqrt(bandEnergy / bandData.size());
         }
         
-        // Normalize by total energy to get relative band contribution
-        float normalizedEnergy = (totalEnergy > 0.0001f) ? (bandEnergy / totalEnergy) : 0.0f;
+        // Apply temporal smoothing to create rhythm patterns instead of blocks
+        float smoothingFactor = 0.85f; // Adjust for different response speeds
+        static std::vector<float> smoothedOutputs(bandCount, 0.0f);
+        if (smoothedOutputs.size() != bandCount) {
+            smoothedOutputs.resize(bandCount, 0.0f);
+        }
         
-        // Apply scaling for this frequency band
-        normalizedEnergy *= bandScalings[bandIndex];
+        // Adaptive smoothing based on activity level
+        if (rhythmActivity > smoothedOutputs[bandIndex]) {
+            // Fast attack for new rhythmic events
+            smoothedOutputs[bandIndex] = 0.3f * smoothedOutputs[bandIndex] + 0.7f * rhythmActivity;
+        } else {
+            // Slower decay to maintain rhythm visibility
+            smoothedOutputs[bandIndex] = smoothingFactor * smoothedOutputs[bandIndex] + (1.0f - smoothingFactor) * rhythmActivity;
+        }
         
-        // Apply limit
-        normalizedEnergy = std::min(normalizedEnergy, bandLimits[bandIndex]);
+        // Apply frequency-dependent scaling
+        float scaledActivity = smoothedOutputs[bandIndex] * bandScalings[bandIndex];
         
-        // Apply user gain
-        normalizedEnergy *= filterGains[bandIndex];
+        // Apply limit and normalize to [0,1]
+        scaledActivity = std::min(scaledActivity, bandLimits[bandIndex]);
+        scaledActivity = std::max(0.0f, std::min(scaledActivity, 1.0f));
         
-        // Store output level (clamped to 0.0-1.0)
-        filterOutputs[bandIndex] = std::min(std::max(normalizedEnergy, 0.0f), 1.0f);
+        // Store the rhythm pattern output
+        filterOutputs[bandIndex] = scaledActivity;
+    }
+
+    // Apply filter gains to the outputs
+    for (size_t bandIndex = 0; bandIndex < bandCount; ++bandIndex) {
+        filterOutputs[bandIndex] *= filterGains[bandIndex];
+        // Clamp output to [0.0, 1.0]
+        filterOutputs[bandIndex] = std::max(0.0f, std::min(filterOutputs[bandIndex], 1.0f));
     }
 }
 
