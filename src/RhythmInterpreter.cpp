@@ -43,9 +43,9 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     for (size_t bandIndex = 0; bandIndex < bandCount; ++bandIndex) {
         float freq = bandFrequencies[bandIndex];
         float bw = bandBandwidths[bandIndex];
-        
+        float q = qValues[bandIndex];
         // Bandpass filter the audio for this specific band
-        std::vector<float> bandData = bandpassFilter(audioData, freq, bw, qValues[bandIndex]);
+        std::vector<float> bandData = bandpassFilter(audioData, freq, bw, q);
         
         // Calculate RMS energy of the filtered band
         float bandEnergy = 0.0f;
