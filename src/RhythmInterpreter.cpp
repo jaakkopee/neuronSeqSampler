@@ -195,6 +195,7 @@ float RhythmInterpreter::applyContrastEnhancement(size_t bandIndex, float energy
 std::vector<float> RhythmInterpreter::bandpassFilter(const std::vector<float>& data, float freq, float bw) {
     // Simple resonant bandpass filter implementation
     // For rhythm detection, we need to work with envelope detection rather than direct filtering
+    // This means we will not apply a traditional filter but rather detect the envelope of the signal
     
     std::vector<float> filteredData(data.size());
     
