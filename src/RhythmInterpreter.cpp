@@ -53,6 +53,8 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     }
 }
 
+
+
 std::vector<float> RhythmInterpreter::getFilterOutputs() const {
     return filterOutputs;
 }
@@ -65,13 +67,10 @@ void RhythmInterpreter::initializeBands() {
     qValues = {8.0f, 8.0f, 8.0f, 8.0f, 6.0f, 4.0f, 3.0f, 2.0f};
 }
 
-void RhythmInterpreter::setSensitivity(size_t bandIndex, float gain, float sigmoidGain) {
+void RhythmInterpreter::setSensitivity(size_t bandIndex, float gain) {
     if (bandIndex < bandGains.size()) {
-        // run through a sigmoid to map gain from [0.0, 2.0] to [0.5, 2.0] smoothly
-        float minGain = 0.5f;
-        float maxGain = 2.0f;
-        float sigmoidGain = minGain + (maxGain - minGain) / (1.0f + std::exp(- (gain - 1.0f) * 5.0f));
-        bandGains[bandIndex] = sigmoidGain;
+        // Direct assignment - gain range is -3.0 to 10.0 as controlled by GUI
+        bandGains[bandIndex] = gain;
         // Reset adaptive sensitivity when user changes it to allow re-adaptation
         if (bandIndex < adaptiveSensitivities.size()) {
             adaptiveSensitivities[bandIndex] = 1.0f;
@@ -291,65 +290,63 @@ float RhythmInterpreter::applyContrastEnhancement(size_t bandIndex, float energy
 }
 
 std::vector<float> RhythmInterpreter::bandpassFilter(const std::vector<float>& data, float freq, float bw) {
-    // Simple resonant bandpass filter implementation
-    // For rhythm detection, we need to work with envelope detection rather than direct filtering
-    // This means we will not apply a traditional filter but rather detect the envelope of the signal
-    // use an resonant filters. First the coefficients
-    float c0 = 1.0f / std::tan(M_PI * bw / sampleRate);
-    for (size_t i = 0; i < qValues.size(); ++i) {
-        if (bandFrequencies[i] == freq) {
-            c0 = 1.0f / std::tan(M_PI * bw / sampleRate);
-            break;
-        }
-    }
-    float a0 = 1.0f / (1.0f + c0 / qValues[0] + c0 * c0);
-    float a1 = 2.0f * a0;
-    float a2 = a0;
-    float b1 = 2.0f * a0 * (1.0f - c0 * c0);
-    float b2 = a0 * (1.0f - c0 / qValues[0] + c0 * c0);
-
+    // Simplified envelope-based approach for rhythm detection
+    // Instead of complex filtering, use a simple frequency-weighted envelope
     std::vector<float> filteredData(data.size());
     
-    // Simple Direct Form II implementation
-    for (size_t i = 0; i < data.size(); ++i) {
-        // Filter processing
-        std::vector<float> x(3, 0.0f); // input samples
-        std::vector<float> y(3, 0.0f); // output samples
-        x[0] = data[i];
-        y[0] = a0 * x[0] + a1 * x[1] + a2 * x[2] - b1 * y[1] - b2 * y[2];
-        // Shift samples
-        x[2] = x[1];
-        x[1] = x[0];
-        y[2] = y[1];
-        y[1] = y[0];
+    if (data.empty()) {
+        return filteredData;
     }
-
+    
+    // Simple high-pass emphasis for higher frequencies
+    float freqWeight = 1.0f + (freq - 1.0f) * 0.2f; // Boost higher frequencies slightly
+    freqWeight = std::max(0.5f, std::min(freqWeight, 2.0f));
+    
+    // Simple envelope extraction with frequency weighting
+    for (size_t i = 0; i < data.size(); ++i) {
+        float sample = data[i] * freqWeight;
+        filteredData[i] = std::abs(sample); // Rectification for envelope
+    }
+    
     return filteredData;
 }
 
 std::vector<float> RhythmInterpreter::envelopeDetection(const std::vector<float>& data, int bandIndex) {
-    // Simple envelope detection using RMS over a sliding window
+    // Optimized envelope detection using simple smoothing
     std::vector<float> envelope(data.size());
     
-    size_t windowSize = static_cast<size_t>((0.1f * sampleRate)); // 100ms window
-    windowSize = std::max(windowSize, static_cast<size_t>(32));
-    windowSize = std::min(windowSize, data.size() / 2);
+    if (data.empty()) {
+        return envelope;
+    }
     
-    for (size_t i = 0; i < data.size(); ++i) {
-        float sum = 0.0f;
-        size_t count = 0;
-        
-        for (size_t j = (i >= windowSize) ? i - windowSize : 0; j <= i && j < data.size(); ++j) {
-            sum += data[j] * data[j];
-            count++;
-        }
-        
-        if (count > 0) {
-            envelope[i] = std::sqrt(sum / count);
+    // Simple first-order low-pass filter for envelope following
+    float smoothingFactor = 0.95f; // Adjust for different time constants
+    envelope[0] = std::abs(data[0]);
+    
+    for (size_t i = 1; i < data.size(); ++i) {
+        float currentEnv = std::abs(data[i]);
+        // Attack/decay envelope follower
+        if (currentEnv > envelope[i-1]) {
+            // Fast attack
+            envelope[i] = 0.3f * envelope[i-1] + 0.7f * currentEnv;
         } else {
-            envelope[i] = 0.0f;
+            // Slow decay
+            envelope[i] = smoothingFactor * envelope[i-1] + (1.0f - smoothingFactor) * currentEnv;
         }
     }
     
     return envelope;
+}
+
+std::vector<float> RhythmInterpreter::zeroCrossingOnsetDetection(const std::vector<float>& data, int bandIndex) {
+    // Simple zero-crossing based onset detection
+    std::vector<float> onsetData(data.size(), 0.0f);
+    
+    for (size_t i = 1; i < data.size(); ++i) {
+        if ((data[i - 1] < 0.0f && data[i] >= 0.0f) || (data[i - 1] > 0.0f && data[i] <= 0.0f)) {
+            onsetData[i] = 1.0f; // Mark onset at zero crossing
+        }
+    }
+    
+    return onsetData;
 }
