@@ -7,6 +7,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(SFML 3.0 REQUIRED COMPONENTS System Window Graphics Audio Network)
 find_package(TGUI CONFIG REQUIRED)
 find_package(nlohmann_json 3.2.0 REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(FFTW3 REQUIRED fftw3)
 
 include_directories(src)
 add_definitions(-DUSE_TGUI)
@@ -30,4 +32,8 @@ add_executable(test_build
 target_link_libraries(test_build 
     sfml-system sfml-window sfml-graphics sfml-audio sfml-network 
     tgui nlohmann_json::nlohmann_json
+    ${FFTW3_LIBRARIES}
 )
+
+target_include_directories(test_build PRIVATE ${FFTW3_INCLUDE_DIRS})
+target_compile_options(test_build PRIVATE ${FFTW3_CFLAGS_OTHER})

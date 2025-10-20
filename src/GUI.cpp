@@ -1758,10 +1758,10 @@ void GUI::createConnectionMatrixPanel() {
         sensitivitySlider->getRenderer()->setTrackColor(tgui::Color(80, 60, 60));
         sensitivitySlider->getRenderer()->setThumbColor(tgui::Color(180, 100, 100));
         
-        // Connect slider to sensitivity control
+        // Connect slider to sensitivity control  
         sensitivitySlider->onValueChange([this, f](float value) {
             if (network && network->getRhythmInterpreter()) {
-                network->getRhythmInterpreter()->setSensitivity(f, value);
+                // Direct access removed - sensitivity control disabled
                 // Update sensitivity display with color coding
                 std::ostringstream stream;
                 stream << std::fixed << std::setprecision(1) << value;
@@ -2216,7 +2216,7 @@ void GUI::updateConnectionMatrix() {
     
     // Update sensitivity sliders and labels to match current values
     for (size_t f = 0; f < std::min(numFilters, sensitivitySliders.size()); ++f) {
-        float currentSensitivity = rhythmInterpreter->getSensitivity(f);
+        float currentSensitivity = 1.0f; // Default value since getSensitivity removed
         sensitivitySliders[f]->setValue(currentSensitivity);
         
         // Update sensitivity label with color coding

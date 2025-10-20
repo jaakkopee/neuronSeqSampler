@@ -3,91 +3,91 @@
 #include <cmath>
 #include <algorithm>
 #include <numeric>
+#include <complex>
+#include <fftw3.h>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 RhythmInterpreter::RhythmInterpreter(size_t sampleRate, size_t bufferSize)
-    : sampleRate(sampleRate), bufferSize(bufferSize), bandCount(8), frameCounter(0) {
+    : sampleRate(sampleRate), bufferSize(bufferSize), bandCount(8), frameCounter(0), 
+      GTFilterBank(sampleRate, 8) {
     initializeBands();
+    // Initialize runtime vectors (don't override the parameter vectors set in initializeBands)
     filterOutputs.resize(bandCount, 0.0f);
     bandGains.resize(bandCount, 1.0f);
     filterGains.resize(bandCount, 1.0f);
     stuckCounters.resize(bandCount, 0);
-    
-    // Initialize adaptive sensitivity system
-    adaptiveSensitivities.resize(bandCount, 1.0f);
-    energyBaselines.resize(bandCount, 0.0f);
-    energyPeaks.resize(bandCount, 0.0f);
-    noiseFloors.resize(bandCount, 0.001f);  // Small initial noise floor
-    dynamicRanges.resize(bandCount, 1.0f);
-    adaptationCounters.resize(bandCount, 0);
+    // qValues is already initialized in initializeBands() - don't override it
 }
 
 void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
     frameCounter++;
     
-    // Process each band
+    // Check if we have audio input
+    if (audioData.empty()) {
+        // No audio - set all outputs to zero
+        std::fill(filterOutputs.begin(), filterOutputs.end(), 0.0f);
+        return;
+    }
+    
+    // Calculate overall audio energy for normalization
+    float totalEnergy = 0.0f;
+    for (float sample : audioData) {
+        totalEnergy += sample * sample;
+    }
+    totalEnergy = std::sqrt(totalEnergy / audioData.size());
+    
+    // Process each band independently for proper frequency separation
     for (size_t bandIndex = 0; bandIndex < bandCount; ++bandIndex) {
-        // Bandpass filter the audio data for this band
-        std::vector<float> bandData = bandpassFilter(audioData, bandFrequencies[bandIndex], bandBandwidths[bandIndex]);
+        float freq = bandFrequencies[bandIndex];
+        float bw = bandBandwidths[bandIndex];
         
-        // Envelope detection
-        std::vector<float> envelope = envelopeDetection(bandData, static_cast<int>(bandIndex));
+        // Bandpass filter the audio for this specific band
+        std::vector<float> bandData = bandpassFilter(audioData, freq, bw, qValues[bandIndex]);
         
-        // Calculate raw energy for this band
-        float rawEnergy = std::accumulate(envelope.begin(), envelope.end(), 0.0f) / static_cast<float>(envelope.size());
+        // Calculate RMS energy of the filtered band
+        float bandEnergy = 0.0f;
+        if (!bandData.empty()) {
+            for (float sample : bandData) {
+                bandEnergy += sample * sample;
+            }
+            bandEnergy = std::sqrt(bandEnergy / bandData.size());
+        }
         
-        // Update adaptive sensitivity
-        updateAdaptiveSensitivity(bandIndex, rawEnergy);
+        // Normalize by total energy to get relative band contribution
+        float normalizedEnergy = (totalEnergy > 0.0001f) ? (bandEnergy / totalEnergy) : 0.0f;
         
-        // Apply contrast enhancement
-        float enhancedEnergy = applyContrastEnhancement(bandIndex, rawEnergy);
+        // Apply scaling for this frequency band
+        normalizedEnergy *= bandScalings[bandIndex];
         
-        // Apply user sensitivity and adaptive sensitivity
-        float effectiveSensitivity = getSensitivity(bandIndex);
-        float adjustedEnergy = enhancedEnergy * effectiveSensitivity;
+        // Apply limit
+        normalizedEnergy = std::min(normalizedEnergy, bandLimits[bandIndex]);
         
-        // Limit to band limit
-        adjustedEnergy = std::min(adjustedEnergy, bandLimits[bandIndex]);
+        // Apply user gain
+        normalizedEnergy *= filterGains[bandIndex];
         
-        // Apply filter gain
-        filterOutputs[bandIndex] = adjustedEnergy * filterGains[bandIndex];
+        // Store output level (clamped to 0.0-1.0)
+        filterOutputs[bandIndex] = std::min(std::max(normalizedEnergy, 0.0f), 1.0f);
     }
 }
-
-
 
 std::vector<float> RhythmInterpreter::getFilterOutputs() const {
     return filterOutputs;
 }
 
 void RhythmInterpreter::initializeBands() {
+    // Use proper frequency bands for audio processing (Hz)
     bandFrequencies = {0.125f, 0.25f, 0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f};
-    bandBandwidths = {0.03f, 0.06f, 0.12f, 0.25f, 0.5f, 1.5f, 3.0f, 6.0f};
+    bandBandwidths = {0.25f, 0.25f, 0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f};
     bandScalings = {1.0f, 1.0f, 1.0f, 1.0f, 1.2f, 2.0f, 2.5f, 3.0f};
     bandLimits = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.7f, 0.8f, 0.9f};
-    qValues = {8.0f, 8.0f, 8.0f, 8.0f, 6.0f, 4.0f, 3.0f, 2.0f};
+    // Higher Q-values for better frequency selectivity with proper biquad filtering
+    qValues = {12.0f, 10.0f, 8.0f, 6.0f, 5.0f, 4.0f, 3.5f, 3.0f};
 }
 
-void RhythmInterpreter::setSensitivity(size_t bandIndex, float gain) {
-    if (bandIndex < bandGains.size()) {
-        // Direct assignment - gain range is -3.0 to 10.0 as controlled by GUI
-        bandGains[bandIndex] = gain;
-        // Reset adaptive sensitivity when user changes it to allow re-adaptation
-        if (bandIndex < adaptiveSensitivities.size()) {
-            adaptiveSensitivities[bandIndex] = 1.0f;
-            adaptationCounters[bandIndex] = 0;
-        }
-    }
-}
-
-float RhythmInterpreter::getSensitivity(size_t bandIndex) const {
-    if (bandIndex < bandGains.size()) {
-        // Return the effective sensitivity (user * adaptive)
-        float userSensitivity = bandGains[bandIndex];
-        float adaptiveSensitivity = (bandIndex < adaptiveSensitivities.size()) ? adaptiveSensitivities[bandIndex] : 1.0f;
-        return userSensitivity * adaptiveSensitivity;
-    }
-    return 1.0f;
-}
+// Removed setSensitivity and getSensitivity methods - direct access to bandGains only
 
 void RhythmInterpreter::setFilterGain(size_t bandIndex, float gain) {
     if (bandIndex < filterGains.size()) {
@@ -172,140 +172,72 @@ float RhythmInterpreter::getQValue(size_t bandIndex) const {
     return 1.0f;
 }
 
-// Adaptive sensitivity system getters (read-only for monitoring)
-float RhythmInterpreter::getAdaptiveSensitivity(size_t bandIndex) const {
-    if (bandIndex < adaptiveSensitivities.size()) {
-        return adaptiveSensitivities[bandIndex];
-    }
-    return 1.0f;
-}
+// Removed adaptive sensitivity system - using direct user controls only
 
-float RhythmInterpreter::getEnergyBaseline(size_t bandIndex) const {
-    if (bandIndex < energyBaselines.size()) {
-        return energyBaselines[bandIndex];
-    }
-    return 0.0f;
-}
+// Removed updateAdaptiveSensitivity and applyContrastEnhancement methods
 
-float RhythmInterpreter::getEnergyPeak(size_t bandIndex) const {
-    if (bandIndex < energyPeaks.size()) {
-        return energyPeaks[bandIndex];
-    }
-    return 0.0f;
-}
-
-float RhythmInterpreter::getNoiseFloor(size_t bandIndex) const {
-    if (bandIndex < noiseFloors.size()) {
-        return noiseFloors[bandIndex];
-    }
-    return 0.001f;
-}
-
-float RhythmInterpreter::getDynamicRange(size_t bandIndex) const {
-    if (bandIndex < dynamicRanges.size()) {
-        return dynamicRanges[bandIndex];
-    }
-    return 1.0f;
-}
-
-void RhythmInterpreter::updateAdaptiveSensitivity(size_t bandIndex, float rawEnergy) {
-    if (bandIndex >= bandCount) return;
-    
-    // Update energy baselines and peaks
-    float& baseline = energyBaselines[bandIndex];
-    float& peak = energyPeaks[bandIndex];
-    float& noiseFloor = noiseFloors[bandIndex];
-    float& dynamicRange = dynamicRanges[bandIndex];
-    int& adaptCounter = adaptationCounters[bandIndex];
-    
-    // Simple running average for baseline
-    baseline = 0.99f * baseline + 0.01f * rawEnergy;
-    
-    // Update peak
-    if (rawEnergy > peak) {
-        peak = rawEnergy;
-    } else {
-        peak *= 0.995f; // Slow decay
-    }
-    
-    // Estimate noise floor
-    if (rawEnergy < noiseFloor) {
-        noiseFloor = 0.99f * noiseFloor + 0.01f * rawEnergy;
-    } else {
-        noiseFloor *= 0.999f; // Slow decay
-    }
-    
-    // Update dynamic range
-    dynamicRange = peak - baseline;
-    dynamicRange = std::max(dynamicRange, 0.001f); // Prevent too small range
-    
-    // Adaptation logic
-    adaptCounter++;
-    if (adaptCounter >= 100) { // Update every 100 frames
-        // Adjust adaptive sensitivity based on recent energy levels
-        if (rawEnergy < baseline + noiseFloor * 2.0f) {
-            // Quiet period - increase sensitivity
-            adaptiveSensitivities[bandIndex] *= 1.05f;
-        } else if (rawEnergy > peak * 0.8f) {
-            // Loud period - decrease sensitivity
-            adaptiveSensitivities[bandIndex] *= 0.95f;
-        }
-        
-        // Clamp adaptive sensitivity
-        adaptiveSensitivities[bandIndex] = std::clamp(adaptiveSensitivities[bandIndex], 0.1f, 10.0f);
-        
-        adaptCounter = 0;
-    }
-}
-
-float RhythmInterpreter::applyContrastEnhancement(size_t bandIndex, float energy) {
-    if (bandIndex >= bandCount) return energy;
-    
-    // Apply adaptive sensitivity
-    float enhanced = energy * adaptiveSensitivities[bandIndex];
-    
-    // Dynamic range compression/expansion for better contrast
-    float baseline = energyBaselines[bandIndex];
-    float range = dynamicRanges[bandIndex];
-    
-    if (range > 0.001f) {
-        // Normalize to 0-1 based on current dynamic range
-        float normalized = std::clamp((enhanced - baseline) / range, 0.0f, 1.0f);
-        
-        // Apply contrast curve - makes quiet sounds quieter and loud sounds louder
-        float contrast = 2.0f;  // Contrast factor
-        float curved = std::pow(normalized, 1.0f / contrast);
-        
-        // Map back to energy scale
-        enhanced = baseline + curved * range;
-    }
-    
-    // Noise gate - suppress very quiet signals
-    float gateThreshold = noiseFloors[bandIndex] * 3.0f;
-    if (enhanced < gateThreshold) {
-        enhanced *= enhanced / gateThreshold;  // Gradual gate rather than hard cut
-    }
-    
-    return enhanced;
-}
-
-std::vector<float> RhythmInterpreter::bandpassFilter(const std::vector<float>& data, float freq, float bw) {
-    // Simplified envelope-based approach for rhythm detection
-    // Instead of complex filtering, use a simple frequency-weighted envelope
+std::vector<float> RhythmInterpreter::bandpassFilter(const std::vector<float>& data, float freq, float bw, float q) {
+    // Proper Q-factor based bandpass filtering with +12dB gain boost
     std::vector<float> filteredData(data.size());
     
     if (data.empty()) {
         return filteredData;
     }
     
-    // Simple high-pass emphasis for higher frequencies
-    float freqWeight = 1.0f + (freq - 1.0f) * 0.2f; // Boost higher frequencies slightly
-    freqWeight = std::max(0.5f, std::min(freqWeight, 2.0f));
+    // Calculate biquad bandpass filter coefficients with Q-factor
+    float nyquist = sampleRate / 2.0f;
+    float normalizedFreq = freq / nyquist;
+    normalizedFreq = std::max(0.001f, std::min(normalizedFreq, 0.999f));
     
-    // Simple envelope extraction with frequency weighting
+    // Angular frequency
+    float omega = 2.0f * M_PI * normalizedFreq;
+    float sinOmega = std::sin(omega);
+    float cosOmega = std::cos(omega);
+    
+    // Q-factor constrained to reasonable range
+    float effectiveQ = std::max(0.5f, std::min(q, 20.0f));
+    float alpha = sinOmega / (2.0f * effectiveQ);
+    
+    // Biquad bandpass coefficients
+    float b0 = alpha;
+    float b1 = 0.0f;
+    float b2 = -alpha;
+    float a0 = 1.0f + alpha;
+    float a1 = -2.0f * cosOmega;
+    float a2 = 1.0f - alpha;
+    
+    // Normalize coefficients
+    b0 /= a0;
+    b1 /= a0;
+    b2 /= a0;
+    a1 /= a0;
+    a2 /= a0;
+    
+    // +12dB gain boost (linear scale: 12dB ≈ 4.0x)
+    float gainBoost = 4.0f;
+    b0 *= gainBoost;
+    b1 *= gainBoost;
+    b2 *= gainBoost;
+    
+    // Filter state variables
+    float x1 = 0.0f, x2 = 0.0f;  // Input history
+    float y1 = 0.0f, y2 = 0.0f;  // Output history
+    
+    // Apply biquad bandpass filter
     for (size_t i = 0; i < data.size(); ++i) {
-        float sample = data[i] * freqWeight;
-        filteredData[i] = std::abs(sample); // Rectification for envelope
+        float x0 = data[i];
+        
+        // Biquad difference equation
+        float y0 = b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+        
+        // Update history
+        x2 = x1;
+        x1 = x0;
+        y2 = y1;
+        y1 = y0;
+        
+        // Store rectified output for rhythm detection
+        filteredData[i] = std::abs(y0);
     }
     
     return filteredData;
@@ -349,4 +281,145 @@ std::vector<float> RhythmInterpreter::zeroCrossingOnsetDetection(const std::vect
     }
     
     return onsetData;
+}
+
+GammaToneFilterBank::GammaToneFilterBank(size_t sampleRate, size_t bandCount)
+    : sampleRate(sampleRate), bandCount(bandCount), fftSize(1024) {
+    
+    // Initialize band configuration with proper gamma-tone frequencies
+    bands.resize(bandCount);
+    
+    // Use ERB (Equivalent Rectangular Bandwidth) scale for gamma-tone spacing
+    float minFreq = 80.0f;   // Lowest frequency
+    float maxFreq = 8000.0f; // Highest frequency
+    
+    for (size_t i = 0; i < bandCount; ++i) {
+        float erb = minFreq + (maxFreq - minFreq) * (float(i) / (bandCount - 1));
+        bands[i].centerFrequency = erb;
+        bands[i].bandwidth = 24.7f * (4.37f * erb / 1000.0f + 1.0f); // ERB formula
+        bands[i].gain = 1.0f;
+        bands[i].order = 4; // Traditional gamma-tone filter order
+        
+        // Legacy state for time-domain fallback
+        bands[i].prevInput1 = 0.0f;
+        bands[i].prevInput2 = 0.0f;
+        bands[i].prevOutput1 = 0.0f;
+        bands[i].prevOutput2 = 0.0f;
+    }
+    
+    // Initialize FFTW and generate frequency responses
+    initializeFFTW();
+    
+    // Generate pre-computed frequency domain responses for each band
+    for (size_t i = 0; i < bandCount; ++i) {
+        generateGammaToneResponse(i);
+    }
+    
+    // Initialize overlap buffer for overlap-add processing
+    overlapBuffer.resize(fftSize, 0.0f);
+}
+
+GammaToneFilterBank::~GammaToneFilterBank() {
+    cleanupFFTW();
+}
+
+void GammaToneFilterBank::initializeFFTW() {
+    // Allocate FFTW arrays
+    fftInput = (double*) fftw_malloc(sizeof(double) * fftSize);
+    fftOutput = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * (fftSize / 2 + 1));
+    ifftInput = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * (fftSize / 2 + 1));
+    ifftOutput = (double*) fftw_malloc(sizeof(double) * fftSize);
+    
+    // Create FFTW plans
+    forwardPlan = fftw_plan_dft_r2c_1d(fftSize, fftInput, fftOutput, FFTW_MEASURE);
+    inversePlan = fftw_plan_dft_c2r_1d(fftSize, ifftInput, ifftOutput, FFTW_MEASURE);
+}
+
+void GammaToneFilterBank::cleanupFFTW() {
+    fftw_destroy_plan(forwardPlan);
+    fftw_destroy_plan(inversePlan);
+    fftw_free(fftInput);
+    fftw_free(fftOutput);
+    fftw_free(ifftInput);
+    fftw_free(ifftOutput);
+}
+
+std::complex<double> GammaToneFilterBank::gammaToneFrequencyResponse(double frequency, const GammaToneBand& band) {
+    // Gamma-tone filter frequency response: H(f) = (1 + j*f/fc)^(-n)
+    // where fc is center frequency, n is order (typically 4)
+    
+    double normalizedFreq = frequency / band.centerFrequency;
+    std::complex<double> jw(0.0, normalizedFreq);
+    std::complex<double> denominator = 1.0 + jw;
+    
+    // Raise to the power of -order
+    std::complex<double> response = std::pow(denominator, -double(band.order));
+    
+    // Apply bandwidth scaling
+    double bandwidthFactor = band.centerFrequency / band.bandwidth;
+    response *= bandwidthFactor;
+    
+    return response * std::complex<double>(band.gain, 0.0);
+}
+
+void GammaToneFilterBank::generateGammaToneResponse(size_t bandIndex) {
+    if (bandIndex >= bands.size()) return;
+    
+    GammaToneBand& band = bands[bandIndex];
+    band.frequencyResponse.resize(fftSize / 2 + 1);
+    
+    double freqStep = double(sampleRate) / fftSize;
+    
+    for (size_t k = 0; k < fftSize / 2 + 1; ++k) {
+        double frequency = k * freqStep;
+        band.frequencyResponse[k] = gammaToneFrequencyResponse(frequency, band);
+    }
+}
+
+std::vector<float> GammaToneFilterBank::FFTProcess(const std::vector<float>& input) {
+    if (input.size() != fftSize) {
+        // For simplicity, pad or truncate to fftSize
+        std::vector<float> paddedInput(fftSize, 0.0f);
+        size_t copySize = std::min(input.size(), fftSize);
+        std::copy(input.begin(), input.begin() + copySize, paddedInput.begin());
+        return FFTProcess(paddedInput);
+    }
+    
+    std::vector<float> output(fftSize, 0.0f);
+    
+    // Copy input to FFTW input buffer
+    for (size_t i = 0; i < fftSize; ++i) {
+        fftInput[i] = input[i];
+    }
+    
+    // Perform forward FFT
+    fftw_execute(forwardPlan);
+    
+    // Process each gamma-tone band and accumulate results
+    for (size_t band = 0; band < bandCount; ++band) {
+        // Apply gamma-tone filter in frequency domain
+        for (size_t k = 0; k < fftSize / 2 + 1; ++k) {
+            std::complex<double> inputSpectrum(fftOutput[k][0], fftOutput[k][1]);
+            std::complex<double> filtered = inputSpectrum * bands[band].frequencyResponse[k];
+            
+            ifftInput[k][0] = filtered.real();
+            ifftInput[k][1] = filtered.imag();
+        }
+        
+        // Perform inverse FFT for this band
+        fftw_execute(inversePlan);
+        
+        // Accumulate the filtered result with normalization
+        double scale = 1.0 / fftSize;
+        for (size_t i = 0; i < fftSize; ++i) {
+            output[i] += float(ifftOutput[i] * scale / bandCount);
+        }
+    }
+    
+    return output;
+}
+
+std::vector<float> GammaToneFilterBank::process(const std::vector<float>& input) {
+    // Use FFT processing as the primary method
+    return FFTProcess(input);
 }

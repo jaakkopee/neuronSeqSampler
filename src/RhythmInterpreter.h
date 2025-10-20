@@ -1,13 +1,70 @@
 #pragma once
 #include <vector>
 #include <cstddef>
+#include <complex>
+#include <fftw3.h>
+
+/**
+ * @brief FFT-based Gamma-tone filterbank for frequency analysis
+ * 
+ * Implements a high-performance bank of gamma-tone filters using FFTW3
+ * for real-time audio frequency decomposition with proper gamma-tone characteristics
+ */
+class GammaToneFilterBank {
+public:
+    GammaToneFilterBank(size_t sampleRate, size_t bandCount);
+    ~GammaToneFilterBank();
+    
+    std::vector<float> process(const std::vector<float>& input);
+    std::vector<float> FFTProcess(const std::vector<float>& input);
+    void setBandFrequency(size_t bandIndex, float frequency);
+    void setBandBandwidth(size_t bandIndex, float bandwidth);
+    
+private:
+    size_t sampleRate;
+    size_t bandCount;
+    size_t fftSize;
+    
+    // FFTW3 structures
+    double* fftInput;
+    fftw_complex* fftOutput;
+    fftw_complex* ifftInput;
+    double* ifftOutput;
+    fftw_plan forwardPlan;
+    fftw_plan inversePlan;
+    
+    // Gamma-tone filter characteristics
+    struct GammaToneBand {
+        float centerFrequency;     // Center frequency in Hz
+        float bandwidth;          // Bandwidth in Hz  
+        float gain;              // Filter gain
+        int order;               // Gamma-tone filter order (typically 4)
+        std::vector<std::complex<double>> frequencyResponse; // Pre-computed frequency domain response
+        
+        // Legacy state variables (for time-domain fallback)
+        float prevInput1;
+        float prevInput2;
+        float prevOutput1;
+        float prevOutput2;
+    };
+    std::vector<GammaToneBand> bands;
+    
+    // Buffer for overlap-add processing
+    std::vector<float> overlapBuffer;
+    
+    // Internal methods
+    void initializeFFTW();
+    void generateGammaToneResponse(size_t bandIndex);
+    void cleanupFFTW();
+    std::complex<double> gammaToneFrequencyResponse(double frequency, const GammaToneBand& band);
+};
 
 /**
  * @brief Advanced rhythm detection and analysis engine
  * 
  * The RhythmInterpreter processes audio data through 8 frequency bands designed
  * for hierarchical rhythm detection following Todd (1994) rhythmogram theory.
- * Features adaptive sensitivity, contrast enhancement, and real-time parameter control.
+ * Features direct user sensitivity control and real-time parameter control.
  */
 class RhythmInterpreter {
 public:
@@ -32,21 +89,7 @@ public:
      */
     std::vector<float> getFilterOutputs() const;
     
-    // ========================= SENSITIVITY CONTROLS =========================
-    
-    /**
-     * @brief Set sensitivity for a specific frequency band
-     * @param bandIndex Band index (0-7)
-     * @param gain Sensitivity multiplier (-3.0 to 10.0)
-     */
-    void setSensitivity(size_t bandIndex, float gain);
-    
-    /**
-     * @brief Get effective sensitivity (user × adaptive)
-     * @param bandIndex Band index (0-7) 
-     * @return Combined sensitivity value
-     */
-    float getSensitivity(size_t bandIndex) const;
+    // ========================= FILTER GAIN CONTROLS =========================
     
     /**
      * @brief Set output filter gain for a specific band
@@ -84,50 +127,17 @@ public:
     void setQValue(size_t bandIndex, float q);
     float getQValue(size_t bandIndex) const;
     
-    // ========================= ADAPTIVE SYSTEM MONITORING =========================
+    // ========================= UTILITY METHODS =========================
     
     /**
-     * @brief Get current adaptive sensitivity multiplier
-     * @param bandIndex Band index (0-7)
-     * @return Auto-calculated sensitivity (read-only)
+     * @brief Get number of frequency bands
+     * @return Band count (always 8)
      */
-    float getAdaptiveSensitivity(size_t bandIndex) const;
-    
-    /**
-     * @brief Get energy baseline (average quiet level)
-     * @param bandIndex Band index (0-7)
-     * @return Running baseline energy
-     */
-    float getEnergyBaseline(size_t bandIndex) const;
-    
-    /**
-     * @brief Get recent peak energy level
-     * @param bandIndex Band index (0-7)
-     * @return Recent maximum energy
-     */
-    float getEnergyPeak(size_t bandIndex) const;
-    
-    /**
-     * @brief Get estimated noise floor
-     * @param bandIndex Band index (0-7)
-     * @return Current noise floor estimate
-     */
-    float getNoiseFloor(size_t bandIndex) const;
-    
-    /**
-     * @brief Get current dynamic range (peak - baseline)
-     * @param bandIndex Band index (0-7)
-     * @return Calculated dynamic range
-     */
-    float getDynamicRange(size_t bandIndex) const;
+    size_t getBandCount() const { return bandCount; }
 
 private:
     // ========================= CONFIGURATION CONSTANTS =========================
     static constexpr size_t DEFAULT_BAND_COUNT = 8;
-    static constexpr float ADAPTATION_RATE = 0.001f;
-    static constexpr float PEAK_DECAY = 0.999f;
-    static constexpr float BASELINE_RATE = 0.0005f;
-    static constexpr int ADAPTATION_INTERVAL = 100;  // frames
     
     // ========================= CORE SYSTEM STATE =========================
     size_t sampleRate;
@@ -149,15 +159,10 @@ private:
     // ========================= RUNTIME STATE =========================  
     std::vector<float> filterOutputs;        // Current output levels
     std::vector<int> stuckCounters;          // Anti-stuck mechanism counters
-    
-    // ========================= ADAPTIVE SENSITIVITY SYSTEM =========================
-    std::vector<float> adaptiveSensitivities; // Auto-calculated multipliers
-    std::vector<float> energyBaselines;       // Running quiet-period averages
-    std::vector<float> energyPeaks;          // Recent maximum levels
-    std::vector<float> noiseFloors;          // Estimated noise floors
-    std::vector<float> dynamicRanges;        // Calculated dynamic ranges  
-    std::vector<int> adaptationCounters;     // Adaptation timing counters
-    
+
+    //Gamma Tone Filter Array
+    GammaToneFilterBank GTFilterBank;
+
     // ========================= CORE PROCESSING METHODS =========================
     
     /**
@@ -165,20 +170,7 @@ private:
      */
     void initializeBands();
     
-    /**
-     * @brief Update adaptive sensitivity for a specific band
-     * @param bandIndex Band to update
-     * @param rawEnergy Current raw energy level
-     */
-    void updateAdaptiveSensitivity(size_t bandIndex, float rawEnergy);
-    
-    /**
-     * @brief Apply contrast enhancement algorithms
-     * @param bandIndex Band to enhance
-     * @param energy Input energy level
-     * @return Enhanced energy with improved contrast
-     */
-    float applyContrastEnhancement(size_t bandIndex, float energy);
+    // Removed updateAdaptiveSensitivity and applyContrastEnhancement methods
     
     // ========================= SIGNAL PROCESSING METHODS =========================
     
@@ -189,7 +181,7 @@ private:
      * @param bw Bandwidth
      * @return Filtered audio samples
      */
-    std::vector<float> bandpassFilter(const std::vector<float>& data, float freq, float bw);
+    std::vector<float> bandpassFilter(const std::vector<float>& data, float freq, float bw, float q);
     
     /**
      * @brief Zero-crossing based onset detection
