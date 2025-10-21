@@ -1,8 +1,10 @@
 #include "Neuron.h"
 #include "AudioManager.h"
+#include "Quantizer.h"
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include <chrono>
 
 Neuron::Neuron(int sampleIndex, float initialActivation, float threshold, 
                float decayRate, float activationIncreasePerIteration, ActivationFunction func)
@@ -15,6 +17,7 @@ Neuron::Neuron(int sampleIndex, float initialActivation, float threshold,
     , activationFunc(func)
     , hasFired(false)
     , audioManager(nullptr)
+    , quantizer(nullptr)
 {
     activationHistory.reserve(maxHistoryLength);
     activationHistory.push_back(activation);
@@ -22,6 +25,10 @@ Neuron::Neuron(int sampleIndex, float initialActivation, float threshold,
 
 void Neuron::setAudioManager(AudioManager* manager) {
     audioManager = manager;
+}
+
+void Neuron::setQuantizer(Quantizer* quantizerPtr) {
+    quantizer = quantizerPtr;
 }
 
 float Neuron::activate(float inputValue) {
@@ -88,9 +95,36 @@ void Neuron::addExternalInput(float input) {
 }
 
 void Neuron::playSample() {
-    if (audioManager) {
-        audioManager->playSample(sampleIndex);
+    if (!audioManager) {
+        return;
     }
+    
+    // Check if quantization is enabled and available
+    if (quantizer && quantizer->isQuantizationEnabled()) {
+        // Get current time for quantization
+        auto now = std::chrono::high_resolution_clock::now();
+        auto duration = now.time_since_epoch();
+        double currentTime = std::chrono::duration<double>(duration).count();
+        
+        // Create a quantizer event for this sample trigger
+        Quantizer::Event event(currentTime, sampleIndex, 1.0f);
+        
+        // Quantize the event
+        if (quantizer->quantizeEvent(event)) {
+            // If quantization occurred, calculate the delay
+            double delay = event.timestamp - currentTime;
+            
+            if (delay > 0.0) {
+                // Schedule playback at quantized time
+                // For now, we'll play immediately but this could be enhanced
+                // to support actual delayed playback
+                std::cout << "🎵 Quantized playback: delay " << delay << "s for sample " << sampleIndex << std::endl;
+            }
+        }
+    }
+    
+    // Play the sample (for now, immediate playback)
+    audioManager->playSample(sampleIndex);
 }
 
 void Neuron::playSample(float offsetSeconds) {

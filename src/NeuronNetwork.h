@@ -7,6 +7,7 @@
 // Forward declarations
 class AudioManager;
 class RhythmInterpreter;
+class Quantizer;
 
 class NeuronNetwork {
 private:
@@ -17,6 +18,8 @@ private:
     
     // Rhythm-to-neuron connection matrix (filterIndex -> neuronIndex -> weight)
     std::vector<std::vector<float>> rhythmConnectionMatrix;
+    
+    Quantizer* quantizer; // Quantization system for musical timing
 
 public:
     NeuronNetwork();
@@ -24,6 +27,9 @@ public:
     
     void setAudioManager(AudioManager* manager);
     AudioManager* getAudioManager() const { return audioManager; }
+    
+    void setQuantizer(Quantizer* quantizer);
+    Quantizer* getQuantizer() const { return quantizer; }
     
     Neuron* addNeuron(int sampleIndex, float initialActivation = 0.0f, 
                       float threshold = 1.0f, float decayRate = 1.0f, 

@@ -15,6 +15,8 @@
 #include <memory>
 #include <filesystem>
 #include "PresetManager.h"
+#include "Quantizer.h"
+#include "QuantizerWidget.h"
 
 // Forward declarations
 class NeuronNetwork;
@@ -106,6 +108,11 @@ private:
     int toggleBlockCounter = 0; // Counter to block updates after toggle interactions
     bool allowMatrixUpdates = true; // Flag to control when matrix updates are allowed
     
+    // Quantization system
+    std::unique_ptr<Quantizer> quantizer;        // Musical quantization engine
+    std::unique_ptr<QuantizerWidget> quantizerWidget; // Quantization controls widget
+    float lastQuantizerBPM = -1.0f;             // Track last BPM to avoid unnecessary updates
+    
     // Layout
     float controlPanelTopOffset = 0.0f;
     
@@ -173,6 +180,10 @@ public:
     
     // Matrix visibility control
     void toggleMatrixVisibility();
+    
+    // Quantization control
+    void toggleQuantizerVisibility();
+    void updateQuantizerBPM(float bpm);
     
     // Update frequency labels with current BPM scaling
     void updateFrequencyLabels();

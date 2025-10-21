@@ -4,6 +4,7 @@
 
 // Forward declaration
 class AudioManager;
+class Quantizer;
 
 enum class ActivationFunction {
     Linear,
@@ -25,6 +26,7 @@ private:
     ActivationFunction activationFunc;
     bool hasFired;
     AudioManager* audioManager;
+    Quantizer* quantizer; // Musical timing quantization
 
 public:
     Neuron(int sampleIndex, float initialActivation = 0.0f, 
@@ -33,6 +35,7 @@ public:
            ActivationFunction func = ActivationFunction::Linear);
     
     void setAudioManager(AudioManager* manager);
+    void setQuantizer(Quantizer* quantizer);
     float activate(float inputValue);
     void update(); // Update neuron state (apply activation_increase_per_iteration)
     void addExternalInput(float input); // Add external input (e.g., from rhythm interpreter)

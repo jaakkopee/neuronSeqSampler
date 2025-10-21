@@ -317,6 +317,15 @@ public:
                     ESSENTIAL_PRINT("❌ Failed to load factory preset");
                 }
                 break;
+            case sf::Keyboard::Key::Q:
+                // Toggle quantizer visibility
+#ifdef USE_TGUI
+                guiManager.toggleQuantizerVisibility();
+                ESSENTIAL_PRINT("🎵 Toggled quantizer panel visibility");
+#else
+                ESSENTIAL_PRINT("🎵 Quantizer toggle requires GUI support (TGUI not available)");
+#endif
+                break;
             default:
                 // Forward key to spectral display for its controls
                 spectralDisplay.handleKeyPress(key);

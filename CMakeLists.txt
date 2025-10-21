@@ -27,6 +27,8 @@ add_executable(test_build
     src/SimpleSpectralDisplay.cpp
     src/PresetManager.cpp
     src/StartupAnimation.cpp
+    src/Quantizer.cpp
+    src/QuantizerWidget.cpp
 )
 
 target_link_libraries(test_build 

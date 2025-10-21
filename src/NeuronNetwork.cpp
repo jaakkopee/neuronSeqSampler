@@ -7,7 +7,7 @@
 #include <iostream>
 
 NeuronNetwork::NeuronNetwork() 
-    : audioManager(nullptr), rhythmInterpreter(nullptr)
+    : audioManager(nullptr), rhythmInterpreter(nullptr), quantizer(nullptr)
 {
 }
 
@@ -29,6 +29,14 @@ void NeuronNetwork::setAudioManager(AudioManager* manager) {
     }
 }
 
+void NeuronNetwork::setQuantizer(Quantizer* quantizerPtr) {
+    quantizer = quantizerPtr;
+    // Update all existing neurons
+    for (auto& neuron : neurons) {
+        neuron->setQuantizer(quantizerPtr);
+    }
+}
+
 Neuron* NeuronNetwork::addNeuron(int sampleIndex, float initialActivation, 
                                  float threshold, float decayRate, 
                                  float activationIncreasePerIteration,
@@ -37,6 +45,9 @@ Neuron* NeuronNetwork::addNeuron(int sampleIndex, float initialActivation,
                                           threshold, decayRate, activationIncreasePerIteration, func);
     if (audioManager) {
         neuron->setAudioManager(audioManager);
+    }
+    if (quantizer) {
+        neuron->setQuantizer(quantizer);
     }
     
     Neuron* rawPtr = neuron.get();

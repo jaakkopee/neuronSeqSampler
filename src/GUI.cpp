@@ -8,6 +8,7 @@
 #include "BeatRoot.h"
 #include "SimpleSpectralDisplay.h"
 #include "Debug.h"
+#include <cmath>
 #include <iostream>
 #include <filesystem>
 #include <chrono>
@@ -26,6 +27,9 @@ GUI::GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neur
     , spectralDisplay(spectralDisplayPtr)
     , activationInterval(activationIntervalPtr)
 {
+    // Initialize quantization system
+    quantizer = std::make_unique<Quantizer>(120.0f, 44100); // Default 120 BPM, 44.1kHz
+    quantizerWidget = std::make_unique<QuantizerWidget>(*quantizer);
 }
 
 void GUI::initialize() {
@@ -35,6 +39,19 @@ void GUI::initialize() {
     createConnectionSliders();
     createConnectionMatrixPanel();
     updateStatusDisplay();  // Initialize status display with current network state
+    
+    // Initialize quantizer widget
+    if (quantizerWidget) {
+        quantizerWidget->initialize(gui->getContainer());
+        // Initialize quantizer BPM to match default BPM (120.0)
+        updateQuantizerBPM(120.0f);
+    }
+    
+    // Connect quantizer to the neuron network
+    if (network && quantizer) {
+        network->setQuantizer(quantizer.get());
+        std::cout << "🎵 Quantizer connected to neuron network" << std::endl;
+    }
     
     // Enable rhythmogram analysis by default for neuron activation
     // Audio always plays directly, rhythmogram data drives neural network
@@ -432,6 +449,9 @@ void GUI::updateStatusDisplay() {
             std::ostringstream detectedStream;
             detectedStream << "Detected: " << std::fixed << std::setprecision(1) << detectedTempo;
             detectedTempoLabel->setText(detectedStream.str());
+            
+            // Update quantizer BPM to match detected tempo
+            updateQuantizerBPM(detectedTempo);
         } else {
             // Clear detected tempo display when auto-tempo is off
             detectedTempoLabel->setText("Detected: --");
@@ -2090,6 +2110,8 @@ void GUI::createConnectionMatrixPanel() {
             bpmLabel->setText(stream.str());
             // Update frequency labels to reflect new tempo scaling
             updateFrequencyLabels();
+            // Update quantizer BPM to match global tempo
+            updateQuantizerBPM(value);
         }
     });
     
@@ -2379,6 +2401,30 @@ void GUI::forceMatrixUpdate() {
     allowMatrixUpdates = true;
     updateConnectionMatrix();
     // Keep allowMatrixUpdates = true to allow future automatic updates
+}
+
+void GUI::toggleQuantizerVisibility() {
+    if (quantizerWidget) {
+        quantizerWidget->toggleVisibility();
+        std::cout << "🎵 Quantizer " << (quantizerWidget->isVisible() ? "shown" : "hidden") 
+                  << " (press Q to toggle)" << std::endl;
+    }
+}
+
+void GUI::updateQuantizerBPM(float bpm) {
+    // Only update if BPM changed significantly (more than 0.1 BPM difference)
+    if (std::abs(bpm - lastQuantizerBPM) < 0.1f) {
+        return;
+    }
+    
+    lastQuantizerBPM = bpm;
+    
+    if (quantizer) {
+        quantizer->setBPM(bpm);
+    }
+    if (quantizerWidget) {
+        quantizerWidget->updateFromQuantizer();
+    }
 }
 
 void GUI::updateFrequencyLabels() {
