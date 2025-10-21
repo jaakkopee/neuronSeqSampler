@@ -5,10 +5,10 @@
 ![Neural Network Visualization](https://img.shields.io/badge/Interface-Real--time%20Neural%20Visualization-blue)
 ![Audio Engine](https://img.shields.io/badge/Audio-SFML%20Based-green)
 ![Build Status](https://img.shields.io/badge/Build-CMake%20%2B%20C%2B%2B17-orange)
-![Preset System](https://img.shields.io/badge/Presets-JSON%20Save%2FLoad-purple)*🎵 JSON Preset System**: Complete save/load functionality with keyboard shortcuts (S/L) and GUI dialogs for neural network configurations.
+![Preset System](https://img.shields.io/badge/Presets-JSON%20Save%2FLoad-purple)*🎵 Musical Quantization System**: Professional-grade musical timing with smart grid-based trigger suppression (Q-key toggle).
 - **💾 Smart Preset Management**: Factory presets, user presets, metadata support, and automatic network restoration.
 - **Rhythmogram Matrix Panel**: Toggle with 'M', scrollable 8×N grid, real-time routing, per-band and per-connection gain controls.
-- **Robust Keyboard Shortcuts**: Global keys (e.g., 'M' for matrix) work reliably after all GUI actions.
+- **Robust Keyboard Shortcuts**: Global keys (e.g., 'M' for matrix, 'Q' for quantization) work reliably after all GUI actions.
 - **Live Parameter Editing**: Instantly adjust neuron activation and connection weights with immediate audio/visual feedback.
 - **Dual Recording**: Record both internal neural output and external microphone input.
 - **Cross-Platform Compatibility**: Fully tested on both macOS (Homebrew, SFML 3.0.2, TGUI) and Debian/Ubuntu (apt, libsfml-dev, libtgui-dev).
@@ -59,6 +59,25 @@ This isn't just a traditional step sequencer - it's a living, breathing musical 
 - **💾 JSON Preset System**: Save and load complete neural network configurations with metadata and version control
 - **🎼 Sample Management**: Load and organize your own samples or use the included professional sample library
 
+### Musical Quantization System
+- **🎵 Real-Time Quantization**: Professional-grade musical timing that snaps neural triggers to musical grid points
+- **📐 Flexible Grid Resolutions**: Choose from 1/2 notes to 1/64 notes for anything from sparse grooves to tight patterns
+- **🎚️ Quantization Amount**: Adjustable strength from 0% (no quantization) to 100% (strict musical timing)
+- **🎯 Smart Suppression**: Off-grid triggers are intelligently suppressed to maintain musical coherence
+- **⚡ Zero-Latency Processing**: Quantization decisions happen in real-time without audio delay
+- **🎛️ Q-Key Toggle**: Instant access to quantization controls with keyboard shortcut
+
+#### How Quantization Works
+The quantization system analyzes each neural trigger in real-time and determines whether it falls close enough to a musical grid point. If a trigger occurs **within 10ms** of a grid boundary, it plays immediately. If it's **further than 10ms** from any grid point, it's suppressed entirely.
+
+This approach creates **musically coherent rhythms** by preventing off-beat triggers from cluttering the timing, while allowing natural neural dynamics to drive the composition. You'll notice:
+
+- **Larger grids** (1/2, 1/4 notes): More triggers are suppressed, creating sparse, locked grooves
+- **Smaller grids** (1/16, 1/32 notes): Fewer triggers are suppressed, maintaining density while ensuring rhythmic precision
+- **Live responsiveness**: Changes to grid resolution immediately affect which neural firings become audible
+
+*Example: With 1/2 note quantization at 120 BPM, triggers only play if they occur within 10ms of every 1-second boundary, creating a sparse but perfectly timed kick pattern.*
+
 ## Quick Start
 
 ### Get Running in 2 Minutes
@@ -103,6 +122,43 @@ make
 3. **Interaction**: Click neurons to activate them, use spacebar for random activation
 4. **Recording**: Press 'R' to record the neural network's audio output
 
+### Musical Quantization Usage
+
+**🎵 Quick Start with Quantization:**
+
+1. **Enable Quantization Panel**: Press `Q` to show the quantization controls
+2. **Check the Enable Box**: Turn quantization on/off with the checkbox
+3. **Choose Grid Resolution**: Select from dropdown:
+   - **1/2 Note**: Sparse, powerful beats (1-second intervals at 120 BPM)
+   - **1/4 Note**: Standard quarter note timing (500ms intervals)
+   - **1/8 Note**: Eighth note subdivisions (250ms intervals)
+   - **1/16 Note**: Sixteenth note precision (125ms intervals) - *default*
+   - **1/32 Note**: Very tight timing (62.5ms intervals)
+   - **1/64 Note**: Extremely dense grid (31.25ms intervals)
+
+4. **Adjust Quantization Amount**: Use the slider to control strength:
+   - **0%**: No quantization (neural chaos)
+   - **50%**: Partial quantization (some triggers allowed off-grid)
+   - **100%**: Full quantization (strict musical timing)
+
+5. **Add Swing**: Use the swing slider to add groove (-1.0 to 1.0)
+
+**🎯 Practical Tips:**
+
+- **Start with 1/4 notes** for traditional drum patterns
+- **Use 1/32 notes** when you want tight neural activity without losing the organic feel
+- **Try 1/2 notes** for sparse, powerful rhythms where every hit counts
+- **Watch the console output** to see which neural triggers are "on-grid" vs "off-grid"
+- **Quantization works in real-time** - changes are immediate, no restart needed
+
+**🔍 Understanding Suppression:**
+
+When quantization is active, you'll see console messages like:
+- `🎵 Quantized playback: on-grid (delay -0.006s) for sample 1` ← *This sample plays*
+- `🎵 Quantized suppression: off-grid (delay 0.145s) for sample 1` ← *This sample is blocked*
+
+This is **normal behavior** - quantization intelligently blocks neural triggers that would create rhythmic chaos, allowing only those that enhance the musical structure.
+
 ### GUI Controls
 
 **Main Interface:**
@@ -110,6 +166,7 @@ make
 - **Spacebar**: Random network activation
 - **R Key**: Toggle audio recording
 - **M Key**: Toggle connection matrix visibility
+- **Q Key**: Toggle quantization panel (musical timing controls)
 - **S Key**: Quick save current network as preset
 - **L Key**: Load factory drum pattern preset
 - **Number Keys (1-9)**: Activate specific neurons
@@ -390,6 +447,9 @@ The JSON preset system provides professional-grade save/load functionality for c
 #### **🎹 Keyboard Shortcuts**
 - **S Key**: Quick save current network with timestamp (saves to `presets/user/quicksave_[timestamp].json`)
 - **L Key**: Instantly load factory drum pattern preset (3-neuron network with kick/clap/bass)
+- **Q Key**: Toggle musical quantization panel (real-time musical timing controls)
+- **M Key**: Toggle rhythmogram matrix panel (frequency-to-neuron routing)
+- **R Key**: Toggle audio recording (capture network output to WAV files)
 
 #### **🖥️ GUI Integration**
 - **Presets Menu**: Complete preset management system
