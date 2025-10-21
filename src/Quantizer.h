@@ -190,6 +190,14 @@ private:
     double applySwing(double gridPosition) const;
     
     /**
+     * @brief Apply swing timing to a specific grid point
+     * @param gridPoint Time of the grid point in seconds
+     * @param gridInterval Interval between grid points in seconds
+     * @return Swing-adjusted grid point time
+     */
+    double applySwingToGridPoint(double gridPoint, double gridInterval) const;
+    
+    /**
      * @brief Get the subdivision factor for current grid resolution
      * @return Number of subdivisions per quarter note
      */

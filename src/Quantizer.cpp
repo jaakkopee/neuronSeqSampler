@@ -57,21 +57,9 @@ double Quantizer::getNextGridPoint(double timestamp) const {
     double gridPosition = timestamp / gridInterval;
     double nextGrid = std::ceil(gridPosition) * gridInterval;
     
-    // Apply swing if we're on an off-beat (odd subdivisions within a beat)
+    // Apply swing if we have a swing factor
     if (swingFactor != 0.0f) {
-        // Calculate position within the current beat
-        double beatPosition = std::fmod(timestamp, quarterNoteInterval);
-        double normalizedBeatPos = beatPosition / quarterNoteInterval;
-        
-        // Apply swing adjustment
-        double swungPosition = applySwing(normalizedBeatPos);
-        nextGrid = (std::floor(timestamp / quarterNoteInterval) * quarterNoteInterval) + 
-                   (swungPosition * quarterNoteInterval);
-        
-        // If we're past the current swing point, move to next
-        if (nextGrid <= timestamp) {
-            nextGrid += gridInterval;
-        }
+        nextGrid = applySwingToGridPoint(nextGrid, gridInterval);
     }
     
     return nextGrid;
@@ -84,18 +72,9 @@ double Quantizer::getPreviousGridPoint(double timestamp) const {
     double gridPosition = timestamp / gridInterval;
     double prevGrid = std::floor(gridPosition) * gridInterval;
     
-    // Apply swing if needed
+    // Apply swing if we have a swing factor
     if (swingFactor != 0.0f) {
-        double beatPosition = std::fmod(timestamp, quarterNoteInterval);
-        double normalizedBeatPos = beatPosition / quarterNoteInterval;
-        
-        double swungPosition = applySwing(normalizedBeatPos);
-        prevGrid = (std::floor(timestamp / quarterNoteInterval) * quarterNoteInterval) + 
-                   (swungPosition * quarterNoteInterval);
-        
-        if (prevGrid > timestamp) {
-            prevGrid -= gridInterval;
-        }
+        prevGrid = applySwingToGridPoint(prevGrid, gridInterval);
     }
     
     return std::max(0.0, prevGrid); // Don't go negative
@@ -154,22 +133,41 @@ void Quantizer::reset() {
 }
 
 double Quantizer::applySwing(double gridPosition) const {
+    // This method is deprecated - use applySwingToGridPoint instead
+    return gridPosition;
+}
+
+double Quantizer::applySwingToGridPoint(double gridPoint, double gridInterval) const {
     if (swingFactor == 0.0f) {
-        return gridPosition;
+        return gridPoint;
     }
     
-    // Apply swing to off-beats (subdivisions 1, 3, 5, etc. within a beat)
-    float subdivisions = getSubdivisionFactor();
-    double subPos = gridPosition * subdivisions;
-    int subIndex = static_cast<int>(subPos);
+    // Calculate which grid subdivision this is within a pair (0 = on-beat, 1 = off-beat)
+    double gridIndex = std::round(gridPoint / gridInterval);
+    int gridInPair = static_cast<int>(gridIndex) % 2;
     
-    // Only apply swing to odd subdivisions (off-beats)
-    if (subIndex % 2 == 1) {
-        double swingAmount = swingFactor * 0.1; // Scale swing factor
-        gridPosition += swingAmount * (1.0 / subdivisions);
+    // Only apply swing to off-beats (odd grid positions: 1, 3, 5, etc.)
+    if (gridInPair == 1) {
+        // For swing:
+        // 0% swing = 50% of the way between beats (straight timing)
+        // 100% swing = 66.67% of the way between beats (triplet timing)
+        double swingAmount = 0.5 + (swingFactor * 0.1667); // 0.5 to 0.6667
+        
+        // Find the previous on-beat (even grid position)
+        double prevOnBeat = (gridIndex - 1) * gridInterval;
+        double nextOnBeat = (gridIndex + 1) * gridInterval;
+        
+        // Place the off-beat at the swing position between on-beats
+        double swungGridPoint = prevOnBeat + (nextOnBeat - prevOnBeat) * swingAmount;
+        
+        std::cout << "🎵 Swing: Moving off-beat from " << gridPoint << "s to " << swungGridPoint 
+                  << "s (swing factor: " << swingFactor << ", amount: " << swingAmount << ")" << std::endl;
+        
+        return swungGridPoint;
     }
     
-    return std::max(0.0, std::min(1.0, gridPosition));
+    // On-beats remain unchanged
+    return gridPoint;
 }
 
 float Quantizer::getSubdivisionFactor() const {
