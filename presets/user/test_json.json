@@ -1,28 +1,17 @@
 {
-  "connections": [
-    {
-      "source_id": 0,
-      "target_id": 1,
-      "weight": 0.5699999332427979
-    },
-    {
-      "source_id": 1,
-      "target_id": 0,
-      "weight": 0.36999988555908203
-    }
-  ],
+  "connections": [],
   "neurons": [
     {
-      "activation": 0.6324235796928406,
+      "activation": 0.0,
       "activation_function": "Linear",
-      "activation_increase_per_iteration": 0.4099999964237213,
+      "activation_increase_per_iteration": 0.0,
       "decay_rate": 1.0,
       "id": 0,
       "sample_index": 1,
       "threshold": 1.0
     },
     {
-      "activation": 0.03338289260864258,
+      "activation": 0.0,
       "activation_function": "Linear",
       "activation_increase_per_iteration": 0.0,
       "decay_rate": 1.0,
@@ -33,13 +22,21 @@
   ],
   "preset_info": {
     "author": "User",
-    "connection_count": 2,
-    "created_date": "2025-10-14T07:50:53Z",
-    "description": "Custom neural network preset",
-    "name": "Test",
+    "connection_count": 0,
+    "created_date": "2025-10-21T11:26:46Z",
+    "description": "checking to see if bug in save/load preset is gone",
+    "name": "test_json",
     "neuron_count": 2,
     "tags": "",
     "version": "1.0"
+  },
+  "quantization": {
+    "bpm": 120.0,
+    "enabled": true,
+    "grid_resolution": "sixteenth_note",
+    "grid_resolution_value": 3,
+    "quantization_amount": 0.7999999523162842,
+    "swing_factor": 0.0
   },
   "rhythmogram_matrix": {
     "enabled": true,

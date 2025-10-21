@@ -153,15 +153,29 @@ std::vector<float> NeuronNetwork::getProcessedAudioOutput() const {
 
 // Rhythm-to-neuron connection matrix methods
 void NeuronNetwork::setRhythmConnection(size_t filterIndex, size_t neuronIndex, float weight) {
-    // Ensure matrix is large enough
-    if (rhythmConnectionMatrix.size() <= filterIndex) {
-        rhythmConnectionMatrix.resize(filterIndex + 1);
-    }
-    if (rhythmConnectionMatrix[filterIndex].size() <= neuronIndex) {
-        rhythmConnectionMatrix[filterIndex].resize(neuronIndex + 1, 0.0f);
+    // Safety checks to prevent bad allocations
+    const size_t MAX_REASONABLE_SIZE = 1000; // Reasonable upper limit
+    
+    if (filterIndex >= MAX_REASONABLE_SIZE || neuronIndex >= MAX_REASONABLE_SIZE) {
+        std::cerr << "❌ setRhythmConnection: Invalid indices - filterIndex: " 
+                  << filterIndex << ", neuronIndex: " << neuronIndex << std::endl;
+        return;
     }
     
-    rhythmConnectionMatrix[filterIndex][neuronIndex] = weight;
+    try {
+        // Ensure matrix is large enough
+        if (rhythmConnectionMatrix.size() <= filterIndex) {
+            rhythmConnectionMatrix.resize(filterIndex + 1);
+        }
+        if (rhythmConnectionMatrix[filterIndex].size() <= neuronIndex) {
+            rhythmConnectionMatrix[filterIndex].resize(neuronIndex + 1, 0.0f);
+        }
+        
+        rhythmConnectionMatrix[filterIndex][neuronIndex] = weight;
+    } catch (const std::exception& e) {
+        std::cerr << "❌ setRhythmConnection: Exception during resize: " << e.what() << std::endl;
+        std::cerr << "   filterIndex: " << filterIndex << ", neuronIndex: " << neuronIndex << std::endl;
+    }
 }
 
 float NeuronNetwork::getRhythmConnection(size_t filterIndex, size_t neuronIndex) const {

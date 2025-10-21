@@ -473,6 +473,7 @@ Each preset captures the full network configuration:
 - **Neuron Parameters**: Activation levels, thresholds, decay rates, self-modulation, activation functions
 - **Connection Topology**: Complete network structure with precise connection weights
 - **Rhythmogram Matrix**: Filter configurations and frequency-to-neuron routing
+- **Quantization Settings**: Musical timing grid, swing, and quantization strength
 - **Metadata**: Name, author, description, creation date, tags, and version information
 
 #### **🔧 Example Preset Structure**
@@ -507,6 +508,14 @@ Each preset captures the full network configuration:
     "enabled": true,
     "scale": 5.0,
     "filter_gains": [1.0, 1.5, 2.0, 1.2, 0.8, 1.0, 1.0, 1.0]
+  },
+  "quantization": {
+    "enabled": true,
+    "grid_resolution": "sixteenth_note",
+    "grid_resolution_value": 3,
+    "quantization_amount": 0.8,
+    "swing_factor": 0.2,
+    "bpm": 120.0
   }
 }
 ```
@@ -517,6 +526,21 @@ Each preset captures the full network configuration:
 - **Smart Restoration**: Complete network rebuilding including rhythm interpreter reinitialization
 - **GUI Synchronization**: All sliders, matrices, and visual elements update to reflect loaded state
 - **Cross-Session Compatibility**: Presets work across different application sessions and system restarts
+
+#### **🎵 Quantization in Presets**
+Presets now include complete quantization settings, preserving your musical timing preferences:
+
+- **Grid Resolution**: Automatically restores subdivision (1/2 note to 1/64 note)
+- **Quantization Amount**: Preserves timing strength (0% to 100%)
+- **Swing Factor**: Maintains groove timing (straight to triplet feel)
+- **Enable State**: Remembers whether quantization is active
+
+**Factory Preset Examples:**
+- **Drum Pattern**: 1/16 note grid, 80% strength, 20% swing - tight rhythmic patterns
+- **Ambient Textures**: Quantization disabled - free-flowing, organic timing
+- **User Test**: 1/8 note grid, 100% strength, straight timing - locked grooves
+
+*When you load a preset, the quantization panel (Q-key) will automatically update to show the saved settings, and the musical timing will immediately take effect.*
 
 ---
 

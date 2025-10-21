@@ -3,6 +3,7 @@
 #include "Neuron.h"
 #include "Connection.h"
 #include "RhythmInterpreter.h"
+#include "Quantizer.h"
 #include <fstream>
 #include <iostream>
 #include <filesystem>
@@ -59,6 +60,14 @@ bool PresetManager::savePreset(const NeuronNetwork& network, const std::string& 
             preset["rhythmogram_matrix"] = rhythmogramMatrixToJson(rhythmInterpreter);
         } else {
             preset["rhythmogram_matrix"] = {{"enabled", false}};
+        }
+        
+        // Serialize quantization settings if available
+        auto* quantizer = network.getQuantizer();
+        if (quantizer) {
+            preset["quantization"] = quantizationToJson(quantizer);
+        } else {
+            preset["quantization"] = {{"enabled", false}};
         }
         
         // Write to file
@@ -136,6 +145,21 @@ bool PresetManager::loadPreset(NeuronNetwork& network, const std::string& filena
                 std::cout << "🔄 Loading rhythmogram matrix..." << std::endl;
                 applyRhythmogramMatrixFromJson(rhythmInterpreter, preset["rhythmogram_matrix"]);
             }
+        }
+        
+        // Load quantization settings if available
+        if (preset.contains("quantization")) {
+            auto* quantizer = network.getQuantizer();
+            if (quantizer) {
+                std::cout << "🔄 Loading quantization settings..." << std::endl;
+                if (!applyQuantizationFromJson(quantizer, preset["quantization"])) {
+                    std::cerr << "⚠️  Failed to apply quantization settings, continuing with defaults" << std::endl;
+                }
+            } else {
+                std::cout << "⚠️  No quantizer available to apply settings to" << std::endl;
+            }
+        } else {
+            std::cout << "ℹ️  No quantization settings in preset (using current settings)" << std::endl;
         }
         
         // Display preset info
@@ -356,6 +380,49 @@ json PresetManager::rhythmogramMatrixToJson(const RhythmInterpreter* rhythmInter
     };
 }
 
+json PresetManager::quantizationToJson(const Quantizer* quantizer) {
+    if (!quantizer) {
+        return json{{"enabled", false}};
+    }
+    
+    // Convert grid resolution enum to string for JSON
+    std::string gridResolutionName;
+    int gridResolutionValue = static_cast<int>(quantizer->getGridResolution());
+    switch (quantizer->getGridResolution()) {
+        case Quantizer::GridResolution::HALF_NOTE:
+            gridResolutionName = "half_note";
+            break;
+        case Quantizer::GridResolution::QUARTER_NOTE:
+            gridResolutionName = "quarter_note";
+            break;
+        case Quantizer::GridResolution::EIGHTH_NOTE:
+            gridResolutionName = "eighth_note";
+            break;
+        case Quantizer::GridResolution::SIXTEENTH_NOTE:
+            gridResolutionName = "sixteenth_note";
+            break;
+        case Quantizer::GridResolution::THIRTY_SECOND_NOTE:
+            gridResolutionName = "thirty_second_note";
+            break;
+        case Quantizer::GridResolution::SIXTY_FOURTH_NOTE:
+            gridResolutionName = "sixty_fourth_note";
+            break;
+        default:
+            gridResolutionName = "quarter_note";
+            gridResolutionValue = 1;
+            break;
+    }
+    
+    return json{
+        {"enabled", quantizer->isQuantizationEnabled()},
+        {"grid_resolution", gridResolutionName},
+        {"grid_resolution_value", gridResolutionValue},
+        {"quantization_amount", quantizer->getQuantizationAmount()},
+        {"swing_factor", quantizer->getSwingFactor()},
+        {"bpm", quantizer->getBPM()}
+    };
+}
+
 bool PresetManager::createNeuronFromJson(NeuronNetwork& network, const json& neuronData) {
     try {
         int sampleIndex = neuronData.value("sample_index", 1);
@@ -363,6 +430,22 @@ bool PresetManager::createNeuronFromJson(NeuronNetwork& network, const json& neu
         float threshold = neuronData.value("threshold", 1.0f);
         float decayRate = neuronData.value("decay_rate", 1.0f);
         float activationIncrease = neuronData.value("activation_increase_per_iteration", 0.0f);
+        
+        // Validate sample index
+        if (sampleIndex <= 0 || sampleIndex > 100) { // Reasonable range for sample indices
+            std::cerr << "❌ Invalid sample index: " << sampleIndex << ", using default (1)" << std::endl;
+            sampleIndex = 1;
+        }
+        
+        // Validate float values to prevent NaN or extreme values
+        if (!std::isfinite(activation) || !std::isfinite(threshold) || 
+            !std::isfinite(decayRate) || !std::isfinite(activationIncrease)) {
+            std::cerr << "❌ Invalid float values in neuron data, using defaults" << std::endl;
+            activation = 0.0f;
+            threshold = 1.0f;
+            decayRate = 1.0f;
+            activationIncrease = 0.0f;
+        }
         
         ActivationFunction func = ActivationFunction::Linear;
         std::string funcName = neuronData.value("activation_function", "Linear");
@@ -381,9 +464,25 @@ bool PresetManager::createNeuronFromJson(NeuronNetwork& network, const json& neu
 
 bool PresetManager::createConnectionFromJson(NeuronNetwork& network, const json& connectionData) {
     try {
-        size_t sourceId = connectionData.value("source_id", 0);
-        size_t targetId = connectionData.value("target_id", 0);
+        // Get the raw values first to validate them
+        auto sourceIdValue = connectionData.value("source_id", 0);
+        auto targetIdValue = connectionData.value("target_id", 0);
         float weight = connectionData.value("weight", 1.0f);
+        
+        // Convert to size_t with safety checks
+        if (sourceIdValue < 0 || targetIdValue < 0) {
+            std::cerr << "❌ Negative neuron indices in connection: " << sourceIdValue << " -> " << targetIdValue << std::endl;
+            return false;
+        }
+        
+        const size_t MAX_NEURON_ID = 1000; // Reasonable upper limit
+        if (sourceIdValue >= MAX_NEURON_ID || targetIdValue >= MAX_NEURON_ID) {
+            std::cerr << "❌ Neuron indices too large in connection: " << sourceIdValue << " -> " << targetIdValue << std::endl;
+            return false;
+        }
+        
+        size_t sourceId = static_cast<size_t>(sourceIdValue);
+        size_t targetId = static_cast<size_t>(targetIdValue);
         
         Neuron* source = network.getNeuron(sourceId);
         Neuron* target = network.getNeuron(targetId);
@@ -413,6 +512,82 @@ bool PresetManager::applyRhythmogramMatrixFromJson(RhythmInterpreter* rhythmInte
         return true;
     } catch (const std::exception& e) {
         std::cerr << "❌ Error applying rhythmogram matrix: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+bool PresetManager::applyQuantizationFromJson(Quantizer* quantizer, const json& quantizationData) {
+    if (!quantizer) {
+        std::cerr << "❌ No quantizer provided to apply settings to" << std::endl;
+        return false;
+    }
+    
+    try {
+        // Apply enabled state
+        if (quantizationData.contains("enabled")) {
+            bool enabled = quantizationData["enabled"];
+            quantizer->setEnabled(enabled);
+            std::cout << "🎵 Quantization " << (enabled ? "enabled" : "disabled") << std::endl;
+        }
+        
+        // Apply grid resolution
+        if (quantizationData.contains("grid_resolution")) {
+            std::string gridResName = quantizationData["grid_resolution"];
+            Quantizer::GridResolution resolution = Quantizer::GridResolution::QUARTER_NOTE; // default
+            
+            if (gridResName == "half_note") {
+                resolution = Quantizer::GridResolution::HALF_NOTE;
+            } else if (gridResName == "quarter_note") {
+                resolution = Quantizer::GridResolution::QUARTER_NOTE;
+            } else if (gridResName == "eighth_note") {
+                resolution = Quantizer::GridResolution::EIGHTH_NOTE;
+            } else if (gridResName == "sixteenth_note") {
+                resolution = Quantizer::GridResolution::SIXTEENTH_NOTE;
+            } else if (gridResName == "thirty_second_note") {
+                resolution = Quantizer::GridResolution::THIRTY_SECOND_NOTE;
+            } else if (gridResName == "sixty_fourth_note") {
+                resolution = Quantizer::GridResolution::SIXTY_FOURTH_NOTE;
+            }
+            
+            quantizer->setGridResolution(resolution);
+            std::cout << "🎵 Grid resolution set to: " << gridResName << std::endl;
+        }
+        
+        // Apply quantization amount
+        if (quantizationData.contains("quantization_amount")) {
+            float amount = quantizationData["quantization_amount"];
+            // Clamp amount to valid range to prevent issues
+            amount = std::max(0.0f, std::min(1.0f, amount));
+            quantizer->setQuantizationAmount(amount);
+            std::cout << "🎵 Quantization amount: " << (amount * 100.0f) << "%" << std::endl;
+        }
+        
+        // Apply swing factor
+        if (quantizationData.contains("swing_factor")) {
+            float swing = quantizationData["swing_factor"];
+            // Clamp swing to valid range to prevent issues  
+            swing = std::max(-1.0f, std::min(1.0f, swing));
+            quantizer->setSwingFactor(swing);
+            std::cout << "🎵 Swing factor: " << (swing * 100.0f) << "%" << std::endl;
+        }
+        
+        // Apply BPM (though this is usually managed by the global tempo)
+        if (quantizationData.contains("bpm")) {
+            float bpm = quantizationData["bpm"];
+            // Ensure BPM is in reasonable range to prevent issues
+            if (bpm > 0.0f && bpm <= 300.0f) {
+                quantizer->setBPM(bpm);
+                std::cout << "🎵 Quantizer BPM: " << bpm << std::endl;
+            } else {
+                std::cerr << "⚠️  Invalid BPM value in preset: " << bpm << ", skipping" << std::endl;
+            }
+        }
+        
+        std::cout << "✅ Quantization settings applied successfully" << std::endl;
+        return true;
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error applying quantization settings: " << e.what() << std::endl;
         return false;
     }
 }

@@ -6,6 +6,7 @@
 // Forward declarations
 class NeuronNetwork;
 class RhythmInterpreter;
+class Quantizer;
 
 /**
  * Manages saving and loading network presets in JSON format
@@ -50,12 +51,14 @@ private:
     static nlohmann::json connectionToJson(const class Connection* connection, 
                                          const std::vector<const class Neuron*>& neurons);
     static nlohmann::json rhythmogramMatrixToJson(const RhythmInterpreter* rhythmInterpreter);
+    static nlohmann::json quantizationToJson(const Quantizer* quantizer);
     
     // JSON deserialization helpers
     static bool createNeuronFromJson(NeuronNetwork& network, const nlohmann::json& neuronData);
     static bool createConnectionFromJson(NeuronNetwork& network, const nlohmann::json& connectionData);
     static bool applyRhythmogramMatrixFromJson(RhythmInterpreter* rhythmInterpreter, 
                                              const nlohmann::json& matrixData);
+    static bool applyQuantizationFromJson(Quantizer* quantizer, const nlohmann::json& quantizationData);
     
     // Utility functions
     static size_t findNeuronIndex(const std::vector<const class Neuron*>& neurons, const class Neuron* target);
