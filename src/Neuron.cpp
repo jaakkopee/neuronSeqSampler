@@ -114,17 +114,23 @@ void Neuron::playSample() {
             // If quantization occurred, calculate the delay
             double delay = event.timestamp - currentTime;
             
-            if (delay > 0.0) {
-                // Schedule playback at quantized time
-                // For now, we'll play immediately but this could be enhanced
-                // to support actual delayed playback
-                std::cout << "🎵 Quantized playback: delay " << delay << "s for sample " << sampleIndex << std::endl;
+            // Only play if we're very close to a grid point (within 10ms tolerance)
+            if (delay <= 0.01) {  // 10ms tolerance
+                std::cout << "🎵 Quantized playback: on-grid (delay " << delay << "s) for sample " << sampleIndex << std::endl;
+                audioManager->playSample(sampleIndex);
+            } else {
+                std::cout << "🎵 Quantized suppression: off-grid (delay " << delay << "s) for sample " << sampleIndex << std::endl;
+                // Don't play - we're too far from a grid point
+                return;
             }
+        } else {
+            // No quantization needed, play immediately
+            audioManager->playSample(sampleIndex);
         }
+    } else {
+        // No quantization, play immediately
+        audioManager->playSample(sampleIndex);
     }
-    
-    // Play the sample (for now, immediate playback)
-    audioManager->playSample(sampleIndex);
 }
 
 void Neuron::playSample(float offsetSeconds) {
