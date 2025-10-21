@@ -302,9 +302,16 @@ public:
                 }
                 break;
             case sf::Keyboard::Key::L:
+                // Notify spectral display before loading (which calls clearNetwork)
+                spectralDisplay.setRhythmInterpreter(nullptr);
+                
                 // Load factory drum pattern preset
                 if (PresetManager::loadFactoryPreset(network, "drum_pattern")) {
                     ESSENTIAL_PRINT("📂 Loaded factory drum pattern preset");
+                    
+                    // Update spectral display with new rhythm interpreter
+                    spectralDisplay.setRhythmInterpreter(network.getRhythmInterpreter());
+                    
                     // Refresh visualizer to show the loaded network
                     visualizer.refreshLayout();
 #ifdef USE_TGUI

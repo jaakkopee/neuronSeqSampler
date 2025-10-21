@@ -119,6 +119,12 @@ void SimpleSpectralDisplay::setSize(float width, float height) {
 
 void SimpleSpectralDisplay::setRhythmInterpreter(RhythmInterpreter* rhythmInterp) {
     rhythmInterpreter = rhythmInterp;
+    
+    // If setting to nullptr (network reset), clear any pending data
+    if (!rhythmInterpreter) {
+        std::cout << "🔄 SimpleSpectralDisplay: Rhythm interpreter cleared, resetting display" << std::endl;
+        clear(); // Clear the display data
+    }
 }
 
 void SimpleSpectralDisplay::setOpacity(float opacity) {
@@ -152,10 +158,16 @@ void SimpleSpectralDisplay::update() {
     float updateInterval = 1.0f / config.updateRate;
     
     if (timeSinceLastUpdate >= updateInterval) {
-        // Get current filter outputs and add to history
-        auto filterOutputs = rhythmInterpreter->getFilterOutputs();
-        if (!filterOutputs.empty()) {
-            addDataPoint(filterOutputs);
+        // Safely get current filter outputs and add to history
+        try {
+            auto filterOutputs = rhythmInterpreter->getFilterOutputs();
+            if (!filterOutputs.empty()) {
+                addDataPoint(filterOutputs);
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "⚠️  SimpleSpectralDisplay: Error getting filter outputs: " << e.what() << std::endl;
+            // Reset rhythm interpreter reference to prevent further crashes
+            rhythmInterpreter = nullptr;
         }
         updateClock.restart();
     }

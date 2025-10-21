@@ -852,11 +852,22 @@ void GUI::resetNetwork() {
     yesButton->onPress([=]() {
         std::cout << "Resetting network..." << std::endl;
         
+        // Notify spectral display that rhythm interpreter will be cleared
+        if (spectralDisplay) {
+            spectralDisplay->setRhythmInterpreter(nullptr);
+        }
+        
         // Clear the entire network
         network->clearNetwork();
         
         std::cout << "Network reset complete. Neurons: " << network->getNeuronCount() 
                  << ", Connections: " << network->getConnectionCount() << std::endl;
+        
+        // Reinitialize rhythm interpreter and update spectral display
+        network->initializeRhythmInterpreter();
+        if (spectralDisplay) {
+            spectralDisplay->setRhythmInterpreter(network->getRhythmInterpreter());
+        }
         
         // Refresh GUI and visualizer
         refreshNeuronSliders();
@@ -2587,8 +2598,19 @@ void GUI::showLoadPresetDialog() {
         if (!selectedItem.empty() && presetList->getSelectedItemId() != "") {
             std::string filename = presetList->getSelectedItemId().toStdString();
             if (!filename.empty() && filename != "--- Factory Presets ---" && filename != "--- User Presets ---") {
+                // Notify spectral display before loading (which calls clearNetwork)
+                if (spectralDisplay) {
+                    spectralDisplay->setRhythmInterpreter(nullptr);
+                }
+                
                 if (PresetManager::loadPreset(*network, filename)) {
                     std::cout << "✅ Preset loaded: " << filename << std::endl;
+                    
+                    // Update spectral display with new rhythm interpreter
+                    if (spectralDisplay) {
+                        spectralDisplay->setRhythmInterpreter(network->getRhythmInterpreter());
+                    }
+                    
                     visualizer->refreshLayout();  // Refresh visualizer layout
                     refreshConnectionSliders();
                     refreshNeuronSliders();
@@ -2614,8 +2636,19 @@ void GUI::showLoadPresetDialog() {
 }
 
 void GUI::loadFactoryDrumPattern() {
+    // Notify spectral display before loading (which calls clearNetwork)
+    if (spectralDisplay) {
+        spectralDisplay->setRhythmInterpreter(nullptr);
+    }
+    
     if (PresetManager::loadFactoryPreset(*network, "drum_pattern")) {
         std::cout << "✅ Loaded factory drum pattern preset" << std::endl;
+        
+        // Update spectral display with new rhythm interpreter
+        if (spectralDisplay) {
+            spectralDisplay->setRhythmInterpreter(network->getRhythmInterpreter());
+        }
+        
         visualizer->refreshLayout();  // Refresh visualizer layout
         refreshConnectionSliders();
         refreshNeuronSliders();
