@@ -1,3 +1,5 @@
+![NeuronSeqSampler](NeuronSeqSampler1.png)
+
 # Recent Updates
 
 ![Neural Network Visualization](https://img.shields.io/badge/Interface-Real--time%20Neural%20Visualization-blue)
@@ -14,6 +16,7 @@
 # NeuronSeqSampler
 
 **A real-time neural network audio sampler that creates dynamic music through artificial neurons**
+
 
 NeuronSeqSampler is an innovative experimental audio application that uses interconnected artificial neurons to trigger and sequence audio samples. Each neuron can be connected to others through customizable connection matrices, creating complex cascading patterns that generate evolving rhythms, melodies, and soundscapes in real-time.
 
