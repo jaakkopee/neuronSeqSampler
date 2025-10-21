@@ -2012,7 +2012,7 @@ void GUI::createConnectionMatrixPanel() {
     }
     
     // Add rhythmogram scale slider and BPM slider with better spacing from the right edge
-    float scaleSliderX = contentWidth - 120; // Move scale slider further left  
+    float scaleSliderX = contentWidth - 160; // Move scale slider further left for better spacing
     float bpmSliderX = contentWidth - 80; // Move BPM slider further left with more space
     
     // Scale control label
