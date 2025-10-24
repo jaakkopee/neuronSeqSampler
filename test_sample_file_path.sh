@@ -89,14 +89,14 @@ int main() {
     assert(neuron1.getSampleFilePath().empty());
     std::cout << "✓ Neuron created with empty sample path (default)" << std::endl;
     
-    // Test 2: Create neuron with specific sample file path
-    std::string testPath = "/home/test/samples/kick.wav";
+    // Test 2: Create neuron with specific sample file path (relative)
+    std::string testPath = "samples/kick/kick.wav";
     MinimalNeuron neuron2(2, 0.5f, 1.0f, 1.0f, 0.0f, ActivationFunction::Linear, testPath);
     assert(neuron2.getSampleFilePath() == testPath);
     std::cout << "✓ Neuron created with sample path: " << neuron2.getSampleFilePath() << std::endl;
     
     // Test 3: Test sample path modification
-    std::string newPath = "/home/test/samples/snare.wav";
+    std::string newPath = "samples/snare/snare.wav";
     neuron2.setSampleFilePath(newPath);
     assert(neuron2.getSampleFilePath() == newPath);
     std::cout << "✓ Sample path updated: " << neuron2.getSampleFilePath() << std::endl;
@@ -113,7 +113,7 @@ int main() {
     std::cout << "✓ Sample path preserved in copy: " << neuron3.getSampleFilePath() << std::endl;
     
     std::cout << "🎉 All basic sample file path tests passed!" << std::endl;
-    std::cout << "📝 Implementation matches the actual Neuron class behavior." << std::endl;
+    std::cout << "📝 Using relative paths makes presets portable and shareable." << std::endl;
     return 0;
 }
 NEURON_EOF
@@ -148,7 +148,9 @@ rm -f minimal_neuron_test.cpp minimal_neuron_test
 
 echo ""
 echo "📋 Summary:"
-echo "- Neurons now store full sample file paths"
+echo "- Neurons now store relative sample file paths (e.g., 'samples/kick/kick.wav')"
 echo "- Sample paths are saved to preset JSON files"  
 echo "- Sample paths are restored when loading presets"
+echo "- Relative paths make presets portable and shareable"
+echo "- GUI updated to automatically set sample paths when adding neurons"
 echo "- Implementation preserves backwards compatibility"

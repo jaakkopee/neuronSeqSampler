@@ -994,8 +994,8 @@ void GUI::showAddNeuronDialog() {
                     }
                 }
                 
-                // Add neuron to network
-                auto neuron = network->addNeuron(sampleIndex, 0.0f, threshold, 1.0f, 0.0f, ActivationFunction::Linear);
+                // Add neuron to network with the sample file path
+                auto neuron = network->addNeuron(sampleIndex, 0.0f, threshold, 1.0f, 0.0f, ActivationFunction::Linear, fullPath);
                 
                 std::cout << "Added neuron with sample: " << fullPath << std::endl;
                 std::cout << "Sample index: " << sampleIndex << ", Threshold: " << threshold << std::endl;
