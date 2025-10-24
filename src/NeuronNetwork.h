@@ -34,7 +34,8 @@ public:
     Neuron* addNeuron(int sampleIndex, float initialActivation = 0.0f, 
                       float threshold = 1.0f, float decayRate = 1.0f, 
                       float activationIncreasePerIteration = 0.0f,
-                      ActivationFunction func = ActivationFunction::Linear);
+                      ActivationFunction func = ActivationFunction::Linear,
+                      const std::string& sampleFilePath = "");
     
     Connection* connect(Neuron* source, Neuron* target, float weight = 1.0f);
     

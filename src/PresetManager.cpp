@@ -351,6 +351,7 @@ json PresetManager::neuronToJson(const Neuron* neuron, size_t id) {
     return json{
         {"id", id},
         {"sample_index", neuron->getSampleIndex()},
+        {"sample_file_path", neuron->getSampleFilePath()},
         {"activation", neuron->getRawActivation()},
         {"threshold", neuron->getThreshold()},
         {"decay_rate", neuron->getDecayRate()},
@@ -453,7 +454,10 @@ bool PresetManager::createNeuronFromJson(NeuronNetwork& network, const json& neu
         else if (funcName == "ReLU") func = ActivationFunction::ReLU;
         else if (funcName == "Tanh") func = ActivationFunction::Tanh;
         
-        Neuron* neuron = network.addNeuron(sampleIndex, activation, threshold, decayRate, activationIncrease, func);
+        // Extract sample file path
+        std::string sampleFilePath = neuronData.value("sample_file_path", "");
+        
+        Neuron* neuron = network.addNeuron(sampleIndex, activation, threshold, decayRate, activationIncrease, func, sampleFilePath);
         return neuron != nullptr;
         
     } catch (const std::exception& e) {

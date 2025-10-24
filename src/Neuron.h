@@ -1,5 +1,6 @@
 #pragma once
 #include <functional>
+#include <string>
 #include <vector>
 
 // Forward declaration
@@ -21,6 +22,7 @@ private:
     float activationIncreasePerIteration;
     float externalInput; // Accumulates external inputs from rhythm interpreter
     int sampleIndex;
+    std::string sampleFilePath; // Full pathname of the associated sample file
     std::vector<float> activationHistory;
     static const size_t maxHistoryLength = 100;
     ActivationFunction activationFunc;
@@ -32,7 +34,8 @@ public:
     Neuron(int sampleIndex, float initialActivation = 0.0f, 
            float threshold = 1.0f, float decayRate = 1.0f, 
            float activationIncreasePerIteration = 0.0f,
-           ActivationFunction func = ActivationFunction::Linear);
+           ActivationFunction func = ActivationFunction::Linear,
+           const std::string& sampleFilePath = "");
     
     void setAudioManager(AudioManager* manager);
     void setQuantizer(Quantizer* quantizer);
@@ -53,6 +56,7 @@ public:
     ActivationFunction getActivationFunction() const { return activationFunc; }
     bool getHasFired() const { return hasFired; }
     int getSampleIndex() const { return sampleIndex; }
+    const std::string& getSampleFilePath() const { return sampleFilePath; }
     const std::vector<float>& getActivationHistory() const { return activationHistory; }
     
     // Setters
@@ -61,6 +65,7 @@ public:
     void setDecayRate(float value) { decayRate = value; }
     void setActivationIncreasePerIteration(float value) { activationIncreasePerIteration = value; }
     void setActivationFunction(ActivationFunction func) { activationFunc = func; }
+    void setSampleFilePath(const std::string& filePath) { sampleFilePath = filePath; }
     void resetFiredFlag() { hasFired = false; }
 
 private:

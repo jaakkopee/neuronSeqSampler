@@ -7,13 +7,15 @@
 #include <chrono>
 
 Neuron::Neuron(int sampleIndex, float initialActivation, float threshold, 
-               float decayRate, float activationIncreasePerIteration, ActivationFunction func)
+               float decayRate, float activationIncreasePerIteration, ActivationFunction func,
+               const std::string& sampleFilePath)
     : sampleIndex(sampleIndex)
     , activation(initialActivation)
     , threshold(threshold)
     , decayRate(decayRate)
     , activationIncreasePerIteration(activationIncreasePerIteration)
     , externalInput(0.0f)
+    , sampleFilePath(sampleFilePath)
     , activationFunc(func)
     , hasFired(false)
     , audioManager(nullptr)

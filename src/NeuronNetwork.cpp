@@ -40,9 +40,10 @@ void NeuronNetwork::setQuantizer(Quantizer* quantizerPtr) {
 Neuron* NeuronNetwork::addNeuron(int sampleIndex, float initialActivation, 
                                  float threshold, float decayRate, 
                                  float activationIncreasePerIteration,
-                                 ActivationFunction func) {
+                                 ActivationFunction func,
+                                 const std::string& sampleFilePath) {
     auto neuron = std::make_unique<Neuron>(sampleIndex, initialActivation, 
-                                          threshold, decayRate, activationIncreasePerIteration, func);
+                                          threshold, decayRate, activationIncreasePerIteration, func, sampleFilePath);
     if (audioManager) {
         neuron->setAudioManager(audioManager);
     }
