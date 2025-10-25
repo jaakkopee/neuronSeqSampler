@@ -270,6 +270,13 @@ bool PresetManager::loadFactoryPreset(NeuronNetwork& network, const std::string&
 bool PresetManager::createFactoryPresets() {
     createPresetDirectory();
     
+    // Only create factory presets if they don't exist
+    std::string drumPresetPath = "presets/factory/drum_pattern.json";
+    if (fs::exists(drumPresetPath)) {
+        // Factory preset already exists, no need to overwrite
+        return true;
+    }
+    
     // Create a simple 3-neuron drum pattern preset
     try {
         json drumPreset = {
@@ -285,6 +292,7 @@ bool PresetManager::createFactoryPresets() {
                 {
                     {"id", 0},
                     {"sample_index", 1},
+                    {"sample_file_path", "samples/kick/kick (ghost).wav"},
                     {"activation", 0.0},
                     {"threshold", 1.0},
                     {"decay_rate", 0.5},
@@ -294,6 +302,7 @@ bool PresetManager::createFactoryPresets() {
                 {
                     {"id", 1},
                     {"sample_index", 2},
+                    {"sample_file_path", "samples/clap/clap (ghost).wav"},
                     {"activation", 0.0},
                     {"threshold", 1.0},
                     {"decay_rate", 0.5},
@@ -303,6 +312,7 @@ bool PresetManager::createFactoryPresets() {
                 {
                     {"id", 2},
                     {"sample_index", 3},
+                    {"sample_file_path", "samples/808/ROBBERY 808 @prodopus.wav"},
                     {"activation", 0.0},
                     {"threshold", 1.0},
                     {"decay_rate", 0.5},
@@ -316,6 +326,12 @@ bool PresetManager::createFactoryPresets() {
                 {{"source_id", 1}, {"target_id", 2}, {"weight", 0.5}},
                 {{"source_id", 2}, {"target_id", 0}, {"weight", 0.4}}
             })},
+            {"quantization", {
+                {"grid_resolution", "Sixteenth"},
+                {"quantization_amount", 0.8},
+                {"swing_factor", 0.0},
+                {"bpm", 120.0}
+            }},
             {"rhythmogram_matrix", {
                 {"enabled", true},
                 {"scale", 5.0},
@@ -323,11 +339,11 @@ bool PresetManager::createFactoryPresets() {
             }}
         };
         
-        std::ofstream file("presets/factory/drum_pattern.json");
+        std::ofstream file(drumPresetPath);
         file << drumPreset.dump(2);
         file.close();
         
-        std::cout << "✅ Created factory preset: drum_pattern.json" << std::endl;
+        std::cout << "✅ Created factory preset: drum_pattern.json (first time setup)" << std::endl;
         return true;
         
     } catch (const std::exception& e) {

@@ -380,7 +380,6 @@ public:
 int main() {
     // Initialize preset system
     PresetManager::createPresetDirectory();
-    PresetManager::createFactoryPresets();
     
     std::cout << "🎵 Neuron Sequence Sampler" << std::endl;
     std::cout << "💾 Preset Controls:" << std::endl;
