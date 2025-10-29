@@ -543,6 +543,10 @@ void GUI::removeNeuron() {
         auto messageDialog = tgui::ChildWindow::create("No Neurons");
         messageDialog->setSize(300, 150);
         messageDialog->setPosition("50%", "50%");
+        // Style the no neurons dialog
+        messageDialog->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 50, 240));
+        messageDialog->getRenderer()->setBorderColor(tgui::Color(80, 80, 100));
+        messageDialog->getRenderer()->setTitleColor(tgui::Color::Yellow);
         
         auto message = tgui::Label::create("There are no neurons to remove.\n\nAdd some neurons first.");
         message->setPosition(10, 40);
@@ -566,15 +570,23 @@ void GUI::removeNeuron() {
     auto dialog = tgui::ChildWindow::create("Remove Neuron");
     dialog->setSize("300", "150");
     dialog->setPosition("50% - 150", "50% - 75");
+    // Style the remove neuron dialog
+    dialog->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 50, 240));
+    dialog->getRenderer()->setBorderColor(tgui::Color(80, 120, 180));
     dialog->getRenderer()->setTitleColor(tgui::Color::White);
     
     auto label = tgui::Label::create("Select neuron to remove:");
     label->setPosition("10", "30");
+    label->getRenderer()->setTextColor(tgui::Color::White);
     dialog->add(label);
     
     auto comboBox = tgui::ComboBox::create();
     comboBox->setPosition("10", "60");
     comboBox->setSize("200", "25");
+    // Style the combobox
+    comboBox->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 70));
+    comboBox->getRenderer()->setTextColor(tgui::Color::White);
+    comboBox->getRenderer()->setBorderColor(tgui::Color(80, 120, 180));
     
     // Populate with neuron indices
     for (size_t i = 0; i < neuronCount; ++i) {
@@ -585,6 +597,11 @@ void GUI::removeNeuron() {
     auto removeButton = tgui::Button::create("Remove");
     removeButton->setPosition("10", "100");
     removeButton->setSize("80", "30");
+    // Style the remove button with red theme
+    removeButton->getRenderer()->setBackgroundColor(tgui::Color(120, 40, 40));
+    removeButton->getRenderer()->setBackgroundColorHover(tgui::Color(150, 50, 50));
+    removeButton->getRenderer()->setTextColor(tgui::Color::White);
+    removeButton->getRenderer()->setBorderColor(tgui::Color(180, 60, 60));
     removeButton->onClick([this, dialog, comboBox]() {
         int selectedIndex = comboBox->getSelectedItemIndex();
         if (selectedIndex >= 0) {
@@ -626,13 +643,17 @@ void GUI::showConnectionDialog() {
     if (!network) return;
     
     size_t neuronCount = network->getNeuronCount();
-    if (neuronCount < 2) {
-        // Show message that we need at least 2 neurons
+    if (neuronCount < 1) {
+        // Show message that we need at least 1 neuron (self-connections are now allowed)
         auto messageDialog = tgui::ChildWindow::create("Cannot Add Connection");
         messageDialog->setSize(300, 150);
         messageDialog->setPosition("50%", "50%");
+        // Improve dialog styling - dark background with bright text
+        messageDialog->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 50, 240));
+        messageDialog->getRenderer()->setBorderColor(tgui::Color(80, 80, 100));
+        messageDialog->getRenderer()->setTitleColor(tgui::Color::Yellow);
         
-        auto message = tgui::Label::create("You need at least 2 neurons\nto create a connection.\n\nAdd more neurons first.");
+        auto message = tgui::Label::create("You need at least 1 neuron\nto create a connection.\n\nAdd a neuron first.");
         message->setPosition(10, 40);
         message->setSize(280, 60);
         message->getRenderer()->setTextColor(tgui::Color::White);
@@ -641,6 +662,10 @@ void GUI::showConnectionDialog() {
         auto okButton = tgui::Button::create("OK");
         okButton->setPosition(100, 110);
         okButton->setSize(100, 30);
+        // Style the button for better visibility
+        okButton->getRenderer()->setBackgroundColor(tgui::Color(60, 100, 60));
+        okButton->getRenderer()->setTextColor(tgui::Color::White);
+        okButton->getRenderer()->setBorderColor(tgui::Color(100, 150, 100));
         okButton->onPress([=]() {
             messageDialog->close();
         });
@@ -651,37 +676,55 @@ void GUI::showConnectionDialog() {
     }
     
     auto dialog = tgui::ChildWindow::create("Add Connection");
-    dialog->setSize("350", "200");
-    dialog->setPosition("50% - 175", "50% - 100");
-    dialog->getRenderer()->setTitleColor(tgui::Color::White);
+    dialog->setSize("380", "230");
+    dialog->setPosition("50% - 190", "50% - 115");
+    // Improve dialog styling - dark background with bright accents
+    dialog->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 50, 240));
+    dialog->getRenderer()->setBorderColor(tgui::Color(80, 120, 180));
+    dialog->getRenderer()->setTitleColor(tgui::Color::Cyan);
     
     auto fromLabel = tgui::Label::create("From Neuron:");
     fromLabel->setPosition("10", "30");
+    fromLabel->getRenderer()->setTextColor(tgui::Color::White);
     dialog->add(fromLabel);
     
     auto fromCombo = tgui::ComboBox::create();
-    fromCombo->setPosition("100", "30");
-    fromCombo->setSize("120", "25");
+    fromCombo->setPosition("120", "30");
+    fromCombo->setSize("200", "25");
+    fromCombo->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 70));
+    fromCombo->getRenderer()->setTextColor(tgui::Color::White);
     
     auto toLabel = tgui::Label::create("To Neuron:");
     toLabel->setPosition("10", "70");
+    toLabel->getRenderer()->setTextColor(tgui::Color::White);
     dialog->add(toLabel);
     
     auto toCombo = tgui::ComboBox::create();
-    toCombo->setPosition("100", "70");
-    toCombo->setSize("120", "25");
+    toCombo->setPosition("120", "70");
+    toCombo->setSize("200", "25");
+    toCombo->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 70));
+    toCombo->getRenderer()->setTextColor(tgui::Color::White);
     
     auto weightLabel = tgui::Label::create("Weight:");
     weightLabel->setPosition("10", "110");
+    weightLabel->getRenderer()->setTextColor(tgui::Color::White);
     dialog->add(weightLabel);
     
+    // Add info label for self-connections
+    auto infoLabel = tgui::Label::create("Tip: Same neuron = self-connection (arc)");
+    infoLabel->setPosition("10", "140");
+    infoLabel->setTextSize(10);
+    infoLabel->getRenderer()->setTextColor(tgui::Color::Yellow);
+    dialog->add(infoLabel);
+    
     auto weightSpin = tgui::SpinControl::create();
-    weightSpin->setPosition("100", "110");
+    weightSpin->setPosition("120", "110");
     weightSpin->setSize("120", "25");
     weightSpin->setMinimum(-1.2f);
     weightSpin->setMaximum(1.2f);
     weightSpin->setStep(0.1f);
-    weightSpin->setValue(0.0f);
+    weightSpin->setValue(0.5f);  // Default to positive weight
+    // Note: SpinControl styling not supported in this TGUI version
     dialog->add(weightSpin);
     
     // Populate neuron lists
@@ -694,14 +737,18 @@ void GUI::showConnectionDialog() {
     dialog->add(toCombo);
     
     auto addButton = tgui::Button::create("Add");
-    addButton->setPosition("10", "150");
+    addButton->setPosition("10", "170");
     addButton->setSize("80", "30");
+    // Style the Add button
+    addButton->getRenderer()->setBackgroundColor(tgui::Color(60, 120, 60));
+    addButton->getRenderer()->setTextColor(tgui::Color::White);
+    addButton->getRenderer()->setBorderColor(tgui::Color(100, 200, 100));
     addButton->onClick([this, dialog, fromCombo, toCombo, weightSpin]() {
         int fromIndex = fromCombo->getSelectedItemIndex();
         int toIndex = toCombo->getSelectedItemIndex();
         float weight = weightSpin->getValue();
         
-        if (fromIndex >= 0 && toIndex >= 0 && fromIndex != toIndex) {
+        if (fromIndex >= 0 && toIndex >= 0) {  // Allow self-connections (fromIndex == toIndex)
             // Get the neurons
             Neuron* sourceNeuron = network->getNeuron(fromIndex);
             Neuron* targetNeuron = network->getNeuron(toIndex);
@@ -710,8 +757,13 @@ void GUI::showConnectionDialog() {
                 // Create the connection
                 auto connection = network->connect(sourceNeuron, targetNeuron, weight);
                 
-                std::cout << "Added connection from neuron " << (fromIndex + 1) 
-                         << " to neuron " << (toIndex + 1) << " with weight " << weight << std::endl;
+                if (fromIndex == toIndex) {
+                    std::cout << "Added self-connection to neuron " << (fromIndex + 1) 
+                             << " (arc) with weight " << weight << std::endl;
+                } else {
+                    std::cout << "Added connection from neuron " << (fromIndex + 1) 
+                             << " to neuron " << (toIndex + 1) << " with weight " << weight << std::endl;
+                }
                 std::cout << "Network now has " << network->getConnectionCount() << " connections" << std::endl;
                 
                 // Refresh GUI and visualizer
@@ -736,8 +788,12 @@ void GUI::showConnectionDialog() {
     dialog->add(addButton);
     
     auto cancelButton = tgui::Button::create("Cancel");
-    cancelButton->setPosition("100", "150");
+    cancelButton->setPosition("100", "170");
     cancelButton->setSize("80", "30");
+    // Style the Cancel button
+    cancelButton->getRenderer()->setBackgroundColor(tgui::Color(120, 60, 60));
+    cancelButton->getRenderer()->setTextColor(tgui::Color::White);
+    cancelButton->getRenderer()->setBorderColor(tgui::Color(200, 100, 100));
     cancelButton->onClick([dialog]() { dialog->close(); });
     dialog->add(cancelButton);
     
