@@ -209,6 +209,10 @@ void GUI::createControlPanel() {
 void GUI::createConnectionSliders() {
     if (!network) return;
     
+    if (!slidersPanel) {
+        return;
+    }
+    
     connectionSliders.clear();
     connectionLabels.clear();
     connectionValueLabels.clear();
@@ -265,14 +269,29 @@ void GUI::createConnectionSliders() {
 void GUI::createNeuronSliders() {
     if (!network) return;
     
+    // Remove only neuron-related widgets, not connection sliders
+    for (auto& slider : neuronSliders) {
+        slidersPanel->remove(slider);
+    }
+    for (auto& label : neuronLabels) {
+        slidersPanel->remove(label);
+    }
+    for (auto& valueLabel : neuronValueLabels) {
+        slidersPanel->remove(valueLabel);
+    }
+    for (auto& combo : activationFunctionCombos) {
+        slidersPanel->remove(combo);
+    }
+    
     neuronSliders.clear();
     neuronLabels.clear();
     neuronValueLabels.clear();
     activationFunctionCombos.clear();
-    slidersPanel->removeAllWidgets();
     
     const auto& neurons = network->getNeurons();
-    float yPos = 5.0f;
+    // Start neuron sliders after connection sliders
+    const auto& connections = network->getConnections();
+    float yPos = 5.0f + (connections.size() * 22.0f) + 10.0f; // Add some spacing between sections
     
     for (size_t i = 0; i < neurons.size(); ++i) {
         const Neuron* neuron = neurons[i].get();
@@ -2666,6 +2685,9 @@ void GUI::loadFactoryDrumPattern() {
     
     if (PresetManager::loadFactoryPreset(*network, "drum_pattern")) {
         std::cout << "✅ Loaded factory drum pattern preset" << std::endl;
+        
+        // Load sample files into AudioManager
+        loadPresetSamplesIntoAudioManager();
         
         // Update AudioManager with new rhythm interpreter
         auto audioManager = network->getAudioManager();
