@@ -45,6 +45,14 @@ private:
                     window.close();
                 } else if constexpr (std::is_same_v<T, sf::Event::MouseWheelScrolled>) {
                     handleMouseScroll(e.delta);
+                } else if constexpr (std::is_same_v<T, sf::Event::MouseMoved>) {
+                    if (!eventConsumedByGUI) {
+                        static int mouseEventCounter = 0;
+                        if (++mouseEventCounter % 100 == 0) { // Print every 100th event to avoid spam
+                            std::cout << "🖱️ Mouse moved to (" << e.position.x << ", " << e.position.y << ")" << std::endl;
+                        }
+                        visualizer.handleMouseMove(e.position.x, e.position.y);
+                    }
                 } else if constexpr (std::is_same_v<T, sf::Event::KeyPressed>) {
                     if (!eventConsumedByGUI) {
                         handleKeyPress(e.code);

@@ -1,0 +1,102 @@
+{
+  "neurons": [
+    {
+      "id": 0,
+      "threshold": 0.3,
+      "activation_function": "Sigmoid",
+      "sample_file": "samples/kick/kick (hidden power).wav",
+      "is_output": true,
+      "position": [
+        120.0,
+        100.0
+      ]
+    },
+    {
+      "id": 1,
+      "threshold": 0.4,
+      "activation_function": "Sigmoid",
+      "sample_file": "samples/snare/snare (post rave maximalist).wav",
+      "is_output": true,
+      "position": [
+        220.0,
+        120.0
+      ]
+    },
+    {
+      "id": 2,
+      "threshold": 0.5,
+      "activation_function": "Sigmoid",
+      "sample_file": "samples/hat/open hat (post rave maximalist).wav",
+      "is_output": true,
+      "position": [
+        180.0,
+        200.0
+      ]
+    },
+    {
+      "id": 3,
+      "threshold": 0.35,
+      "activation_function": "Sigmoid",
+      "sample_file": "samples/perc/chant 2 (wlfgrl acid).wav",
+      "is_output": true,
+      "position": [
+        280.0,
+        180.0
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": 0,
+      "to": 1,
+      "weight": 0.6
+    },
+    {
+      "from": 1,
+      "to": 2,
+      "weight": 0.7
+    },
+    {
+      "from": 2,
+      "to": 3,
+      "weight": 0.5
+    },
+    {
+      "from": 3,
+      "to": 0,
+      "weight": 0.8
+    }
+  ],
+  "quantization": {
+    "enabled": true,
+    "resolution": 2,
+    "swing": 0.05,
+    "tempo_bpm": 95.0
+  },
+  "rhythmogram_matrix": [
+    [
+      0.7,
+      0.3,
+      0.2,
+      0.1
+    ],
+    [
+      0.4,
+      0.8,
+      0.3,
+      0.2
+    ],
+    [
+      0.2,
+      0.4,
+      0.9,
+      0.3
+    ],
+    [
+      0.3,
+      0.2,
+      0.4,
+      0.6
+    ]
+  ]
+}

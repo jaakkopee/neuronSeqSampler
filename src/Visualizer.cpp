@@ -20,6 +20,9 @@ Visualizer::Visualizer(sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetw
     , canvasOffset(50.0f, 50.0f)
     , canvasSize(500.0f, 400.0f)
     , currentViewMode(ViewMode::Grid)
+    , hoveredNeuronIndex(-1)
+    , mousePosition(0.0f, 0.0f)
+    , showTooltip(false)
 {
     // Try to load a default system font
     loadFont("");
@@ -189,6 +192,30 @@ void Visualizer::render() {
     // Draw neurons (reuse neurons variable from above)
     for (size_t i = 0; i < neurons.size() && i < neuronPositions.size(); ++i) {
         drawNeuron(neurons[i].get(), neuronPositions[i], i);
+    }
+    
+    // Draw tooltip if showing
+    if (showTooltip && hoveredNeuronIndex >= 0 && 
+        hoveredNeuronIndex < static_cast<int>(neurons.size()) && fontLoaded) {
+        const Neuron* hoveredNeuron = neurons[hoveredNeuronIndex].get();
+        std::string samplePath = hoveredNeuron->getSampleFilePath();
+        
+        // Debug: Print what we got from getSampleFilePath()
+        std::cout << "Tooltip Debug - Neuron " << hoveredNeuronIndex << " sample path: '" << samplePath << "'" << std::endl;
+        
+        // Extract just the filename from the path for cleaner display
+        std::string filename = samplePath;
+        size_t lastSlash = samplePath.find_last_of("/\\");
+        if (lastSlash != std::string::npos) {
+            filename = samplePath.substr(lastSlash + 1);
+        }
+        
+        if (!filename.empty()) {
+            drawTooltip(filename, mousePosition);
+        } else {
+            // Debug: Show what we're working with
+            drawTooltip("No sample file (empty path)", mousePosition);
+        }
     }
 }
 
@@ -597,4 +624,92 @@ sf::Color Visualizer::getRainbowColor(float activation, bool hasFired) const {
     static_cast<std::uint8_t>((g + m) * 255),
     static_cast<std::uint8_t>((b + m) * 255)
     );
+}
+
+void Visualizer::handleMouseMove(int mouseX, int mouseY) {
+    mousePosition = sf::Vector2f(static_cast<float>(mouseX), static_cast<float>(mouseY));
+    
+    // Check if mouse is over a neuron
+    int newHoveredIndex = getNeuronAtPosition(mousePosition);
+    
+    if (newHoveredIndex != hoveredNeuronIndex) {
+        // Reset tooltip when switching neurons or leaving
+        hoveredNeuronIndex = newHoveredIndex;
+        showTooltip = false;
+        tooltipTimer.restart();
+        
+        // Debug output
+        if (newHoveredIndex >= 0) {
+            std::cout << "🎯 Hovering over neuron " << newHoveredIndex << std::endl;
+        }
+    }
+    
+    // Start tooltip timer if hovering over a neuron
+    if (hoveredNeuronIndex >= 0 && tooltipTimer.getElapsedTime().asSeconds() > TOOLTIP_DELAY) {
+        if (!showTooltip) {
+            std::cout << "📝 Showing tooltip for neuron " << hoveredNeuronIndex << std::endl;
+        }
+        showTooltip = true;
+    }
+}
+
+int Visualizer::getNeuronAtPosition(const sf::Vector2f& position) const {
+    if (!network) return -1;
+    
+    const auto& neurons = network->getNeurons();
+    
+    for (size_t i = 0; i < neurons.size() && i < neuronPositions.size(); ++i) {
+        sf::Vector2f neuronPos = neuronPositions[i];
+        
+        // Calculate distance from mouse to neuron center
+        float dx = position.x - neuronPos.x;
+        float dy = position.y - neuronPos.y;
+        float distanceSquared = dx * dx + dy * dy;
+        
+        // Check if within neuron radius (with some extra margin for easier hovering)
+        float checkRadius = neuronRadius * 1.2f; // 20% larger hit area
+        if (distanceSquared <= checkRadius * checkRadius) {
+            return static_cast<int>(i);
+        }
+    }
+    
+    return -1; // No neuron found at this position
+}
+
+void Visualizer::drawTooltip(const std::string& text, const sf::Vector2f& position) {
+    if (!fontLoaded || text.empty()) return;
+    
+    // Create tooltip text
+    sf::Text tooltipText(font, text, 14);
+    tooltipText.setFillColor(sf::Color::White);
+    
+    // Calculate tooltip background size
+    sf::FloatRect textBounds = tooltipText.getLocalBounds();
+    float padding = 8.0f;
+    float tooltipWidth = textBounds.size.x + 2 * padding;
+    float tooltipHeight = textBounds.size.y + 2 * padding;
+    
+    // Position tooltip slightly offset from mouse to avoid cursor overlap
+    sf::Vector2f tooltipPos = position + sf::Vector2f(15.0f, -tooltipHeight - 10.0f);
+    
+    // Keep tooltip within window bounds
+    sf::Vector2u windowSize = window->getSize();
+    if (tooltipPos.x + tooltipWidth > windowSize.x) {
+        tooltipPos.x = position.x - tooltipWidth - 15.0f;
+    }
+    if (tooltipPos.y < 0) {
+        tooltipPos.y = position.y + 20.0f;
+    }
+    
+    // Draw tooltip background
+    sf::RectangleShape tooltipBg(sf::Vector2f(tooltipWidth, tooltipHeight));
+    tooltipBg.setPosition(tooltipPos);
+    tooltipBg.setFillColor(sf::Color(50, 50, 50, 230)); // Semi-transparent dark background
+    tooltipBg.setOutlineThickness(1.0f);
+    tooltipBg.setOutlineColor(sf::Color(150, 150, 150, 200));
+    window->draw(tooltipBg);
+    
+    // Draw tooltip text
+    tooltipText.setPosition(tooltipPos + sf::Vector2f(padding, padding));
+    window->draw(tooltipText);
 }

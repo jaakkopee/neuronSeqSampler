@@ -1,0 +1,37 @@
+🎵 Neuron Sequence Sampler
+💾 Preset Controls:
+   S - Save current network as preset
+   L - Load factory drum pattern preset
+
+Loaded system font: /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+🎵 Quantizer: Constructor - Initial resolution: 1/16 Note (enum: 3)
+🎵 Minimal RhythmInterpreter initialized
+🎛️ Adaptive Filter Mode ENABLED by default for high-frequency processing
+🎵 Quantizer connected to neuron network
+🔄 SimpleSpectralDisplay: New rhythm interpreter connected, reinitializing display
+Neuron Sequence Sampler initialized with empty network.
+Use the 'Network' menu to add neurons and connections.
+Controls:
+  - Mouse: Click to activate neurons
+  - Number keys: Activate specific neurons (when available)
+  - Spacebar: Manual network activation
+  - F key: Toggle filtered audio output (hearing filtered vs original)
+  - M key: Toggle rhythmogram matrix visibility 🎛️
+  - L buttons: Solo individual filter bands 🎚️
+  - Number keys: Play samples (1-9)
+
+🎛️ Rhythmogram analysis is always active - use gain sliders to control mapping!
+  - GUI sliders: Adjust filter gains and connection weights
+  - Menu: Add/remove neurons and connections
+🔄 SimpleSpectralDisplay: Rhythm interpreter cleared, resetting display
+🔄 Loading neurons...
+🔄 Loading connections...
+🎵 Minimal RhythmInterpreter initialized
+🔄 Loading rhythmogram matrix...
+🔄 Loading quantization settings...
+🎵 Quantization enabled
+✅ Quantization settings applied successfully
+   Neurons: 3, Connections: 3
+📂 Loaded factory drum pattern preset
+🔄 AudioManager updated after preset load
+🔄 SimpleSpectralDisplay: New rhythm interpreter connected, reinitializing display

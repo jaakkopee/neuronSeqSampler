@@ -49,6 +49,13 @@ private:
     // Visual elements
     std::vector<sf::Vector2f> neuronPositions;
     
+    // Tooltip state
+    int hoveredNeuronIndex;
+    sf::Vector2f mousePosition;
+    sf::Clock tooltipTimer;
+    bool showTooltip;
+    static constexpr float TOOLTIP_DELAY = 0.5f; // Show tooltip after 0.5 seconds
+    
     void calculateNeuronPositions();
     void calculateGridPositions();
     void calculateCircularPositions();
@@ -65,6 +72,8 @@ private:
                              bool isReverse = false);
     sf::Vector2f calculateBezierPoint(const sf::Vector2f& p0, const sf::Vector2f& p1, 
                                      const sf::Vector2f& p2, float t);
+    void drawTooltip(const std::string& text, const sf::Vector2f& position);
+    int getNeuronAtPosition(const sf::Vector2f& position) const;
 
 public:
     Visualizer(sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork);
@@ -86,6 +95,7 @@ public:
     }
     void handleMouseDrag(int mouseX, int mouseY); // For panning and zooming
     void handleMouseScroll(int delta); // For zooming
+    void handleMouseMove(int mouseX, int mouseY); // For tooltip hover detection
     
     // View mode controls
     void setViewMode(ViewMode mode);

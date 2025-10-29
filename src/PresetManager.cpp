@@ -270,81 +270,289 @@ bool PresetManager::loadFactoryPreset(NeuronNetwork& network, const std::string&
 bool PresetManager::createFactoryPresets() {
     createPresetDirectory();
     
-    // Only create factory presets if they don't exist
+    // Check if factory presets already exist - if any exist, don't recreate all
     std::string drumPresetPath = "presets/factory/drum_pattern.json";
     if (fs::exists(drumPresetPath)) {
-        // Factory preset already exists, no need to overwrite
+        // Factory presets already exist, no need to overwrite
         return true;
     }
     
-    // Create a simple 3-neuron drum pattern preset
+    std::cout << "🏭 Creating factory presets collection..." << std::endl;
+    
+    // Create 6 diverse factory presets
     try {
-        json drumPreset = {
+        // Preset 1: Basic Drum Pattern
+        json basicDrums = {
             {"preset_info", {
-                {"name", "Factory Drum Pattern"},
+                {"name", "Basic Drum Pattern"},
                 {"version", "1.0"},
                 {"author", "NeuronSeqSampler"},
-                {"description", "Basic 3-neuron drum pattern with kick, clap, and bass"},
+                {"description", "Simple 3-neuron drum pattern - great for beginners"},
                 {"created_date", getCurrentDateTime()},
-                {"tags", "drums,factory,basic"}
+                {"tags", "drums,basic,beginner"}
             }},
             {"neurons", json::array({
                 {
-                    {"id", 0},
-                    {"sample_index", 1},
-                    {"sample_file_path", "samples/kick/kick (ghost).wav"},
-                    {"activation", 0.0},
-                    {"threshold", 1.0},
-                    {"decay_rate", 0.5},
-                    {"activation_increase_per_iteration", 0.0},
-                    {"activation_function", "Linear"}
+                    {"id", 0}, {"sample_index", 1}, {"sample_file_path", "samples/kick/kick (ghost).wav"},
+                    {"activation", 0.0}, {"threshold", 1.0}, {"decay_rate", 0.8},
+                    {"activation_increase_per_iteration", 0.0}, {"activation_function", "Linear"}
                 },
                 {
-                    {"id", 1},
-                    {"sample_index", 2},
-                    {"sample_file_path", "samples/clap/clap (ghost).wav"},
-                    {"activation", 0.0},
-                    {"threshold", 1.0},
-                    {"decay_rate", 0.5},
-                    {"activation_increase_per_iteration", 0.0},
-                    {"activation_function", "Linear"}
+                    {"id", 1}, {"sample_index", 2}, {"sample_file_path", "samples/clap/clap (ghost).wav"},
+                    {"activation", 0.0}, {"threshold", 1.2}, {"decay_rate", 0.7},
+                    {"activation_increase_per_iteration", 0.0}, {"activation_function", "Linear"}
                 },
                 {
-                    {"id", 2},
-                    {"sample_index", 3},
-                    {"sample_file_path", "samples/808/ROBBERY 808 @prodopus.wav"},
-                    {"activation", 0.0},
-                    {"threshold", 1.0},
-                    {"decay_rate", 0.5},
-                    {"activation_increase_per_iteration", 0.0},
-                    {"activation_function", "Linear"}
+                    {"id", 2}, {"sample_index", 3}, {"sample_file_path", "samples/808/ROBBERY 808 @prodopus.wav"},
+                    {"activation", 0.0}, {"threshold", 0.8}, {"decay_rate", 0.6},
+                    {"activation_increase_per_iteration", 0.0}, {"activation_function", "Linear"}
                 }
             })},
             {"connections", json::array({
-                {{"source_id", 0}, {"target_id", 1}, {"weight", 0.6}},
-                {{"source_id", 0}, {"target_id", 2}, {"weight", 0.7}},
-                {{"source_id", 1}, {"target_id", 2}, {"weight", 0.5}},
-                {{"source_id", 2}, {"target_id", 0}, {"weight", 0.4}}
+                {{"source_id", 0}, {"target_id", 1}, {"weight", 0.5}},
+                {{"source_id", 1}, {"target_id", 2}, {"weight", 0.6}},
+                {{"source_id", 2}, {"target_id", 0}, {"weight", 0.3}}
             })},
-            {"quantization", {
-                {"grid_resolution", "Sixteenth"},
-                {"quantization_amount", 0.8},
-                {"swing_factor", 0.0},
-                {"bpm", 120.0}
-            }},
-            {"rhythmogram_matrix", {
-                {"enabled", true},
-                {"scale", 5.0},
-                {"filter_gains", {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0}}
-            }}
+            {"quantization", {{"grid_resolution", "Sixteenth"}, {"quantization_amount", 0.8}, {"swing_factor", 0.0}, {"bpm", 120.0}}},
+            {"rhythmogram_matrix", {{"enabled", true}, {"scale", 5.0}, {"filter_gains", {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0}}}}
         };
+
+        // Preset 2: Complex Network
+        json complexNetwork = {
+            {"preset_info", {
+                {"name", "Complex Network"},
+                {"version", "1.0"},
+                {"author", "NeuronSeqSampler"},
+                {"description", "5-neuron interconnected network with ReLU activations"},
+                {"created_date", getCurrentDateTime()},
+                {"tags", "complex,network,relu,advanced"}
+            }},
+            {"neurons", json::array({
+                {
+                    {"id", 0}, {"sample_index", 1}, {"sample_file_path", "samples/kick/kick (ghost).wav"},
+                    {"activation", 0.0}, {"threshold", 0.9}, {"decay_rate", 0.7},
+                    {"activation_increase_per_iteration", 0.1}, {"activation_function", "ReLU"}
+                },
+                {
+                    {"id", 1}, {"sample_index", 2}, {"sample_file_path", "samples/clap/clap (ghost).wav"},
+                    {"activation", 0.0}, {"threshold", 1.1}, {"decay_rate", 0.8},
+                    {"activation_increase_per_iteration", 0.05}, {"activation_function", "ReLU"}
+                },
+                {
+                    {"id", 2}, {"sample_index", 3}, {"sample_file_path", "samples/808/ROBBERY 808 @prodopus.wav"},
+                    {"activation", 0.0}, {"threshold", 0.7}, {"decay_rate", 0.9},
+                    {"activation_increase_per_iteration", 0.15}, {"activation_function", "Sigmoid"}
+                },
+                {
+                    {"id", 3}, {"sample_index", 1}, {"sample_file_path", "samples/kick/kick (ghost).wav"},
+                    {"activation", 0.0}, {"threshold", 1.3}, {"decay_rate", 0.6},
+                    {"activation_increase_per_iteration", 0.08}, {"activation_function", "Tanh"}
+                },
+                {
+                    {"id", 4}, {"sample_index", 2}, {"sample_file_path", "samples/clap/clap (ghost).wav"},
+                    {"activation", 0.0}, {"threshold", 0.6}, {"decay_rate", 0.85},
+                    {"activation_increase_per_iteration", 0.12}, {"activation_function", "ReLU"}
+                }
+            })},
+            {"connections", json::array({
+                {{"source_id", 0}, {"target_id", 1}, {"weight", 0.7}},
+                {{"source_id", 1}, {"target_id", 2}, {"weight", 0.8}},
+                {{"source_id", 2}, {"target_id", 3}, {"weight", 0.6}},
+                {{"source_id", 3}, {"target_id", 4}, {"weight", 0.9}},
+                {{"source_id", 4}, {"target_id", 0}, {"weight", 0.4}},
+                {{"source_id", 0}, {"target_id", 3}, {"weight", 0.3}},
+                {{"source_id", 2}, {"target_id", 4}, {"weight", 0.5}},
+                {{"source_id", 1}, {"target_id", 4}, {"weight", 0.2}}
+            })},
+            {"quantization", {{"grid_resolution", "Eighth"}, {"quantization_amount", 0.9}, {"swing_factor", 0.0}, {"bpm", 128.0}}},
+            {"rhythmogram_matrix", {{"enabled", true}, {"scale", 6.0}, {"filter_gains", {1.2, 1.0, 0.8, 1.1, 0.9, 1.0, 0.7, 1.3}}}}
+        };
+
+        // Preset 3: Sigmoid Cascade
+        json sigmoidCascade = {
+            {"preset_info", {
+                {"name", "Sigmoid Cascade"},
+                {"version", "1.0"},
+                {"author", "NeuronSeqSampler"},
+                {"description", "4-neuron chain with sigmoid activations for smooth dynamics"},
+                {"created_date", getCurrentDateTime()},
+                {"tags", "sigmoid,cascade,smooth,dynamics"}
+            }},
+            {"neurons", json::array({
+                {
+                    {"id", 0}, {"sample_index", 1}, {"sample_file_path", "samples/kick/kick (ghost).wav"},
+                    {"activation", 0.0}, {"threshold", 1.0}, {"decay_rate", 0.95},
+                    {"activation_increase_per_iteration", 0.2}, {"activation_function", "Sigmoid"}
+                },
+                {
+                    {"id", 1}, {"sample_index", 2}, {"sample_file_path", "samples/clap/clap (ghost).wav"},
+                    {"activation", 0.0}, {"threshold", 0.8}, {"decay_rate", 0.9},
+                    {"activation_increase_per_iteration", 0.15}, {"activation_function", "Sigmoid"}
+                },
+                {
+                    {"id", 2}, {"sample_index", 3}, {"sample_file_path", "samples/808/ROBBERY 808 @prodopus.wav"},
+                    {"activation", 0.0}, {"threshold", 1.2}, {"decay_rate", 0.85},
+                    {"activation_increase_per_iteration", 0.18}, {"activation_function", "Sigmoid"}
+                },
+                {
+                    {"id", 3}, {"sample_index", 1}, {"sample_file_path", "samples/kick/kick (ghost).wav"},
+                    {"activation", 0.0}, {"threshold", 0.7}, {"decay_rate", 0.8},
+                    {"activation_increase_per_iteration", 0.25}, {"activation_function", "Sigmoid"}
+                }
+            })},
+            {"connections", json::array({
+                {{"source_id", 0}, {"target_id", 1}, {"weight", 0.9}},
+                {{"source_id", 1}, {"target_id", 2}, {"weight", 0.8}},
+                {{"source_id", 2}, {"target_id", 3}, {"weight", 0.7}},
+                {{"source_id", 3}, {"target_id", 0}, {"weight", 0.6}}
+            })},
+            {"quantization", {{"grid_resolution", "Sixteenth"}, {"quantization_amount", 0.6}, {"swing_factor", 0.2}, {"bpm", 110.0}}},
+            {"rhythmogram_matrix", {{"enabled", true}, {"scale", 4.0}, {"filter_gains", {0.8, 1.2, 0.9, 1.1, 1.0, 0.7, 1.3, 0.9}}}}
+        };
+
+        // Preset 4: High Energy
+        json highEnergy = {
+            {"preset_info", {
+                {"name", "High Energy"},
+                {"version", "1.0"},
+                {"author", "NeuronSeqSampler"},
+                {"description", "Fast-paced preset with low thresholds and rapid activations"},
+                {"created_date", getCurrentDateTime()},
+                {"tags", "high-energy,fast,rapid,intense"}
+            }},
+            {"neurons", json::array({
+                {
+                    {"id", 0}, {"sample_index", 1}, {"sample_file_path", "samples/kick/kick (ghost).wav"},
+                    {"activation", 0.0}, {"threshold", 0.4}, {"decay_rate", 0.5},
+                    {"activation_increase_per_iteration", 0.3}, {"activation_function", "ReLU"}
+                },
+                {
+                    {"id", 1}, {"sample_index", 2}, {"sample_file_path", "samples/clap/clap (ghost).wav"},
+                    {"activation", 0.0}, {"threshold", 0.5}, {"decay_rate", 0.6},
+                    {"activation_increase_per_iteration", 0.25}, {"activation_function", "ReLU"}
+                },
+                {
+                    {"id", 2}, {"sample_index", 3}, {"sample_file_path", "samples/808/ROBBERY 808 @prodopus.wav"},
+                    {"activation", 0.0}, {"threshold", 0.3}, {"decay_rate", 0.4},
+                    {"activation_increase_per_iteration", 0.35}, {"activation_function", "Linear"}
+                }
+            })},
+            {"connections", json::array({
+                {{"source_id", 0}, {"target_id", 1}, {"weight", 0.8}},
+                {{"source_id", 1}, {"target_id", 2}, {"weight", 0.9}},
+                {{"source_id", 2}, {"target_id", 0}, {"weight", 0.7}},
+                {{"source_id", 0}, {"target_id", 2}, {"weight", 0.6}}
+            })},
+            {"quantization", {{"grid_resolution", "ThirtySecond"}, {"quantization_amount", 1.0}, {"swing_factor", 0.0}, {"bpm", 140.0}}},
+            {"rhythmogram_matrix", {{"enabled", true}, {"scale", 8.0}, {"filter_gains", {1.5, 1.3, 1.4, 1.2, 1.1, 1.0, 1.6, 1.7}}}}
+        };
+
+        // Preset 5: Ambient Flow
+        json ambientFlow = {
+            {"preset_info", {
+                {"name", "Ambient Flow"},
+                {"version", "1.0"},
+                {"author", "NeuronSeqSampler"},
+                {"description", "Slow, flowing preset with Tanh activations for organic rhythms"},
+                {"created_date", getCurrentDateTime()},
+                {"tags", "ambient,slow,organic,tanh,chill"}
+            }},
+            {"neurons", json::array({
+                {
+                    {"id", 0}, {"sample_index", 1}, {"sample_file_path", "samples/kick/kick (ghost).wav"},
+                    {"activation", 0.0}, {"threshold", 1.5}, {"decay_rate", 0.98},
+                    {"activation_increase_per_iteration", 0.05}, {"activation_function", "Tanh"}
+                },
+                {
+                    {"id", 1}, {"sample_index", 2}, {"sample_file_path", "samples/clap/clap (ghost).wav"},
+                    {"activation", 0.0}, {"threshold", 1.8}, {"decay_rate", 0.96},
+                    {"activation_increase_per_iteration", 0.03}, {"activation_function", "Tanh"}
+                },
+                {
+                    {"id", 2}, {"sample_index", 3}, {"sample_file_path", "samples/808/ROBBERY 808 @prodopus.wav"},
+                    {"activation", 0.0}, {"threshold", 2.0}, {"decay_rate", 0.94},
+                    {"activation_increase_per_iteration", 0.08}, {"activation_function", "Tanh"}
+                }
+            })},
+            {"connections", json::array({
+                {{"source_id", 0}, {"target_id", 1}, {"weight", 0.3}},
+                {{"source_id", 1}, {"target_id", 2}, {"weight", 0.4}},
+                {{"source_id", 2}, {"target_id", 0}, {"weight", 0.2}}
+            })},
+            {"quantization", {{"grid_resolution", "Eighth"}, {"quantization_amount", 0.3}, {"swing_factor", 0.4}, {"bpm", 85.0}}},
+            {"rhythmogram_matrix", {{"enabled", true}, {"scale", 2.0}, {"filter_gains", {0.5, 0.7, 0.6, 0.8, 0.9, 0.4, 0.6, 0.5}}}}
+        };
+
+        // Preset 6: Experimental
+        json experimental = {
+            {"preset_info", {
+                {"name", "Experimental"},
+                {"version", "1.0"},
+                {"author", "NeuronSeqSampler"},
+                {"description", "Unusual preset with mixed activation functions and complex connections"},
+                {"created_date", getCurrentDateTime()},
+                {"tags", "experimental,mixed,complex,unusual"}
+            }},
+            {"neurons", json::array({
+                {
+                    {"id", 0}, {"sample_index", 1}, {"sample_file_path", "samples/kick/kick (ghost).wav"},
+                    {"activation", 0.0}, {"threshold", 0.9}, {"decay_rate", 0.3},
+                    {"activation_increase_per_iteration", 0.4}, {"activation_function", "Linear"}
+                },
+                {
+                    {"id", 1}, {"sample_index", 2}, {"sample_file_path", "samples/clap/clap (ghost).wav"},
+                    {"activation", 0.0}, {"threshold", 1.7}, {"decay_rate", 0.1},
+                    {"activation_increase_per_iteration", 0.6}, {"activation_function", "Sigmoid"}
+                },
+                {
+                    {"id", 2}, {"sample_index", 3}, {"sample_file_path", "samples/808/ROBBERY 808 @prodopus.wav"},
+                    {"activation", 0.0}, {"threshold", 0.2}, {"decay_rate", 0.9},
+                    {"activation_increase_per_iteration", 0.1}, {"activation_function", "ReLU"}
+                },
+                {
+                    {"id", 3}, {"sample_index", 1}, {"sample_file_path", "samples/kick/kick (ghost).wav"},
+                    {"activation", 0.0}, {"threshold", 2.5}, {"decay_rate", 0.05},
+                    {"activation_increase_per_iteration", 0.8}, {"activation_function", "Tanh"}
+                }
+            })},
+            {"connections", json::array({
+                {{"source_id", 0}, {"target_id", 2}, {"weight", 1.2}},
+                {{"source_id", 1}, {"target_id", 0}, {"weight", 0.1}},
+                {{"source_id", 2}, {"target_id", 3}, {"weight", 0.9}},
+                {{"source_id", 3}, {"target_id", 1}, {"weight", 0.05}},
+                {{"source_id", 0}, {"target_id", 1}, {"weight", 0.8}},
+                {{"source_id", 2}, {"target_id", 0}, {"weight", 1.1}}
+            })},
+            {"quantization", {{"grid_resolution", "Sixteenth"}, {"quantization_amount", 0.5}, {"swing_factor", 0.3}, {"bpm", 95.0}}},
+            {"rhythmogram_matrix", {{"enabled", true}, {"scale", 10.0}, {"filter_gains", {2.0, 0.2, 1.8, 0.3, 1.5, 0.1, 2.2, 0.4}}}}
+        };
+
+        // Save all presets
+        std::vector<std::pair<std::string, json>> presets = {
+            {"drum_pattern", basicDrums},
+            {"complex_network", complexNetwork}, 
+            {"sigmoid_cascade", sigmoidCascade},
+            {"high_energy", highEnergy},
+            {"ambient_flow", ambientFlow},
+            {"experimental", experimental}
+        };
+
+        int created = 0;
+        for (const auto& preset : presets) {
+            std::string filename = "presets/factory/" + preset.first + ".json";
+            std::ofstream file(filename);
+            if (file.is_open()) {
+                file << preset.second.dump(2);
+                file.close();
+                std::cout << "✅ Created factory preset: " << preset.first << ".json" << std::endl;
+                created++;
+            } else {
+                std::cerr << "❌ Failed to create: " << preset.first << ".json" << std::endl;
+            }
+        }
         
-        std::ofstream file(drumPresetPath);
-        file << drumPreset.dump(2);
-        file.close();
-        
-        std::cout << "✅ Created factory preset: drum_pattern.json (first time setup)" << std::endl;
-        return true;
+        std::cout << "🎉 Factory preset creation complete: " << created << "/6 presets created" << std::endl;
+        return created > 0;
         
     } catch (const std::exception& e) {
         std::cerr << "❌ Error creating factory presets: " << e.what() << std::endl;
