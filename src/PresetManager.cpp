@@ -678,8 +678,11 @@ bool PresetManager::createNeuronFromJson(NeuronNetwork& network, const json& neu
         else if (funcName == "ReLU") func = ActivationFunction::ReLU;
         else if (funcName == "Tanh") func = ActivationFunction::Tanh;
         
-        // Extract sample file path
+        // Extract sample file path (try both field names for compatibility)
         std::string sampleFilePath = neuronData.value("sample_file_path", "");
+        if (sampleFilePath.empty()) {
+            sampleFilePath = neuronData.value("sample_file", "");
+        }
         
         Neuron* neuron = network.addNeuron(sampleIndex, activation, threshold, decayRate, activationIncrease, func, sampleFilePath);
         return neuron != nullptr;
