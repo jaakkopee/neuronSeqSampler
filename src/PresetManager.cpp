@@ -696,8 +696,9 @@ bool PresetManager::createNeuronFromJson(NeuronNetwork& network, const json& neu
 bool PresetManager::createConnectionFromJson(NeuronNetwork& network, const json& connectionData) {
     try {
         // Get the raw values first to validate them
-        auto sourceIdValue = connectionData.value("source_id", 0);
-        auto targetIdValue = connectionData.value("target_id", 0);
+        // Support both old field names (source_id, target_id) and new field names (from, to)
+        auto sourceIdValue = connectionData.contains("from") ? connectionData.value("from", 0) : connectionData.value("source_id", 0);
+        auto targetIdValue = connectionData.contains("to") ? connectionData.value("to", 0) : connectionData.value("target_id", 0);
         float weight = connectionData.value("weight", 1.0f);
         
         // Convert to size_t with safety checks

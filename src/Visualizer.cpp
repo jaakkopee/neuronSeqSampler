@@ -112,6 +112,16 @@ void Visualizer::render() {
     const auto& neurons = network->getNeurons();
     std::vector<bool> connectionDrawn(connections.size(), false);
     
+    // Debug: Report connection and neuron counts (disabled for performance)
+    // if (connections.size() > 0 || neurons.size() > 0) {
+    //     static int debugCounter = 0;
+    //     if (debugCounter % 60 == 0) { // Print every 60 frames (~once per second)
+    //         std::cout << "🔍 Visualizer: " << connections.size() << " connections, " 
+    //                   << neurons.size() << " neurons, " << neuronPositions.size() << " positions" << std::endl;
+    //     }
+    //     debugCounter++;
+    // }
+    
     for (size_t i = 0; i < connections.size(); ++i) {
         if (connectionDrawn[i]) continue;
         
@@ -126,6 +136,23 @@ void Visualizer::render() {
             }
             if (neurons[j].get() == conn->getTarget()) {
                 targetIndex = j;
+            }
+        }
+        
+        // Debug connection drawing
+        if (sourceIndex < 0 || targetIndex < 0) {
+            static int errorCounter = 0;
+            if (errorCounter < 5) { // Only show first few errors
+                std::cout << "❌ Connection " << i << ": source=" << sourceIndex << ", target=" << targetIndex 
+                          << " (couldn't find neuron indices)" << std::endl;
+                errorCounter++;
+            }
+        } else if (sourceIndex >= neuronPositions.size() || targetIndex >= neuronPositions.size()) {
+            static int posErrorCounter = 0;
+            if (posErrorCounter < 5) {
+                std::cout << "❌ Connection " << i << ": source=" << sourceIndex << ", target=" << targetIndex 
+                          << " but only " << neuronPositions.size() << " positions available" << std::endl;
+                posErrorCounter++;
             }
         }
         
@@ -148,7 +175,11 @@ void Visualizer::render() {
                 }
             }
             
-            if (hasBidirectional) {
+            // Check if this is a self-connection
+            if (sourceIndex == targetIndex) {
+                // Draw self-connection as arc
+                drawSelfConnection(conn, neuronPositions[sourceIndex]);
+            } else if (hasBidirectional) {
                 // Draw curved connections for bi-directional links
                 drawCurvedConnection(conn, neuronPositions[sourceIndex], neuronPositions[targetIndex], false);
                 const Connection* reverseConn = connections[reverseConnIndex].get();
@@ -711,4 +742,111 @@ void Visualizer::drawTooltip(const std::string& text, const sf::Vector2f& positi
     // Draw tooltip text
     tooltipText.setPosition(tooltipPos + sf::Vector2f(padding, padding));
     window->draw(tooltipText);
+}
+
+void Visualizer::drawSelfConnection(const Connection* connection, const sf::Vector2f& neuronPos) {
+    // Calculate connection properties
+    const Neuron* neuron = connection->getSource();
+    float activation = neuron ? std::abs(neuron->getActivation()) : 0.0f;
+    float weight = connection->getWeight();
+    
+    // Color based on connection weight
+    sf::Color baseColor = connectionColor;
+    if (std::abs(weight) > 0.1f) {
+        float intensity = std::min(1.0f, std::abs(weight));
+        baseColor.a = static_cast<std::uint8_t>(100 + 155 * intensity);
+        if (weight > 0) {
+            baseColor = sf::Color(255, 255, 255, baseColor.a); // White for positive
+        } else {
+            baseColor = sf::Color(255, 100, 100, baseColor.a); // Red for negative
+        }
+    } else {
+        baseColor.a = 50; // Very faint for near-zero weights
+    }
+    
+    // Enhance color based on neuronal activity
+    float activityBoost = std::min(1.0f, activation);
+    sf::Color activityColor = baseColor;
+    if (activityBoost > 0.1f) {
+        activityColor.r = static_cast<std::uint8_t>(std::min(255, static_cast<int>(baseColor.r + activityBoost * 100)));
+        activityColor.g = static_cast<std::uint8_t>(std::min(255, static_cast<int>(baseColor.g + activityBoost * 50)));
+        activityColor.b = static_cast<std::uint8_t>(std::min(255, static_cast<int>(baseColor.b + activityBoost * 150)));
+        activityColor.a = static_cast<std::uint8_t>(std::min(255, static_cast<int>(baseColor.a + activityBoost * 100)));
+    }
+    
+    // Arc parameters
+    float arcRadius = neuronRadius + 15.0f; // Distance from neuron center
+    float startAngle = -45.0f; // Start angle in degrees
+    float endAngle = 225.0f;   // End angle in degrees (270 degree arc)
+    int segments = 30; // Number of line segments for smooth arc
+    
+    // Apply vibration effect if connection has non-zero weight
+    float vibrationOffset = 0.0f;
+    if (std::abs(weight) > 0.001f) {
+        float currentTime = animationClock.getElapsedTime().asSeconds();
+        std::vector<float> frequencies = {4.0f, 8.0f, 16.0f, 32.0f, 64.0f};
+        
+        for (float freq : frequencies) {
+            float amplitude = activation * (1.0f / freq) * 3.0f; // Vibration amplitude
+            vibrationOffset += amplitude * std::sin(2.0f * M_PI * freq * currentTime);
+        }
+    }
+    
+    // Create arc as series of connected line segments
+    std::vector<sf::Vertex> arcVertices;
+    for (int i = 0; i <= segments; ++i) {
+        float t = static_cast<float>(i) / static_cast<float>(segments);
+        float currentAngle = startAngle + t * (endAngle - startAngle);
+        float angleRad = currentAngle * M_PI / 180.0f;
+        
+        // Calculate point on arc with vibration
+        float dynamicRadius = arcRadius + vibrationOffset;
+        sf::Vector2f arcPoint = neuronPos + sf::Vector2f(
+            std::cos(angleRad) * dynamicRadius,
+            std::sin(angleRad) * dynamicRadius
+        );
+        
+        sf::Vertex vertex;
+        vertex.position = arcPoint;
+        vertex.color = activityColor;
+        arcVertices.push_back(vertex);
+    }
+    
+    // Draw the arc
+    if (arcVertices.size() > 1) {
+        window->draw(&arcVertices[0], arcVertices.size(), sf::PrimitiveType::LineStrip);
+    }
+    
+    // Draw arrow head at the end of the arc to indicate direction
+    if (arcVertices.size() >= 2) {
+        sf::Vector2f endPoint = arcVertices.back().position;
+        sf::Vector2f preEndPoint = arcVertices[arcVertices.size() - 2].position;
+        
+        // Calculate arrow direction
+        sf::Vector2f arrowDirection = endPoint - preEndPoint;
+        float arrowLength = std::sqrt(arrowDirection.x * arrowDirection.x + arrowDirection.y * arrowDirection.y);
+        if (arrowLength > 0) {
+            arrowDirection.x /= arrowLength;
+            arrowDirection.y /= arrowLength;
+        }
+        
+        // Create arrow head
+        float arrowSize = 8.0f;
+        sf::Vector2f perpendicular(-arrowDirection.y, arrowDirection.x);
+        
+        sf::Vector2f arrowPoint1 = endPoint - arrowDirection * arrowSize + perpendicular * arrowSize * 0.5f;
+        sf::Vector2f arrowPoint2 = endPoint - arrowDirection * arrowSize - perpendicular * arrowSize * 0.5f;
+        
+        // Draw arrow head as triangle
+        sf::Vertex arrowHead[4];
+        arrowHead[0].position = endPoint;
+        arrowHead[0].color = activityColor;
+        arrowHead[1].position = arrowPoint1;
+        arrowHead[1].color = activityColor;
+        arrowHead[2].position = arrowPoint2;
+        arrowHead[2].color = activityColor;
+        arrowHead[3].position = endPoint;
+        arrowHead[3].color = activityColor;
+        window->draw(arrowHead, 4, sf::PrimitiveType::TriangleStrip);
+    }
 }

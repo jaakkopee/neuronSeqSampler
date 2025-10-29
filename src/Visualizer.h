@@ -70,6 +70,7 @@ private:
                              const sf::Vector2f& sourcePos,
                              const sf::Vector2f& targetPos,
                              bool isReverse = false);
+    void drawSelfConnection(const Connection* connection, const sf::Vector2f& neuronPos);
     sf::Vector2f calculateBezierPoint(const sf::Vector2f& p0, const sf::Vector2f& p1, 
                                      const sf::Vector2f& p2, float t);
     void drawTooltip(const std::string& text, const sf::Vector2f& position);
