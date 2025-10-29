@@ -218,7 +218,7 @@ void GUI::createConnectionSliders() {
     connectionValueLabels.clear();
     
     const auto& connections = network->getConnections();
-    float yPos = 5.0f;
+    float yPos = 15.0f; // Start at same height as neuron sliders (they're in different columns)
     
     for (size_t i = 0; i < connections.size(); ++i) {
         const Connection* conn = connections[i].get();
@@ -289,9 +289,8 @@ void GUI::createNeuronSliders() {
     activationFunctionCombos.clear();
     
     const auto& neurons = network->getNeurons();
-    // Start neuron sliders after connection sliders
-    const auto& connections = network->getConnections();
-    float yPos = 5.0f + (connections.size() * 22.0f) + 10.0f; // Add some spacing between sections
+    // Always start neuron sliders at a consistent position (not dependent on connection count)
+    float yPos = 15.0f; // Fixed starting position for consistent behavior
     
     for (size_t i = 0; i < neurons.size(); ++i) {
         const Neuron* neuron = neurons[i].get();
