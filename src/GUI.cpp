@@ -16,6 +16,7 @@
 #include <sstream>
 #include <cstdlib>
 #include <ctime>
+#include <map>
 
 GUI::GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, Visualizer* visualizerPtr, Recorder* recorderPtr, AudioManager* audioMgr, SimpleSpectralDisplay* spectralDisplayPtr, float* activationIntervalPtr)
     : gui(tguiGui)
@@ -2618,6 +2619,9 @@ void GUI::showLoadPresetDialog() {
                 if (PresetManager::loadPreset(*network, filename)) {
                     std::cout << "✅ Preset loaded: " << filename << std::endl;
                     
+                    // Load sample files into AudioManager
+                    loadPresetSamplesIntoAudioManager();
+                    
                     // Update AudioManager with new rhythm interpreter
                     auto audioManager = network->getAudioManager();
                     if (audioManager && network->getRhythmInterpreter()) {
@@ -2775,4 +2779,56 @@ void GUI::showPresetBrowser() {
     dialog->add(closeButton);
     
     gui->add(dialog);
+}
+
+void GUI::loadPresetSamplesIntoAudioManager() {
+    if (!network || !audioManager) {
+        std::cout << "⚠️ Cannot load preset samples: network or audioManager is null" << std::endl;
+        return;
+    }
+    
+    const auto& neurons = network->getNeurons();
+    std::cout << "🔄 Loading " << neurons.size() << " sample files into AudioManager..." << std::endl;
+    
+    // Map to track unique sample files and their assigned indices
+    std::map<std::string, int> sampleFileToIndex;
+    int nextAvailableIndex = 1; // Start from index 1
+    
+    for (size_t i = 0; i < neurons.size(); ++i) {
+        const Neuron* neuron = neurons[i].get();
+        std::string samplePath = neuron->getSampleFilePath();
+        
+        if (samplePath.empty()) {
+            std::cout << "⚠️ Neuron " << i << " has no sample file path" << std::endl;
+            continue;
+        }
+        
+        int assignedIndex;
+        
+        // Check if we've already loaded this sample file
+        auto it = sampleFileToIndex.find(samplePath);
+        if (it != sampleFileToIndex.end()) {
+            // Reuse existing index
+            assignedIndex = it->second;
+            std::cout << "🔄 Reusing sample " << assignedIndex << " for neuron " << i << ": " << samplePath << std::endl;
+        } else {
+            // Load new sample file
+            assignedIndex = nextAvailableIndex++;
+            
+            if (audioManager->loadSampleFromPath(assignedIndex, samplePath)) {
+                sampleFileToIndex[samplePath] = assignedIndex;
+                std::cout << "✅ Loaded sample " << assignedIndex << " for neuron " << i << ": " << samplePath << std::endl;
+            } else {
+                std::cout << "❌ Failed to load sample for neuron " << i << ": " << samplePath << std::endl;
+                continue; // Skip updating neuron's sample index if loading failed
+            }
+        }
+        
+        // Update the neuron's sample index to point to the loaded sample
+        // We need to cast away const to modify the neuron
+        Neuron* mutableNeuron = const_cast<Neuron*>(neuron);
+        mutableNeuron->setSampleIndex(assignedIndex);
+    }
+    
+    std::cout << "🎵 Preset sample loading complete! Loaded " << sampleFileToIndex.size() << " unique samples." << std::endl;
 }

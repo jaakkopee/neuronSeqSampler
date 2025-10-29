@@ -153,6 +153,7 @@ private:
     // Sample file management
     std::vector<std::string> getSampleFiles(const std::string& directory);
     std::vector<std::string> getAllSampleDirectories();
+    void loadPresetSamplesIntoAudioManager();
     
     // Event handlers
     void onSliderChanged(size_t connectionIndex, float value);

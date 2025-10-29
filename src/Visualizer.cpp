@@ -200,8 +200,7 @@ void Visualizer::render() {
         const Neuron* hoveredNeuron = neurons[hoveredNeuronIndex].get();
         std::string samplePath = hoveredNeuron->getSampleFilePath();
         
-        // Debug: Print what we got from getSampleFilePath()
-        std::cout << "Tooltip Debug - Neuron " << hoveredNeuronIndex << " sample path: '" << samplePath << "'" << std::endl;
+        // Sample path retrieved successfully for tooltip
         
         // Extract just the filename from the path for cleaner display
         std::string filename = samplePath;

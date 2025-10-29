@@ -66,6 +66,7 @@ public:
     void setActivationIncreasePerIteration(float value) { activationIncreasePerIteration = value; }
     void setActivationFunction(ActivationFunction func) { activationFunc = func; }
     void setSampleFilePath(const std::string& filePath) { sampleFilePath = filePath; }
+    void setSampleIndex(int index) { sampleIndex = index; }
     void resetFiredFlag() { hasFired = false; }
 
 private:

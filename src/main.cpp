@@ -3,6 +3,7 @@
 #include <optional>
 #include <optional>
 #include <iostream>
+#include <map>
 
 #ifdef USE_TGUI
 #include <TGUI/Backend/SFML-Graphics.hpp>
@@ -23,6 +24,54 @@
 
 // Global debug flag definition
 bool g_debugMode = false;
+
+// Helper function to load preset sample files into AudioManager
+void loadPresetSamplesIntoAudioManager(NeuronNetwork& network, AudioManager& audioManager) {
+    const auto& neurons = network.getNeurons();
+    ESSENTIAL_PRINT("🔄 Loading " << neurons.size() << " sample files into AudioManager...");
+    
+    // Map to track unique sample files and their assigned indices
+    std::map<std::string, int> sampleFileToIndex;
+    int nextAvailableIndex = 1; // Start from index 1
+    
+    for (size_t i = 0; i < neurons.size(); ++i) {
+        const Neuron* neuron = neurons[i].get();
+        std::string samplePath = neuron->getSampleFilePath();
+        
+        if (samplePath.empty()) {
+            ESSENTIAL_PRINT("⚠️ Neuron " << i << " has no sample file path");
+            continue;
+        }
+        
+        int assignedIndex;
+        
+        // Check if we've already loaded this sample file
+        auto it = sampleFileToIndex.find(samplePath);
+        if (it != sampleFileToIndex.end()) {
+            // Reuse existing index
+            assignedIndex = it->second;
+            ESSENTIAL_PRINT("🔄 Reusing sample " << assignedIndex << " for neuron " << i << ": " << samplePath);
+        } else {
+            // Load new sample file
+            assignedIndex = nextAvailableIndex++;
+            
+            if (audioManager.loadSampleFromPath(assignedIndex, samplePath)) {
+                sampleFileToIndex[samplePath] = assignedIndex;
+                ESSENTIAL_PRINT("✅ Loaded sample " << assignedIndex << " for neuron " << i << ": " << samplePath);
+            } else {
+                ESSENTIAL_PRINT("❌ Failed to load sample for neuron " << i << ": " << samplePath);
+                continue; // Skip updating neuron's sample index if loading failed
+            }
+        }
+        
+        // Update the neuron's sample index to point to the loaded sample
+        // We need to cast away const to modify the neuron
+        Neuron* mutableNeuron = const_cast<Neuron*>(neuron);
+        mutableNeuron->setSampleIndex(assignedIndex);
+    }
+    
+    ESSENTIAL_PRINT("🎵 Preset sample loading complete! Loaded " << sampleFileToIndex.size() << " unique samples.");
+}
 
 class NeuronSeqSampler {
 private:
@@ -316,6 +365,9 @@ public:
                 // Load factory drum pattern preset
                 if (PresetManager::loadFactoryPreset(network, "drum_pattern")) {
                     ESSENTIAL_PRINT("📂 Loaded factory drum pattern preset");
+                    
+                    // Load preset sample files into AudioManager
+                    loadPresetSamplesIntoAudioManager(network, audioManager);
                     
                     // Update AudioManager with new rhythm interpreter
                     if (network.getRhythmInterpreter()) {
