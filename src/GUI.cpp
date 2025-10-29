@@ -2710,8 +2710,8 @@ void GUI::showLoadPresetDialog() {
                     }
                     
                     visualizer->refreshLayout();  // Refresh visualizer layout
+                    refreshNeuronSliders();      // Refresh neurons first (consistent with manual adding)
                     refreshConnectionSliders();
-                    refreshNeuronSliders();
                     refreshConnectionMatrix();
                 } else {
                     std::cout << "❌ Failed to load preset" << std::endl;
