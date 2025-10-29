@@ -852,21 +852,33 @@ void GUI::resetNetwork() {
     yesButton->onPress([=]() {
         std::cout << "Resetting network..." << std::endl;
         
-        // Notify spectral display that rhythm interpreter will be cleared
+        // Step 1: Notify spectral display that rhythm interpreter will be cleared
+        // This prevents any further access attempts during the reset process
         if (spectralDisplay) {
             spectralDisplay->setRhythmInterpreter(nullptr);
+            std::cout << "🔄 Spectral display cleared" << std::endl;
         }
         
-        // Clear the entire network
+        // Step 2: Clear the entire network (this deletes the rhythm interpreter)
         network->clearNetwork();
         
         std::cout << "Network reset complete. Neurons: " << network->getNeuronCount() 
                  << ", Connections: " << network->getConnectionCount() << std::endl;
         
-        // Reinitialize rhythm interpreter and update spectral display
+        // Step 3: Reinitialize rhythm interpreter
         network->initializeRhythmInterpreter();
-        if (spectralDisplay) {
+        
+        // Step 4: Update AudioManager with new rhythm interpreter
+        auto audioManager = network->getAudioManager();
+        if (audioManager && network->getRhythmInterpreter()) {
+            audioManager->setRhythmInterpreter(network->getRhythmInterpreter());
+            std::cout << "🔄 AudioManager reconnected to new rhythm interpreter" << std::endl;
+        }
+        
+        // Step 5: Update spectral display with new rhythm interpreter
+        if (spectralDisplay && network->getRhythmInterpreter()) {
             spectralDisplay->setRhythmInterpreter(network->getRhythmInterpreter());
+            std::cout << "🔄 Spectral display reconnected to new rhythm interpreter" << std::endl;
         }
         
         // Refresh GUI and visualizer
@@ -2606,6 +2618,13 @@ void GUI::showLoadPresetDialog() {
                 if (PresetManager::loadPreset(*network, filename)) {
                     std::cout << "✅ Preset loaded: " << filename << std::endl;
                     
+                    // Update AudioManager with new rhythm interpreter
+                    auto audioManager = network->getAudioManager();
+                    if (audioManager && network->getRhythmInterpreter()) {
+                        audioManager->setRhythmInterpreter(network->getRhythmInterpreter());
+                        std::cout << "🔄 AudioManager updated after preset load" << std::endl;
+                    }
+                    
                     // Update spectral display with new rhythm interpreter
                     if (spectralDisplay) {
                         spectralDisplay->setRhythmInterpreter(network->getRhythmInterpreter());
@@ -2643,6 +2662,13 @@ void GUI::loadFactoryDrumPattern() {
     
     if (PresetManager::loadFactoryPreset(*network, "drum_pattern")) {
         std::cout << "✅ Loaded factory drum pattern preset" << std::endl;
+        
+        // Update AudioManager with new rhythm interpreter
+        auto audioManager = network->getAudioManager();
+        if (audioManager && network->getRhythmInterpreter()) {
+            audioManager->setRhythmInterpreter(network->getRhythmInterpreter());
+            std::cout << "🔄 AudioManager updated after preset load" << std::endl;
+        }
         
         // Update spectral display with new rhythm interpreter
         if (spectralDisplay) {

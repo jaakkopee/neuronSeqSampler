@@ -120,10 +120,25 @@ void SimpleSpectralDisplay::setSize(float width, float height) {
 void SimpleSpectralDisplay::setRhythmInterpreter(RhythmInterpreter* rhythmInterp) {
     rhythmInterpreter = rhythmInterp;
     
-    // If setting to nullptr (network reset), clear any pending data
     if (!rhythmInterpreter) {
+        // Clearing rhythm interpreter (network reset)
         std::cout << "🔄 SimpleSpectralDisplay: Rhythm interpreter cleared, resetting display" << std::endl;
         clear(); // Clear the display data
+    } else {
+        // Setting new rhythm interpreter (after reset or initialization)
+        std::cout << "🔄 SimpleSpectralDisplay: New rhythm interpreter connected, reinitializing display" << std::endl;
+        
+        // Clear old data and reinitialize for the new interpreter
+        clear();
+        
+        // Reset the update clock to start fresh
+        updateClock.restart();
+        
+        // Reinitialize frequency bands for the new interpreter
+        updateFrequencyBands();
+        
+        // Mark for texture update
+        needsTextureUpdate = true;
     }
 }
 
@@ -148,6 +163,7 @@ float SimpleSpectralDisplay::getOpacity() const {
 }
 
 void SimpleSpectralDisplay::update() {
+    // Double-check that rhythmInterpreter is still valid before any access
     if (!rhythmInterpreter) return;
     
     // Update frequency band labels if BPM changed
@@ -158,6 +174,13 @@ void SimpleSpectralDisplay::update() {
     float updateInterval = 1.0f / config.updateRate;
     
     if (timeSinceLastUpdate >= updateInterval) {
+        // Triple-check rhythmInterpreter validity before accessing it
+        // This prevents race conditions during network reset
+        if (!rhythmInterpreter) {
+            updateClock.restart();
+            return;
+        }
+        
         // Safely get current filter outputs and add to history
         try {
             auto filterOutputs = rhythmInterpreter->getFilterOutputs();

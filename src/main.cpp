@@ -309,6 +309,12 @@ public:
                 if (PresetManager::loadFactoryPreset(network, "drum_pattern")) {
                     ESSENTIAL_PRINT("📂 Loaded factory drum pattern preset");
                     
+                    // Update AudioManager with new rhythm interpreter
+                    if (network.getRhythmInterpreter()) {
+                        audioManager.setRhythmInterpreter(network.getRhythmInterpreter());
+                        ESSENTIAL_PRINT("🔄 AudioManager updated after preset load");
+                    }
+                    
                     // Update spectral display with new rhythm interpreter
                     spectralDisplay.setRhythmInterpreter(network.getRhythmInterpreter());
                     
