@@ -1,0 +1,82 @@
+{
+    "preset_info": {
+        "name": "Drum Brain v1",
+            "version": "1.0",
+                "author": "Pekko",
+                    "description": "16-neuron kick/snare/hat/fx brain with light inhibition and groove links",
+                        "created_date": "2025-10-30T00:00:00Z",
+                            "tags": "drums,generative,neural",
+                                "neuron_count": 16,
+                                    "connection_count": 29
+    },
+    "neurons": [
+        { "id": 0, "sample_index": 1, "activation": 0.0, "threshold": 0.58, "decay_rate": 0.92, "activation_increase_per_iteration": 0.0, "activation_function": "Tanh" },
+        { "id": 1, "sample_index": 2, "activation": 0.0, "threshold": 0.60, "decay_rate": 0.93, "activation_increase_per_iteration": 0.0, "activation_function": "Tanh" },
+        { "id": 2, "sample_index": 3, "activation": 0.0, "threshold": 0.63, "decay_rate": 0.93, "activation_increase_per_iteration": 0.0, "activation_function": "Tanh" },
+        { "id": 3, "sample_index": 4, "activation": 0.0, "threshold": 0.62, "decay_rate": 0.94, "activation_increase_per_iteration": 0.0, "activation_function": "Tanh" },
+
+        { "id": 4, "sample_index": 5, "activation": 0.0, "threshold": 0.64, "decay_rate": 0.92, "activation_increase_per_iteration": 0.0, "activation_function": "Tanh" },
+        { "id": 5, "sample_index": 6, "activation": 0.0, "threshold": 0.66, "decay_rate": 0.92, "activation_increase_per_iteration": 0.0, "activation_function": "Tanh" },
+        { "id": 6, "sample_index": 7, "activation": 0.0, "threshold": 0.56, "decay_rate": 0.90, "activation_increase_per_iteration": 0.0, "activation_function": "Tanh" },
+        { "id": 7, "sample_index": 8, "activation": 0.0, "threshold": 0.70, "decay_rate": 0.93, "activation_increase_per_iteration": 0.0, "activation_function": "Tanh" },
+
+        { "id": 8, "sample_index": 9, "activation": 0.0, "threshold": 0.50, "decay_rate": 0.88, "activation_increase_per_iteration": 0.0, "activation_function": "ReLU" },
+        { "id": 9, "sample_index": 10, "activation": 0.0, "threshold": 0.52, "decay_rate": 0.88, "activation_increase_per_iteration": 0.0, "activation_function": "ReLU" },
+        { "id": 10, "sample_index": 11, "activation": 0.0, "threshold": 0.48, "decay_rate": 0.87, "activation_increase_per_iteration": 0.0, "activation_function": "ReLU" },
+        { "id": 11, "sample_index": 12, "activation": 0.0, "threshold": 0.53, "decay_rate": 0.89, "activation_increase_per_iteration": 0.0, "activation_function": "ReLU" },
+
+        { "id": 12, "sample_index": 13, "activation": 0.0, "threshold": 0.72, "decay_rate": 0.95, "activation_increase_per_iteration": 0.0, "activation_function": "Tanh" },
+        { "id": 13, "sample_index": 14, "activation": 0.0, "threshold": 0.70, "decay_rate": 0.95, "activation_increase_per_iteration": 0.0, "activation_function": "Tanh" },
+        { "id": 14, "sample_index": 15, "activation": 0.0, "threshold": 0.74, "decay_rate": 0.96, "activation_increase_per_iteration": 0.0, "activation_function": "Tanh" },
+        { "id": 15, "sample_index": 16, "activation": 0.0, "threshold": 0.76, "decay_rate": 0.96, "activation_increase_per_iteration": 0.0, "activation_function": "Tanh" }
+    ],
+        "connections": [
+            { "source_id": 1, "target_id": 5, "weight": 0.35 },
+            { "source_id": 5, "target_id": 6, "weight": 0.25 },
+            { "source_id": 5, "target_id": 7, "weight": -0.20 },
+
+            { "source_id": 8, "target_id": 9, "weight": 0.15 },
+            { "source_id": 9, "target_id": 8, "weight": 0.15 },
+            { "source_id": 10, "target_id": 11, "weight": 0.15 },
+            { "source_id": 11, "target_id": 10, "weight": 0.15 },
+
+            { "source_id": 5, "target_id": 8, "weight": -0.25 },
+            { "source_id": 5, "target_id": 9, "weight": -0.25 },
+            { "source_id": 5, "target_id": 10, "weight": -0.25 },
+            { "source_id": 5, "target_id": 11, "weight": -0.25 },
+
+            { "source_id": 3, "target_id": 12, "weight": 0.25 },
+            { "source_id": 7, "target_id": 13, "weight": 0.25 },
+            { "source_id": 11, "target_id": 14, "weight": 0.15 },
+
+            { "source_id": 15, "target_id": 8, "weight": -0.35 },
+            { "source_id": 15, "target_id": 9, "weight": -0.35 },
+            { "source_id": 15, "target_id": 10, "weight": -0.35 },
+            { "source_id": 15, "target_id": 11, "weight": -0.35 },
+
+            { "source_id": 0, "target_id": 1, "weight": -0.10 },
+            { "source_id": 1, "target_id": 2, "weight": -0.10 },
+            { "source_id": 2, "target_id": 3, "weight": -0.10 },
+            { "source_id": 4, "target_id": 5, "weight": -0.10 },
+            { "source_id": 6, "target_id": 7, "weight": -0.10 },
+            { "source_id": 8, "target_id": 10, "weight": -0.10 },
+            { "source_id": 9, "target_id": 11, "weight": -0.10 },
+
+            { "source_id": 0, "target_id": 4, "weight": 0.20 },
+            { "source_id": 2, "target_id": 6, "weight": 0.15 },
+            { "source_id": 12, "target_id": 15, "weight": 0.10 },
+            { "source_id": 5, "target_id": 12, "weight": 0.10 }
+        ],
+            "rhythmogram_matrix": {
+        "enabled": true,
+            "scale": 5.0,
+                "filter_gains": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    },
+    "quantization": {
+        "enabled": true,
+            "grid_resolution": "sixteenth_note",
+                "quantization_amount": 0.65,
+                    "swing_factor": 0.58,
+                        "bpm": 120.0
+    }
+}
