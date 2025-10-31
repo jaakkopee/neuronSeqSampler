@@ -236,10 +236,25 @@ PresetManager::PresetInfo PresetManager::getPresetInfo(const std::string& filena
             info.description = infoJson.value("description", "");
             info.created_date = infoJson.value("created_date", "");
             info.tags = infoJson.value("tags", "");
+        } else {
+            // For presets without preset_info, create basic info from filename
+            std::filesystem::path path(filename);
+            info.name = path.stem().string(); // Filename without extension
+            info.author = "Unknown";
+            info.description = "Legacy preset (no metadata available)";
+            info.version = "1.0";
+            info.created_date = "";
+            info.tags = "legacy";
         }
         
     } catch (const std::exception& e) {
         std::cerr << "❌ Error reading preset info: " << e.what() << std::endl;
+        // Even on error, try to provide basic info from filename
+        std::filesystem::path path(filename);
+        info.name = path.stem().string();
+        info.author = "Unknown";
+        info.description = "Error reading preset";
+        info.version = "1.0";
     }
     
     return info;

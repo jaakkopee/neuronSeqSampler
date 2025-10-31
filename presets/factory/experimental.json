@@ -1,107 +1,102 @@
 {
+  "preset_info": {
+    "name": "Experimental Setup",
+    "version": "2.0",
+    "author": "Legacy",
+    "description": "Experimental neural configuration for creative exploration",
+    "created_date": "2025-10-31T08:30:53.229079Z",
+    "tags": "legacy,updated",
+    "neuron_count": 4,
+    "connection_count": 5
+  },
   "neurons": [
     {
       "id": 0,
+      "sample_index": 1,
+      "activation": 0.0,
       "threshold": 0.95,
+      "decay_rate": 0.9,
+      "activation_increase_per_iteration": 0.0,
       "activation_function": "ReLU",
-      "sample_file": "samples/808/UFO 808 @prodopus.wav",
-      "is_output": true,
-      "position": [
-        160.0,
-        80.0
-      ]
+      "sample_file_path": "samples/808/UFO 808 @prodopus.wav"
     },
     {
       "id": 1,
+      "sample_index": 2,
+      "activation": 0.0,
       "threshold": 0.1,
+      "decay_rate": 0.9,
+      "activation_increase_per_iteration": 0.0,
       "activation_function": "Sigmoid",
-      "sample_file": "samples/clap/clap (ginger claps).wav",
-      "is_output": true,
-      "position": [
-        240.0,
-        140.0
-      ]
+      "sample_file_path": "samples/clap/clap (ginger claps).wav"
     },
     {
       "id": 2,
+      "sample_index": 3,
+      "activation": 0.0,
       "threshold": 0.5,
+      "decay_rate": 0.9,
+      "activation_increase_per_iteration": 0.0,
       "activation_function": "Tanh",
-      "sample_file": "samples/hat/open hat (ionic funk).wav",
-      "is_output": true,
-      "position": [
-        120.0,
-        190.0
-      ]
+      "sample_file_path": "samples/hat/open hat (ionic funk).wav"
     },
     {
       "id": 3,
+      "sample_index": 4,
+      "activation": 0.0,
       "threshold": 0.25,
-      "activation_function": "Linear",
-      "sample_file": "samples/perc/rim (ghost).wav",
-      "is_output": true,
-      "position": [
-        280.0,
-        160.0
-      ]
+      "decay_rate": 0.9,
+      "activation_increase_per_iteration": 0.0,
+      "activation_function": "Tanh",
+      "sample_file_path": "samples/perc/rim (ghost).wav"
     }
   ],
   "connections": [
     {
-      "from": 1,
-      "to": 0,
+      "source_id": 1,
+      "target_id": 0,
       "weight": 0.9
     },
     {
-      "from": 0,
-      "to": 2,
+      "source_id": 0,
+      "target_id": 2,
       "weight": 0.1
     },
     {
-      "from": 2,
-      "to": 3,
+      "source_id": 2,
+      "target_id": 3,
       "weight": 0.8
     },
     {
-      "from": 3,
-      "to": 1,
+      "source_id": 3,
+      "target_id": 1,
       "weight": 0.3
     },
     {
-      "from": 1,
-      "to": 2,
+      "source_id": 1,
+      "target_id": 2,
       "weight": 0.6
     }
   ],
+  "rhythmogram_matrix": {
+    "enabled": true,
+    "scale": 5.0,
+    "filter_gains": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
   "quantization": {
     "enabled": true,
-    "resolution": 6,
-    "swing": 0.2,
-    "tempo_bpm": 110.0
-  },
-  "rhythmogram_matrix": [
-    [
-      0.2,
-      0.8,
-      0.3,
-      0.1
-    ],
-    [
-      0.9,
-      0.1,
-      0.4,
-      0.5
-    ],
-    [
-      0.1,
-      0.6,
-      0.4,
-      0.2
-    ],
-    [
-      0.3,
-      0.2,
-      0.7,
-      0.6
-    ]
-  ]
+    "grid_resolution": "sixteenth_note",
+    "quantization_amount": 0.7,
+    "swing_factor": 0.2,
+    "bpm": 110.0
+  }
 }

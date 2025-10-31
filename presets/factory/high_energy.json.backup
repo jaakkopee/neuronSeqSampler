@@ -1,0 +1,82 @@
+{
+  "neurons": [
+    {
+      "id": 0,
+      "threshold": 0.2,
+      "activation_function": "Linear",
+      "sample_file": "samples/808/808_10.wav",
+      "is_output": true,
+      "position": [
+        150.0,
+        90.0
+      ]
+    },
+    {
+      "id": 1,
+      "threshold": 0.15,
+      "activation_function": "ReLU",
+      "sample_file": "samples/clap/clap (hidden power).wav",
+      "is_output": true,
+      "position": [
+        250.0,
+        110.0
+      ]
+    },
+    {
+      "id": 2,
+      "threshold": 0.1,
+      "activation_function": "Linear",
+      "sample_file": "samples/hat/hat 2 (ghost).wav",
+      "is_output": true,
+      "position": [
+        200.0,
+        170.0
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": 0,
+      "to": 1,
+      "weight": 0.9
+    },
+    {
+      "from": 1,
+      "to": 2,
+      "weight": 0.8
+    },
+    {
+      "from": 2,
+      "to": 0,
+      "weight": 0.7
+    },
+    {
+      "from": 0,
+      "to": 2,
+      "weight": 0.6
+    }
+  ],
+  "quantization": {
+    "enabled": true,
+    "resolution": 5,
+    "swing": 0.0,
+    "tempo_bpm": 140.0
+  },
+  "rhythmogram_matrix": [
+    [
+      0.9,
+      0.4,
+      0.3
+    ],
+    [
+      0.5,
+      0.8,
+      0.4
+    ],
+    [
+      0.4,
+      0.5,
+      0.9
+    ]
+  ]
+}

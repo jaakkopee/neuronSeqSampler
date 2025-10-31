@@ -1,77 +1,82 @@
 {
+  "preset_info": {
+    "name": "Ambient Flow",
+    "version": "2.0",
+    "author": "Legacy",
+    "description": "Flowing ambient textures with gentle rhythmic elements",
+    "created_date": "2025-10-31T08:30:53.240165Z",
+    "tags": "legacy,updated",
+    "neuron_count": 3,
+    "connection_count": 3
+  },
   "neurons": [
     {
       "id": 0,
+      "sample_index": 1,
+      "activation": 0.0,
       "threshold": 0.8,
+      "decay_rate": 0.9,
+      "activation_increase_per_iteration": 0.0,
       "activation_function": "Tanh",
-      "sample_file": "samples/kick/kick (krystle).wav",
-      "is_output": true,
-      "position": [
-        180.0,
-        120.0
-      ]
+      "sample_file_path": "samples/kick/kick (krystle).wav"
     },
     {
       "id": 1,
+      "sample_index": 2,
+      "activation": 0.0,
       "threshold": 0.75,
+      "decay_rate": 0.9,
+      "activation_increase_per_iteration": 0.0,
       "activation_function": "Tanh",
-      "sample_file": "samples/perc/clav (frenesi).wav",
-      "is_output": true,
-      "position": [
-        220.0,
-        180.0
-      ]
+      "sample_file_path": "samples/perc/clav (frenesi).wav"
     },
     {
       "id": 2,
+      "sample_index": 3,
+      "activation": 0.0,
       "threshold": 0.9,
+      "decay_rate": 0.9,
+      "activation_increase_per_iteration": 0.0,
       "activation_function": "Tanh",
-      "sample_file": "samples/clap/clap (frenesi).wav",
-      "is_output": true,
-      "position": [
-        140.0,
-        200.0
-      ]
+      "sample_file_path": "samples/clap/clap (frenesi).wav"
     }
   ],
   "connections": [
     {
-      "from": 0,
-      "to": 1,
+      "source_id": 0,
+      "target_id": 1,
       "weight": 0.3
     },
     {
-      "from": 1,
-      "to": 2,
+      "source_id": 1,
+      "target_id": 2,
       "weight": 0.4
     },
     {
-      "from": 2,
-      "to": 0,
+      "source_id": 2,
+      "target_id": 0,
       "weight": 0.2
     }
   ],
+  "rhythmogram_matrix": {
+    "enabled": true,
+    "scale": 5.0,
+    "filter_gains": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
   "quantization": {
     "enabled": true,
-    "resolution": 1,
-    "swing": 0.15,
-    "tempo_bpm": 85.0
-  },
-  "rhythmogram_matrix": [
-    [
-      0.6,
-      0.2,
-      0.1
-    ],
-    [
-      0.3,
-      0.7,
-      0.2
-    ],
-    [
-      0.2,
-      0.3,
-      0.5
-    ]
-  ]
+    "grid_resolution": "quarter_note",
+    "quantization_amount": 0.7,
+    "swing_factor": 0.15,
+    "bpm": 85.0
+  }
 }

@@ -1,0 +1,88 @@
+{
+  "connections": [
+    {
+      "source_id": 0,
+      "target_id": 1,
+      "weight": 0.46999990940093994
+    },
+    {
+      "source_id": 1,
+      "target_id": 2,
+      "weight": 0.800000011920929
+    },
+    {
+      "source_id": 2,
+      "target_id": 0,
+      "weight": 0.1499999761581421
+    },
+    {
+      "source_id": 0,
+      "target_id": 2,
+      "weight": 0.6000000238418579
+    }
+  ],
+  "neurons": [
+    {
+      "activation": -0.1554887741804123,
+      "activation_function": "Tanh",
+      "activation_increase_per_iteration": 0.29999998211860657,
+      "decay_rate": 0.8999999761581421,
+      "id": 0,
+      "sample_file_path": "samples/808/808_10.wav",
+      "sample_index": 1,
+      "threshold": 0.20000000298023224
+    },
+    {
+      "activation": -0.5408767461776733,
+      "activation_function": "ReLU",
+      "activation_increase_per_iteration": 0.18000000715255737,
+      "decay_rate": 0.8999999761581421,
+      "id": 1,
+      "sample_file_path": "samples/clap/clap (hidden power).wav",
+      "sample_index": 2,
+      "threshold": 0.15000000596046448
+    },
+    {
+      "activation": -0.2300180196762085,
+      "activation_function": "Tanh",
+      "activation_increase_per_iteration": 0.429999977350235,
+      "decay_rate": 0.8999999761581421,
+      "id": 2,
+      "sample_file_path": "samples/hat/hat 2 (ghost).wav",
+      "sample_index": 3,
+      "threshold": 0.10000000149011612
+    }
+  ],
+  "preset_info": {
+    "author": "User",
+    "connection_count": 4,
+    "created_date": "2025-10-31T06:35:30Z",
+    "description": "Jännä Biitti",
+    "name": "tsikadika",
+    "neuron_count": 3,
+    "tags": "",
+    "version": "1.0"
+  },
+  "quantization": {
+    "bpm": 124.71813201904297,
+    "enabled": true,
+    "grid_resolution": "sixteenth_note",
+    "grid_resolution_value": 3,
+    "quantization_amount": 0.699999988079071,
+    "swing_factor": 0.0
+  },
+  "rhythmogram_matrix": {
+    "enabled": true,
+    "filter_gains": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "scale": 5.0
+  }
+}

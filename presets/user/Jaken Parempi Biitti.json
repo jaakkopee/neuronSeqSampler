@@ -1,0 +1,103 @@
+{
+  "connections": [
+    {
+      "source_id": 0,
+      "target_id": 2,
+      "weight": 0.4999999701976776
+    },
+    {
+      "source_id": 1,
+      "target_id": 2,
+      "weight": -0.3200000524520874
+    },
+    {
+      "source_id": 2,
+      "target_id": 3,
+      "weight": 0.6799999475479126
+    },
+    {
+      "source_id": 0,
+      "target_id": 3,
+      "weight": 0.4999999701976776
+    },
+    {
+      "source_id": 1,
+      "target_id": 3,
+      "weight": -0.6000000834465027
+    }
+  ],
+  "neurons": [
+    {
+      "activation": 0.04999995231628418,
+      "activation_function": "Linear",
+      "activation_increase_per_iteration": 0.2800000011920929,
+      "decay_rate": 1.0,
+      "id": 0,
+      "sample_file_path": "samples/clap/clap (hidden power).wav",
+      "sample_index": 1,
+      "threshold": 1.0
+    },
+    {
+      "activation": 0.6799411177635193,
+      "activation_function": "Linear",
+      "activation_increase_per_iteration": 0.07999999076128006,
+      "decay_rate": 1.0,
+      "id": 1,
+      "sample_file_path": "samples/clap/clap (ginger claps).wav",
+      "sample_index": 2,
+      "threshold": 1.0
+    },
+    {
+      "activation": -0.031650617718696594,
+      "activation_function": "Linear",
+      "activation_increase_per_iteration": 0.0,
+      "decay_rate": 1.0,
+      "id": 2,
+      "sample_file_path": "samples/kick/kick (ionic funk).wav",
+      "sample_index": 3,
+      "threshold": 1.0
+    },
+    {
+      "activation": -0.021900683641433716,
+      "activation_function": "Linear",
+      "activation_increase_per_iteration": 0.3199999928474426,
+      "decay_rate": 1.0,
+      "id": 3,
+      "sample_file_path": "samples/hat/hat (ghost).wav",
+      "sample_index": 4,
+      "threshold": 1.0
+    }
+  ],
+  "preset_info": {
+    "author": "User",
+    "connection_count": 5,
+    "created_date": "2025-10-31T06:21:33Z",
+    "description": "A Simple Rhythmic Patch",
+    "name": "Jaken Parempi Biitti",
+    "neuron_count": 4,
+    "tags": "",
+    "version": "1.0"
+  },
+  "quantization": {
+    "bpm": 124.39679718017578,
+    "enabled": true,
+    "grid_resolution": "thirty_second_note",
+    "grid_resolution_value": 4,
+    "quantization_amount": 0.7299999594688416,
+    "swing_factor": 0.6100000143051147
+  },
+  "rhythmogram_matrix": {
+    "enabled": true,
+    "filter_gains": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "scale": 5.0
+  }
+}

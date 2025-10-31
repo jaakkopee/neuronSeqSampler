@@ -1,0 +1,77 @@
+{
+  "neurons": [
+    {
+      "id": 0,
+      "threshold": 0.8,
+      "activation_function": "Tanh",
+      "sample_file": "samples/kick/kick (krystle).wav",
+      "is_output": true,
+      "position": [
+        180.0,
+        120.0
+      ]
+    },
+    {
+      "id": 1,
+      "threshold": 0.75,
+      "activation_function": "Tanh",
+      "sample_file": "samples/perc/clav (frenesi).wav",
+      "is_output": true,
+      "position": [
+        220.0,
+        180.0
+      ]
+    },
+    {
+      "id": 2,
+      "threshold": 0.9,
+      "activation_function": "Tanh",
+      "sample_file": "samples/clap/clap (frenesi).wav",
+      "is_output": true,
+      "position": [
+        140.0,
+        200.0
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": 0,
+      "to": 1,
+      "weight": 0.3
+    },
+    {
+      "from": 1,
+      "to": 2,
+      "weight": 0.4
+    },
+    {
+      "from": 2,
+      "to": 0,
+      "weight": 0.2
+    }
+  ],
+  "quantization": {
+    "enabled": true,
+    "resolution": 1,
+    "swing": 0.15,
+    "tempo_bpm": 85.0
+  },
+  "rhythmogram_matrix": [
+    [
+      0.6,
+      0.2,
+      0.1
+    ],
+    [
+      0.3,
+      0.7,
+      0.2
+    ],
+    [
+      0.2,
+      0.3,
+      0.5
+    ]
+  ]
+}

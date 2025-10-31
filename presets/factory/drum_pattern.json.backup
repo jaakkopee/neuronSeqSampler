@@ -1,0 +1,77 @@
+{
+  "neurons": [
+    {
+      "id": 0,
+      "threshold": 0.7,
+      "activation_function": "Linear",
+      "sample_file": "samples/kick/kick (ghost).wav",
+      "is_output": true,
+      "position": [
+        100.0,
+        100.0
+      ]
+    },
+    {
+      "id": 1,
+      "threshold": 0.6,
+      "activation_function": "Linear",
+      "sample_file": "samples/snare/snare (ghost).wav",
+      "is_output": true,
+      "position": [
+        200.0,
+        100.0
+      ]
+    },
+    {
+      "id": 2,
+      "threshold": 0.5,
+      "activation_function": "Linear",
+      "sample_file": "samples/hat/hat 2 (ghost).wav",
+      "is_output": true,
+      "position": [
+        300.0,
+        100.0
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": 0,
+      "to": 1,
+      "weight": 0.8
+    },
+    {
+      "from": 1,
+      "to": 2,
+      "weight": 0.6
+    },
+    {
+      "from": 2,
+      "to": 0,
+      "weight": 0.4
+    }
+  ],
+  "quantization": {
+    "enabled": true,
+    "resolution": 3,
+    "swing": 0.0,
+    "tempo_bpm": 120.0
+  },
+  "rhythmogram_matrix": [
+    [
+      0.8,
+      0.2,
+      0.1
+    ],
+    [
+      0.3,
+      0.9,
+      0.2
+    ],
+    [
+      0.2,
+      0.3,
+      0.7
+    ]
+  ]
+}
