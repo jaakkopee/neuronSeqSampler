@@ -224,11 +224,11 @@ void SimpleSpectralDisplay::drawBackground(sf::RenderWindow& window) {
 void SimpleSpectralDisplay::drawSpectrogram(sf::RenderWindow& window) {
     if (amplitudeHistory.empty() || !spectrogramSprite) return;
     
-    // Calculate display area (leave space for labels)
+    // Calculate display area (leave space for labels) - maximize spectrum height
     float displayWidth = size.x - 80;  // Leave 80 pixels for labels
-    float displayHeight = size.y - 40; // Leave 40 pixels for time axis
+    float displayHeight = size.y - 20; // Leave only 20 pixels for margins
     float displayX = position.x + 80;
-    float displayY = position.y + 20;
+    float displayY = position.y + 10;   // Start even higher for more spectrum space
     
     // Position and scale the spectrogram sprite
     spectrogramSprite->setPosition(sf::Vector2f(displayX, displayY));
@@ -244,9 +244,9 @@ void SimpleSpectralDisplay::drawSpectrogram(sf::RenderWindow& window) {
 
 void SimpleSpectralDisplay::drawGrid(sf::RenderWindow& window) {
     float displayWidth = size.x - 80;
-    float displayHeight = size.y - 40;
+    float displayHeight = size.y - 20;
     float displayX = position.x + 80;
-    float displayY = position.y + 20;
+    float displayY = position.y + 10;
     
     // Horizontal grid lines (frequency bands)
     for (int i = 0; i <= 8; ++i) {
@@ -272,8 +272,8 @@ void SimpleSpectralDisplay::drawGrid(sf::RenderWindow& window) {
 void SimpleSpectralDisplay::drawLabels(sf::RenderWindow& window) {
     if (!fontLoaded) return;
     
-    float displayHeight = size.y - 40;
-    float displayY = position.y + 20;
+    float displayHeight = size.y - 20;
+    float displayY = position.y + 10;
     float barHeight = displayHeight / 8;
     
     // Draw frequency band labels
@@ -287,10 +287,10 @@ void SimpleSpectralDisplay::drawLabels(sf::RenderWindow& window) {
         window.draw(label);
     }
     
-    // Draw title
+    // Draw title (positioned above the display area)
     sf::Text title(font, "Rhythm Spectrum", 16);
     title.setFillColor(config.textColor);
-    title.setPosition(sf::Vector2f(position.x + size.x / 2 - 60, position.y));
+    title.setPosition(sf::Vector2f(position.x + size.x / 2 - 60, position.y - 30));
     window.draw(title);
 }
 

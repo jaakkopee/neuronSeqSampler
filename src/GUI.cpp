@@ -43,6 +43,11 @@ void GUI::initialize() {
     
     // Initialize quantizer widget
     if (quantizerWidget) {
+        std::cout << "🎵 Reinitializing quantizer widget..." << std::endl;
+        
+        // Clean up previous initialization if it exists
+        quantizerWidget->cleanup();
+        
         // Create a popover ChildWindow for quantizer controls sized to fit the widget
         quantizerWindow = tgui::ChildWindow::create("Quantization");
         // Use a compact pixel size to better fit the quantizer content
@@ -63,6 +68,8 @@ void GUI::initialize() {
 
         // Initialize quantizer BPM to match default BPM (120.0)
         updateQuantizerBPM(120.0f);
+        
+        std::cout << "✅ Quantizer widget reinitialized successfully" << std::endl;
     }
     
     // Connect quantizer to the neuron network
@@ -542,10 +549,14 @@ void GUI::render() {
 }
 
 void GUI::setGUIArea(float x, float y, float width, float height) {
+    // Keep using percentage-based layout for TGUI compatibility
+    // The right panel positioning is handled in individual widget creation
+    // Parameters are received but not stored as GUI uses percentage layout
+    
+    // Keep control panel at percentage-based position for proper TGUI function
     if (controlPanel) {
-        // Use percentage positioning for better scaling
-        controlPanel->setPosition("80%", "4%");
-        controlPanel->setSize("20%", "96%");
+        controlPanel->setPosition("70%", "0%");
+        controlPanel->setSize("30%", "100%");
     }
 }
 
@@ -1961,7 +1972,7 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixWindow->setSize("90%", "75%");
     connectionMatrixWindow->setPosition("50% - 45%", "50% - 37.5%");
     // Make the window semi-transparent so the neuron visualization is visible beneath
-    connectionMatrixWindow->getRenderer()->setBackgroundColor(tgui::Color(20, 20, 20, 120));
+    connectionMatrixWindow->getRenderer()->setBackgroundColor(tgui::Color(20, 20, 20, 200));
     connectionMatrixWindow->getRenderer()->setBorderColor(tgui::Color(80, 80, 80));
     connectionMatrixWindow->getRenderer()->setBorders(2);
     connectionMatrixWindow->setVisible(matrixVisible);
@@ -2713,11 +2724,23 @@ void GUI::updateConnectionMatrix() {
 
 void GUI::toggleMatrixVisibility() {
     if (!connectionMatrixWindow) {
-        return;
+        std::cout << "⚠️ Matrix window not initialized - creating now..." << std::endl;
+        createConnectionMatrixPanel(); // Try to initialize if not done yet
+        if (!connectionMatrixWindow) {
+            std::cout << "❌ Failed to create matrix window" << std::endl;
+            return;
+        }
     }
 
+    // Sync matrixVisible with actual window state before toggling
+    matrixVisible = connectionMatrixWindow->isVisible();
     matrixVisible = !matrixVisible;
     connectionMatrixWindow->setVisible(matrixVisible);
+    
+    // Force the window to the front if showing
+    if (matrixVisible && gui) {
+        connectionMatrixWindow->moveToFront();
+    }
     
     std::cout << "🎛️ Rhythmogram Mapping " << (matrixVisible ? "shown" : "hidden") 
               << " (press M to toggle)" << std::endl;
@@ -2731,16 +2754,29 @@ void GUI::forceMatrixUpdate() {
 
 void GUI::toggleQuantizerVisibility() {
     if (quantizerWindow) {
-        bool newState = !quantizerWindow->isVisible();
+        bool currentState = quantizerWindow->isVisible();
+        bool newState = !currentState;
         quantizerWindow->setVisible(newState);
+        
         // Also ensure the internal widget is visible when the window is shown
-        if (quantizerWidget) quantizerWidget->setVisible(newState);
+        if (quantizerWidget) {
+            quantizerWidget->setVisible(newState);
+        }
+        
+        // Force the window to the front if showing
+        if (newState && gui) {
+            quantizerWindow->moveToFront();
+        }
+        
         std::cout << "🎵 Quantizer " << (newState ? "shown" : "hidden") << " (press Q to toggle)" << std::endl;
     } else if (quantizerWidget) {
         // Fallback: toggle internal widget visibility
+        std::cout << "⚠️ Quantizer window not found, using widget fallback..." << std::endl;
         quantizerWidget->toggleVisibility();
         std::cout << "🎵 Quantizer " << (quantizerWidget->isVisible() ? "shown" : "hidden") 
                   << " (press Q to toggle)" << std::endl;
+    } else {
+        std::cout << "❌ Quantizer not initialized - cannot toggle visibility" << std::endl;
     }
 }
 

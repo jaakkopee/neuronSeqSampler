@@ -79,17 +79,38 @@ private:
         while (auto eventOpt = window.pollEvent()) {
             if (!eventOpt) break;
             const auto& event = *eventOpt;
-#ifdef USE_TGUI
-            bool eventConsumedByGUI = gui.handleEvent(event);
-#else
+            
             bool eventConsumedByGUI = false;
+            
+#ifdef USE_TGUI
+            // Always pass events to TGUI first for proper dialog/widget handling
+            eventConsumedByGUI = gui.handleEvent(event);
 #endif
+            
+            // Debug GUI event consumption for mouse clicks
+            if (event.is<sf::Event::MouseButtonPressed>() && eventConsumedByGUI) {
+                if (const auto* e = event.getIf<sf::Event::MouseButtonPressed>()) {
+                    std::cout << "⛔ GUI consumed mouse click at (" << e->position.x << ", " << e->position.y << ")" << std::endl;
+                }
+            }
+            
             // Use explicit type checks and getIf for SFML Event (works for SFML 3)
             if (event.is<sf::Event::MouseButtonPressed>()) {
                 if (!eventConsumedByGUI) {
                     if (const auto* e = event.getIf<sf::Event::MouseButtonPressed>()) {
                         if (e->button == sf::Mouse::Button::Left) {
-                            handleMouseDrag(e->position.x, e->position.y);
+                            // Check if click is in canvas area
+                            bool isInCanvas = (e->position.x >= canvasLeft && e->position.x <= canvasRight && 
+                                              e->position.y >= canvasTop && e->position.y <= canvasBottom);
+                            
+                            std::cout << "🖱️ Click at (" << e->position.x << ", " << e->position.y 
+                                     << ") Canvas[" << canvasLeft << "," << canvasTop << " to " 
+                                     << canvasRight << "," << canvasBottom << "] InCanvas: " 
+                                     << (isInCanvas ? "YES" : "NO") << std::endl;
+                            
+                            if (isInCanvas) {
+                                handleMouseDrag(e->position.x, e->position.y);
+                            }
                         }
                     }
                 }
@@ -103,8 +124,16 @@ private:
                 if (!eventConsumedByGUI) {
                     if (const auto* e = event.getIf<sf::Event::MouseMoved>()) {
                         static int mouseEventCounter = 0;
-                        if (++mouseEventCounter % 100 == 0) { // Print every 100th event to avoid spam
-                            std::cout << "🖱️ Mouse moved to (" << e->position.x << ", " << e->position.y << ")" << std::endl;
+                        if (++mouseEventCounter % 200 == 0) { // Print every 200th event to avoid spam
+                            // Check if mouse is in canvas area for debugging
+                            bool isInCanvas = (e->position.x >= canvasLeft && e->position.x <= canvasRight && 
+                                              e->position.y >= canvasTop && e->position.y <= canvasBottom);
+                            
+                            std::cout << "🖱️ Mouse (" << e->position.x << ", " << e->position.y 
+                                     << ") Canvas[" << canvasLeft << "," << canvasTop << " to " 
+                                     << canvasRight << "," << canvasBottom << "] InCanvas: " 
+                                     << (isInCanvas ? "YES" : "NO") << " " 
+                                     << (isFullscreen ? "Fullscreen" : "Windowed") << std::endl;
                         }
                         visualizer.handleMouseMove(e->position.x, e->position.y);
                     }
@@ -125,7 +154,8 @@ private:
                     bool isGlobalShortcut = (code == sf::Keyboard::Key::M) || (code == sf::Keyboard::Key::Q) ||
                                             (code == sf::Keyboard::Key::Space) || (code == sf::Keyboard::Key::F) ||
                                             (code >= sf::Keyboard::Key::Num1 && code <= sf::Keyboard::Key::Num9) ||
-                                            (code == sf::Keyboard::Key::S) || (code == sf::Keyboard::Key::L);
+                                            (code == sf::Keyboard::Key::S) || (code == sf::Keyboard::Key::L) ||
+                                            (code == sf::Keyboard::Key::Equal) || (code == sf::Keyboard::Key::Add);
 
                     // Don't process keyboard shortcuts when text input is active
                     if (!textInputActive && (!eventConsumedByGUI || isGlobalShortcut)) {
@@ -158,10 +188,18 @@ private:
     
     // Filter mode state
     bool audioStreamingEnabled;
+    
+    // Fullscreen state
+    bool isFullscreen;
+    sf::VideoMode windowedMode;
+    sf::Vector2i windowedPosition;
+    
+    // Dynamic canvas bounds for mouse handling
+    float canvasLeft, canvasTop, canvasRight, canvasBottom;
 
 public:
     NeuronSeqSampler(bool enableTestingMode = false) 
-        : window(sf::VideoMode({1024, 800}), "Neuron Sequence Sampler")
+        : window(sf::VideoMode({1280, 720}), "Neuron Sequence Sampler")
 #ifdef USE_TGUI
         , gui(window)
 #endif
@@ -175,6 +213,10 @@ public:
         , activationInterval(100.0f) // milliseconds
         , testingMode(enableTestingMode)
         , audioStreamingEnabled(false)
+        , isFullscreen(false)
+        , windowedMode(sf::Vector2u(1280, 720))
+        , windowedPosition(100, 100)
+        , canvasLeft(80.0f), canvasTop(80.0f), canvasRight(780.0f), canvasBottom(780.0f)
     {
         initialize();
         if (testingMode) {
@@ -198,23 +240,16 @@ public:
         
         // Start with an empty network - users can add neurons via the menu
         
-        // Set up visualizer canvas area (left side of window)
-        // the visualiser will draw the neurons and connections
-        visualizer.setCanvasArea(50.0f, 50.0f, 700.0f, 700.0f);
-        visualizer.setNeuronRadius(20.0f);
+        // Set up visualizer colors
         visualizer.setNeuronColors(sf::Color::Cyan, sf::Color::Red);
         visualizer.setConnectionColors(sf::Color(200, 200, 200, 100), sf::Color::Yellow);
         
 #ifdef USE_TGUI
-        // Initialize GUI (right side of window)
+        // Initialize GUI
         guiManager.initialize();
-        // Set GUI area to the right side of the window with dimensions 324x800
-        guiManager.setGUIArea(700.0f, 0.0f, 1024.0f, 800.0f);
+        // Set up adaptive layout based on current window size
+        updateLayoutForWindowSize();
 #endif
-
-        // Position spectral display (bottom area)
-        spectralDisplay.setPosition(50.0f, 600.0f);
-        spectralDisplay.setSize(600.0f, 150.0f);
         // Update rhythm interpreter reference after network initialization
         spectralDisplay.setRhythmInterpreter(network.getRhythmInterpreter());
         
@@ -228,6 +263,7 @@ public:
         ESSENTIAL_PRINT("  - Number keys: Activate specific neurons (when available)");
         ESSENTIAL_PRINT("  - Spacebar: Manual network activation");
         ESSENTIAL_PRINT("  - F key: Toggle filtered audio output (hearing filtered vs original)");
+        ESSENTIAL_PRINT("  - + key: Toggle fullscreen mode 🖥️");
         ESSENTIAL_PRINT("  - M key: Toggle rhythmogram matrix visibility 🎛️");
         ESSENTIAL_PRINT("  - L buttons: Solo individual filter bands 🎚️");
         ESSENTIAL_PRINT("  - Number keys: Play samples (1-9)");
@@ -300,8 +336,8 @@ public:
     }
     /*
     void handleNeuronClick(int mouseX, int mouseY) {
-        // Click detection in the visualization area
-        if (mouseX >= 50 && mouseX <= 750 && mouseY >= 50 && mouseY <= 750) {
+        // Click detection in the dynamic visualization area
+        if (mouseX >= canvasLeft && mouseX <= canvasRight && mouseY >= canvasTop && mouseY <= canvasBottom) {
             if (network.getNeuronCount() > 0) {
                 // For now, activate the first neuron - could be enhanced to detect specific neurons
                     sf::Event event;
@@ -424,11 +460,104 @@ public:
                 ESSENTIAL_PRINT("🎵 Quantizer toggle requires GUI support (TGUI not available)");
 #endif
                 break;
+            case sf::Keyboard::Key::Equal:  // + key (Shift+Equal)
+            case sf::Keyboard::Key::Add:    // Numpad + key
+                // Toggle fullscreen mode
+                toggleFullscreen();
+                break;
             default:
                 // Forward key to spectral display for its controls
                 spectralDisplay.handleKeyPress(key);
                 break;
         }
+    }
+
+    void toggleFullscreen() {
+        if (isFullscreen) {
+            // Switch to windowed mode
+            windowedPosition = window.getPosition();
+            window.create(windowedMode, "Neuron Sequence Sampler");
+            window.setPosition(windowedPosition);
+            
+            // Reset window view for windowed mode
+            sf::View defaultView(sf::FloatRect({0, 0}, {static_cast<float>(windowedMode.size.x), static_cast<float>(windowedMode.size.y)}));
+            window.setView(defaultView);
+            
+            isFullscreen = false;
+            ESSENTIAL_PRINT("🖥️ Switched to windowed mode (+ key to toggle)");
+        } else {
+            // Switch to fullscreen mode
+            sf::Vector2u currentSize = window.getSize();
+            windowedMode = sf::VideoMode(currentSize);
+            windowedPosition = window.getPosition();
+            
+            // Try borderless window instead of true fullscreen to avoid cursor confinement
+            auto desktopMode = sf::VideoMode::getDesktopMode();
+            std::cout << "🖥️ Desktop mode: " << desktopMode.size.x << "x" << desktopMode.size.y << std::endl;
+            
+            // Use borderless window positioned at 0,0 instead of true fullscreen
+            window.create(desktopMode, "Neuron Sequence Sampler");  // No style parameter = default borderless
+            window.setPosition({0, 0});
+            
+            // Reset window view
+            sf::View defaultView(sf::FloatRect({0, 0}, {static_cast<float>(desktopMode.size.x), static_cast<float>(desktopMode.size.y)}));
+            window.setView(defaultView);
+            std::cout << "🖥️ Using borderless window at 0,0 instead of true fullscreen" << std::endl;
+            
+            isFullscreen = true;
+            ESSENTIAL_PRINT("🖥️ Switched to fullscreen mode (+ key to toggle)");
+        }
+        
+        // Reinitialize TGUI after window recreation
+#ifdef USE_TGUI
+        gui.setTarget(window);
+        // Clear any cached view/coordinate data that might be stale
+        gui.getContainer()->removeAllWidgets();
+        // Re-initialize GUI completely for new window size
+        guiManager.initialize();
+        updateLayoutForWindowSize();
+#endif
+    }
+
+    void updateLayoutForWindowSize() {
+        sf::Vector2u windowSize = window.getSize();
+        float width = static_cast<float>(windowSize.x);
+        float height = static_cast<float>(windowSize.y);
+        
+        // Calculate layout proportions for current window size
+        float availableHeight = height * 0.75f; // Leave 1/5 for spectral + some margin
+        float canvasSize = std::min(width * 0.65f, availableHeight); // Ensure square fits
+        
+        // Use minimal padding in fullscreen to avoid cursor clipping, normal padding in windowed mode
+        float canvasPadding = isFullscreen ? 10.0f : 80.0f;
+        
+        // Debug: Print layout calculations
+        std::cout << "📏 Layout Update: " << width << "x" << height 
+                  << " Mode: " << (isFullscreen ? "Fullscreen" : "Windowed")
+                  << " Padding: " << canvasPadding 
+                  << " CanvasSize: " << canvasSize << std::endl;
+        
+        // Update visualizer canvas (square, left side)
+        canvasLeft = canvasPadding;
+        canvasTop = canvasPadding;
+        canvasRight = canvasPadding + canvasSize;
+        canvasBottom = canvasPadding + canvasSize;
+        visualizer.setCanvasArea(canvasLeft, canvasTop, canvasRight, canvasBottom);
+        
+        // Update GUI area (right side)
+        float guiX = canvasPadding + canvasSize + 20.0f;
+        std::cout << "🎛️ GUI Area: x=" << guiX << " (should leave canvas 0 to " << (canvasPadding + canvasSize) << ")" << std::endl;
+        guiManager.setGUIArea(guiX, 0.0f, width, height);
+        
+        // Update spectral display (bottom) - 1/5 of window height
+        float spectralHeight = height / 5.0f; // 20% of window height
+        float spectralY = height - spectralHeight - 20.0f; // Position from bottom with margin
+        spectralDisplay.setPosition(canvasPadding, spectralY);
+        spectralDisplay.setSize(canvasSize, spectralHeight);
+        
+        // Adjust neuron radius based on canvas size
+        float neuronRadius = std::max(15.0f, canvasSize / 40.0f);
+        visualizer.setNeuronRadius(neuronRadius);
     }
 
     void update() {
