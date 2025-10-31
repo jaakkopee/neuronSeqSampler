@@ -239,6 +239,17 @@ void GUI::createConnectionSliders() {
         return;
     }
     
+    // Remove old connection sliders and labels from the panel
+    for (auto& slider : connectionSliders) {
+        slidersPanel->remove(slider);
+    }
+    for (auto& label : connectionLabels) {
+        slidersPanel->remove(label);
+    }
+    for (auto& valueLabel : connectionValueLabels) {
+        slidersPanel->remove(valueLabel);
+    }
+    
     connectionSliders.clear();
     connectionLabels.clear();
     connectionValueLabels.clear();
