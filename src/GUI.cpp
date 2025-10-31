@@ -2965,6 +2965,19 @@ void GUI::showLoadPresetDialog() {
     presetList->setSize(450, 280);
     presetList->setPosition(25, 40);
     
+    // Force dark theme colors for ListBox
+    auto renderer = presetList->getRenderer();
+    renderer->setProperty("BackgroundColor", tgui::Color(60, 60, 60));
+    renderer->setProperty("BackgroundColorHover", tgui::Color(70, 70, 70));
+    renderer->setProperty("TextColor", tgui::Color::White);
+    renderer->setProperty("TextColorHover", tgui::Color::White);
+    renderer->setProperty("TextColorSelected", tgui::Color::White);
+    renderer->setProperty("TextColorSelectedHover", tgui::Color::White);
+    renderer->setProperty("SelectedBackgroundColor", tgui::Color(80, 120, 200));
+    renderer->setProperty("SelectedBackgroundColorHover", tgui::Color(90, 130, 210));
+    renderer->setProperty("BorderColor", tgui::Color(100, 100, 100));
+    renderer->setProperty("Borders", 1);
+    
     // Populate with available presets
     auto factoryPresets = PresetManager::getAvailablePresets("presets/factory/");
     auto userPresets = PresetManager::getAvailablePresets("presets/user/");
@@ -2974,7 +2987,8 @@ void GUI::showLoadPresetDialog() {
         auto info = PresetManager::getPresetInfo(preset);
         std::string displayName = info.name.empty() ? 
             std::filesystem::path(preset).stem().string() : info.name;
-        presetList->addItem("F: " + displayName, preset);
+        std::string filename = std::filesystem::path(preset).stem().string();
+        presetList->addItem("F: " + displayName + " (" + filename + ")", preset);
     }
     
     presetList->addItem("--- User Presets ---");
@@ -2982,7 +2996,8 @@ void GUI::showLoadPresetDialog() {
         auto info = PresetManager::getPresetInfo(preset);
         std::string displayName = info.name.empty() ? 
             std::filesystem::path(preset).stem().string() : info.name;
-        presetList->addItem("U: " + displayName, preset);
+        std::string filename = std::filesystem::path(preset).stem().string();
+        presetList->addItem("U: " + displayName + " (" + filename + ")", preset);
     }
     
     dialog->add(presetList);
@@ -3107,19 +3122,19 @@ void GUI::showPresetBrowser() {
         for (const auto& info : factoryInfos) {
             auto nameLabel = tgui::Label::create(info.name);
             nameLabel->setPosition(20, yPos);
-            nameLabel->getRenderer()->setTextColor(tgui::Color::White);
+            nameLabel->getRenderer()->setTextColor(tgui::Color(80, 80, 80));
             nameLabel->getRenderer()->setTextStyle(tgui::TextStyle::Bold);
             scrollPanel->add(nameLabel);
             
             auto authorLabel = tgui::Label::create("Author: " + info.author);
             authorLabel->setPosition(20, yPos + 20);
-            authorLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+            authorLabel->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
             scrollPanel->add(authorLabel);
             
             auto descLabel = tgui::Label::create(info.description);
             descLabel->setPosition(20, yPos + 40);
             descLabel->setSize(500, 40);
-            descLabel->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+            descLabel->getRenderer()->setTextColor(tgui::Color(120, 120, 120));
             scrollPanel->add(descLabel);
             
             yPos += 80;
@@ -3138,19 +3153,19 @@ void GUI::showPresetBrowser() {
         for (const auto& info : userInfos) {
             auto nameLabel = tgui::Label::create(info.name);
             nameLabel->setPosition(20, yPos);
-            nameLabel->getRenderer()->setTextColor(tgui::Color::White);
+            nameLabel->getRenderer()->setTextColor(tgui::Color(80, 80, 80));
             nameLabel->getRenderer()->setTextStyle(tgui::TextStyle::Bold);
             scrollPanel->add(nameLabel);
             
             auto authorLabel = tgui::Label::create("Author: " + info.author);
             authorLabel->setPosition(20, yPos + 20);
-            authorLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+            authorLabel->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
             scrollPanel->add(authorLabel);
             
             auto descLabel = tgui::Label::create(info.description);
             descLabel->setPosition(20, yPos + 40);
             descLabel->setSize(500, 40);
-            descLabel->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+            descLabel->getRenderer()->setTextColor(tgui::Color(120, 120, 120));
             scrollPanel->add(descLabel);
             
             yPos += 80;
