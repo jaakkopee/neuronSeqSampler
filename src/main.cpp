@@ -84,32 +84,49 @@ private:
 #else
             bool eventConsumedByGUI = false;
 #endif
-            event.visit([&](const auto& e) {
-                using T = std::decay_t<decltype(e)>;
-                if constexpr (std::is_same_v<T, sf::Event::MouseButtonPressed>) {
-                    if (!eventConsumedByGUI && e.button == sf::Mouse::Button::Left) {
-                        handleMouseDrag(e.position.x, e.position.y);
+            // Use explicit type checks and getIf for SFML Event (works for SFML 3)
+            if (event.is<sf::Event::MouseButtonPressed>()) {
+                if (!eventConsumedByGUI) {
+                    if (const auto* e = event.getIf<sf::Event::MouseButtonPressed>()) {
+                        if (e->button == sf::Mouse::Button::Left) {
+                            handleMouseDrag(e->position.x, e->position.y);
+                        }
                     }
-                } else if constexpr (std::is_same_v<T, sf::Event::Closed>) {
-                    window.close();
-                } else if constexpr (std::is_same_v<T, sf::Event::MouseWheelScrolled>) {
-                    handleMouseScroll(e.delta);
-                } else if constexpr (std::is_same_v<T, sf::Event::MouseMoved>) {
-                    if (!eventConsumedByGUI) {
+                }
+            } else if (event.is<sf::Event::Closed>()) {
+                window.close();
+            } else if (event.is<sf::Event::MouseWheelScrolled>()) {
+                if (const auto* e = event.getIf<sf::Event::MouseWheelScrolled>()) {
+                    handleMouseScroll(e->delta);
+                }
+            } else if (event.is<sf::Event::MouseMoved>()) {
+                if (!eventConsumedByGUI) {
+                    if (const auto* e = event.getIf<sf::Event::MouseMoved>()) {
                         static int mouseEventCounter = 0;
                         if (++mouseEventCounter % 100 == 0) { // Print every 100th event to avoid spam
-                            std::cout << "🖱️ Mouse moved to (" << e.position.x << ", " << e.position.y << ")" << std::endl;
+                            std::cout << "🖱️ Mouse moved to (" << e->position.x << ", " << e->position.y << ")" << std::endl;
                         }
-                        visualizer.handleMouseMove(e.position.x, e.position.y);
+                        visualizer.handleMouseMove(e->position.x, e->position.y);
                     }
-                } else if constexpr (std::is_same_v<T, sf::Event::KeyPressed>) {
-                    if (!eventConsumedByGUI) {
-                        handleKeyPress(e.code);
-                    }
-                } else {
-                    // Ignore other events
                 }
-            });
+            } else if (event.is<sf::Event::KeyPressed>()) {
+                if (const auto* e = event.getIf<sf::Event::KeyPressed>()) {
+                    // Forward only application-level global shortcuts even if GUI consumed the event.
+                    // This avoids requiring a click on the visualization to use shortcuts while not
+                    // hijacking normal text input which GUI will typically consume.
+                    sf::Keyboard::Key code = e->code;
+                    bool isGlobalShortcut = (code == sf::Keyboard::Key::M) || (code == sf::Keyboard::Key::Q) ||
+                                            (code == sf::Keyboard::Key::Space) || (code == sf::Keyboard::Key::F) ||
+                                            (code >= sf::Keyboard::Key::Num1 && code <= sf::Keyboard::Key::Num9) ||
+                                            (code == sf::Keyboard::Key::S) || (code == sf::Keyboard::Key::L);
+
+                    if (!eventConsumedByGUI || isGlobalShortcut) {
+                        handleKeyPress(code);
+                    }
+                }
+            } else {
+                // Ignore other events
+            }
         }
     }
 private:

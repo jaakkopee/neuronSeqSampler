@@ -43,7 +43,24 @@ void GUI::initialize() {
     
     // Initialize quantizer widget
     if (quantizerWidget) {
-        quantizerWidget->initialize(gui->getContainer());
+        // Create a popover ChildWindow for quantizer controls sized to fit the widget
+        quantizerWindow = tgui::ChildWindow::create("Quantization");
+        // Use a compact pixel size to better fit the quantizer content
+        quantizerWindow->setSize(360, 420);
+        // Position near top-center with a bit of padding
+        quantizerWindow->setPosition("50% - 180", "8%");
+        quantizerWindow->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+        quantizerWindow->getRenderer()->setBorderColor(tgui::Color(80, 80, 80));
+        quantizerWindow->getRenderer()->setBorders(2);
+        quantizerWindow->setVisible(false); // start hidden; toggled by user
+        quantizerWindow->setResizable(false);
+        gui->add(quantizerWindow, "QuantizerWindow");
+
+        // Initialize the quantizer widget inside the child window
+        quantizerWidget->initialize(quantizerWindow);
+        // Make sure the quantizer main panel is centered and sized to fit nicely
+        quantizerWidget->setPosition(20.0f, 20.0f, 320.0f, 380.0f);
+
         // Initialize quantizer BPM to match default BPM (120.0)
         updateQuantizerBPM(120.0f);
     }
@@ -547,7 +564,7 @@ void GUI::refreshConnectionMatrix() {
     }
     
     // Only recreate the panel if it doesn't exist or if the number of neurons changed
-    if (!connectionMatrixPanel || !network || !network->getRhythmInterpreter()) {
+    if (!connectionMatrixWindow || !network || !network->getRhythmInterpreter()) {
         createConnectionMatrixPanel();
         return;
     }
@@ -1897,11 +1914,12 @@ void GUI::showExternalRecordingDialog() {
     gui->add(dialog);
 }
 void GUI::createConnectionMatrixPanel() {
-    // Remove existing panel if it exists
-    if (connectionMatrixPanel) {
-        // Preserve current visibility state before removing panel
-        matrixVisible = connectionMatrixPanel->isVisible();
-        gui->remove(connectionMatrixPanel);
+    // Remove existing window if it exists
+    if (connectionMatrixWindow) {
+        // Preserve current visibility state before removing window
+        matrixVisible = connectionMatrixWindow->isVisible();
+        gui->remove(connectionMatrixWindow);
+        connectionMatrixWindow = nullptr;
         connectionMatrixPanel = nullptr;
         matrixToggleButtons.clear();
         matrixGainSliders.clear();
@@ -1938,21 +1956,29 @@ void GUI::createConnectionMatrixPanel() {
     
     // Create panel even if no neurons yet - it will show as empty but ready
     
-    // Create main matrix panel with scrolling capability
-    connectionMatrixPanel = tgui::ScrollablePanel::create();
-    connectionMatrixPanel->setPosition("60%", "20%");
-    connectionMatrixPanel->setSize("39%", "75%");
-    connectionMatrixPanel->getRenderer()->setBackgroundColor(tgui::Color(20, 20, 20, 200));
-    connectionMatrixPanel->getRenderer()->setBorderColor(tgui::Color(60, 60, 60));
-    connectionMatrixPanel->getRenderer()->setBorders(1);
-    connectionMatrixPanel->setVisible(matrixVisible);
-    
-    // Set content size to accommodate all filters, neurons, and control sliders (Scale + BPM + Tempo)
-    float contentWidth = std::max(350.0f, static_cast<float>(270 + numNeurons * 80 + 280)); // Space for sliders and controls (BeatRoot controls removed)
-    float contentHeight = std::max(550.0f, static_cast<float>(150 + numFilters * 60 + 150)); // Extra space for better spaced tempo controls
-    static_cast<tgui::ScrollablePanel*>(connectionMatrixPanel.get())->setContentSize(tgui::Vector2f(contentWidth, contentHeight));
-    
-    gui->add(connectionMatrixPanel, "ConnectionMatrixPanel");
+    // Create a popover ChildWindow to host the rhythmogram (non-transparent, centered)
+    connectionMatrixWindow = tgui::ChildWindow::create("Rhythmogram Mapping");
+    connectionMatrixWindow->setSize("90%", "75%");
+    connectionMatrixWindow->setPosition("50% - 45%", "50% - 37.5%");
+    // Make the window semi-transparent so the neuron visualization is visible beneath
+    connectionMatrixWindow->getRenderer()->setBackgroundColor(tgui::Color(20, 20, 20, 120));
+    connectionMatrixWindow->getRenderer()->setBorderColor(tgui::Color(80, 80, 80));
+    connectionMatrixWindow->getRenderer()->setBorders(2);
+    connectionMatrixWindow->setVisible(matrixVisible);
+
+    // Inner content panel - all existing matrix widgets will be added to this panel
+    connectionMatrixPanel = tgui::Panel::create();
+    connectionMatrixPanel->setPosition("0%", "0%");
+    connectionMatrixPanel->setSize("100%", "100%");
+    // Make inner panel transparent to allow underlying visualization to show through
+    connectionMatrixPanel->getRenderer()->setBackgroundColor(tgui::Color(0,0,0,0));
+    connectionMatrixWindow->add(connectionMatrixPanel);
+
+    gui->add(connectionMatrixWindow, "ConnectionMatrixPanel");
+
+    // Compute content size estimates (used for laying out controls inside the popover)
+    float contentWidth = std::max(350.0f, static_cast<float>(270 + numNeurons * 80 + 280)); // estimate
+    float contentHeight = std::max(550.0f, static_cast<float>(150 + numFilters * 60 + 150)); // estimate
     
     // Title label
     std::string title = numNeurons == 0 ? "🎛️ Rhythmogram Mapping (8×0) - Add neurons first" : 
@@ -2683,12 +2709,12 @@ void GUI::updateConnectionMatrix() {
 }
 
 void GUI::toggleMatrixVisibility() {
-    if (!connectionMatrixPanel) {
+    if (!connectionMatrixWindow) {
         return;
     }
-    
+
     matrixVisible = !matrixVisible;
-    connectionMatrixPanel->setVisible(matrixVisible);
+    connectionMatrixWindow->setVisible(matrixVisible);
     
     std::cout << "🎛️ Rhythmogram Mapping " << (matrixVisible ? "shown" : "hidden") 
               << " (press M to toggle)" << std::endl;
@@ -2701,7 +2727,14 @@ void GUI::forceMatrixUpdate() {
 }
 
 void GUI::toggleQuantizerVisibility() {
-    if (quantizerWidget) {
+    if (quantizerWindow) {
+        bool newState = !quantizerWindow->isVisible();
+        quantizerWindow->setVisible(newState);
+        // Also ensure the internal widget is visible when the window is shown
+        if (quantizerWidget) quantizerWidget->setVisible(newState);
+        std::cout << "🎵 Quantizer " << (newState ? "shown" : "hidden") << " (press Q to toggle)" << std::endl;
+    } else if (quantizerWidget) {
+        // Fallback: toggle internal widget visibility
         quantizerWidget->toggleVisibility();
         std::cout << "🎵 Quantizer " << (quantizerWidget->isVisible() ? "shown" : "hidden") 
                   << " (press Q to toggle)" << std::endl;
