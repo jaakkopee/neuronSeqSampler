@@ -75,7 +75,7 @@ private:
     // Frequency response visualization temporarily removed due to TGUI limitations
     
     // Connection matrix GUI (8 filters × N neurons)
-    tgui::Panel::Ptr connectionMatrixPanel; // now a content panel hosted inside a ChildWindow
+    tgui::ScrollablePanel::Ptr connectionMatrixPanel; // now a scrollable content panel hosted inside a ChildWindow
     tgui::ChildWindow::Ptr connectionMatrixWindow; // popover window for rhythmogram (was full-width panel)
     tgui::Label::Ptr matrixTitleLabel;
     std::vector<std::vector<tgui::Button::Ptr>> matrixToggleButtons; // [filter][neuron]

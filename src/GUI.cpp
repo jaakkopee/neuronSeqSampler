@@ -1966,8 +1966,8 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixWindow->getRenderer()->setBorders(2);
     connectionMatrixWindow->setVisible(matrixVisible);
 
-    // Inner content panel - all existing matrix widgets will be added to this panel
-    connectionMatrixPanel = tgui::Panel::create();
+    // Inner scrollable panel - all existing matrix widgets will be added to this panel
+    connectionMatrixPanel = tgui::ScrollablePanel::create();
     connectionMatrixPanel->setPosition("0%", "0%");
     connectionMatrixPanel->setSize("100%", "100%");
     // Make inner panel transparent to allow underlying visualization to show through
@@ -1979,6 +1979,9 @@ void GUI::createConnectionMatrixPanel() {
     // Compute content size estimates (used for laying out controls inside the popover)
     float contentWidth = std::max(350.0f, static_cast<float>(270 + numNeurons * 80 + 280)); // estimate
     float contentHeight = std::max(550.0f, static_cast<float>(150 + numFilters * 60 + 150)); // estimate
+    
+    // Set content size for scrollable panel now that we have computed the dimensions
+    connectionMatrixPanel->setContentSize(tgui::Vector2f(contentWidth, contentHeight));
     
     // Title label
     std::string title = numNeurons == 0 ? "🎛️ Rhythmogram Mapping (8×0) - Add neurons first" : 
