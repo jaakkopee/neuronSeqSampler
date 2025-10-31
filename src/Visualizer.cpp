@@ -569,6 +569,7 @@ bool Visualizer::loadFont(const std::string& fontPath) {
     // Try to load system default font (SFML's built-in font is not available)
     // Try common system font paths
     std::vector<std::string> systemFonts = {
+        "DejaVuSerifCondensed.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/TTF/DejaVuSans.ttf", 
         "/System/Library/Fonts/Helvetica.ttc",

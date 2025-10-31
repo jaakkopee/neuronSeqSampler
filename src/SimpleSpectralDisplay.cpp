@@ -97,7 +97,7 @@ void SimpleSpectralDisplay::initializeColorMap() {
 
 void SimpleSpectralDisplay::loadFont() {
     // Try to load system font
-    if (font.openFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf") ||
+    if (font.openFromFile("DejaVuSerifCondensed.ttf") ||
         font.openFromFile("/System/Library/Fonts/Arial.ttf") ||
         font.openFromFile("C:\\Windows\\Fonts\\arial.ttf")) {
         fontLoaded = true;
