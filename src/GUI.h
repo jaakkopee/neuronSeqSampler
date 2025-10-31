@@ -50,6 +50,7 @@ private:
     std::vector<tgui::Label::Ptr> neuronLabels;
     std::vector<tgui::Label::Ptr> neuronValueLabels;
     std::vector<tgui::ComboBox::Ptr> activationFunctionCombos;
+    std::vector<tgui::Button::Ptr> neuronSampleButtons; // Button to change/select sample for each neuron
     tgui::Slider::Ptr activationIntervalSlider;
     tgui::Label::Ptr activationIntervalLabel;
     tgui::ComboBox::Ptr viewModeComboBox;
@@ -159,6 +160,7 @@ private:
     void onSliderChanged(size_t connectionIndex, float value);
     void onNeuronSliderChanged(size_t neuronIndex, float value);
     void onActivationFunctionChanged(size_t neuronIndex, const std::string& functionName);
+    void showChangeSampleDialog(size_t neuronIndex);
 
 public:
     GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, 

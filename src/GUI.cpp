@@ -282,11 +282,16 @@ void GUI::createNeuronSliders() {
     for (auto& combo : activationFunctionCombos) {
         slidersPanel->remove(combo);
     }
+    // Remove sample buttons if any
+    for (auto& btn : neuronSampleButtons) {
+        slidersPanel->remove(btn);
+    }
     
     neuronSliders.clear();
     neuronLabels.clear();
     neuronValueLabels.clear();
     activationFunctionCombos.clear();
+    neuronSampleButtons.clear();
     
     const auto& neurons = network->getNeurons();
     // Always start neuron sliders at a consistent position (not dependent on connection count)
@@ -373,7 +378,44 @@ void GUI::createNeuronSliders() {
         funcLabel->setTextSize(9);
         funcLabel->getRenderer()->setTextColor(tgui::Color::Green);
         slidersPanel->add(funcLabel);
-        
+
+        // Create sample selection button to the right of the function combo
+        std::string sampleFile = neuron->getSampleFilePath();
+        std::string sampleLabelText = "(no sample)";
+        if (!sampleFile.empty()) {
+            try {
+                sampleLabelText = std::filesystem::path(sampleFile).filename().string();
+            } catch (...) {
+                sampleLabelText = "(no sample)";
+            }
+        }
+
+        // Truncate long filenames to avoid UI overlap
+        std::string displayLabel = sampleLabelText;
+        const size_t maxLabelLen = 12;
+        if (displayLabel.size() > maxLabelLen) {
+            displayLabel = displayLabel.substr(0, maxLabelLen - 3) + "...";
+        }
+
+        auto sampleButton = tgui::Button::create(displayLabel);
+        // Position sample button to the right of the function combo but left of connection controls
+        // Func combo is at x=40 width=120 -> ends at 160. Connection column begins at ~215.
+        // Use a small button in the gap (x=165..215)
+        float sampleBtnX = 165.0f;
+        sampleButton->setPosition(sampleBtnX, yPos); // align with function combo row
+        sampleButton->setSize(50, 18);
+        sampleButton->setTextSize(9);
+        sampleButton->getRenderer()->setBackgroundColor(tgui::Color(70, 70, 70));
+        sampleButton->getRenderer()->setTextColor(tgui::Color::White);
+
+        // Capture index for the callback
+        sampleButton->onPress([this, i]() {
+            this->showChangeSampleDialog(i);
+        });
+
+        slidersPanel->add(sampleButton);
+        neuronSampleButtons.push_back(sampleButton);
+
         yPos += 22.0f; // Extra spacing after each neuron's controls
     }
     
@@ -1138,6 +1180,163 @@ void GUI::showAddNeuronDialog() {
     });
     dialog->add(cancelButton);
     
+    gui->add(dialog);
+}
+
+void GUI::showChangeSampleDialog(size_t neuronIndex) {
+    if (!network) return;
+
+    if (neuronIndex >= network->getNeuronCount()) return;
+
+    Neuron* neuron = network->getNeuron(neuronIndex);
+    if (!neuron) return;
+
+    // Create dialog window for changing sample
+    auto dialog = tgui::ChildWindow::create("Change Neuron Sample");
+    dialog->setSize(420, 360);
+    dialog->setPosition("50% - 210", "50% - 180");
+    dialog->getRenderer()->setTitleBarHeight(30);
+    dialog->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40, 240));
+
+    auto dirLabel = tgui::Label::create("Sample Directory:");
+    dirLabel->setPosition(10, 40);
+    dirLabel->setSize(150, 25);
+    dirLabel->getRenderer()->setTextColor(tgui::Color::White);
+    dialog->add(dirLabel);
+
+    auto dirComboBox = tgui::ComboBox::create();
+    dirComboBox->setPosition(10, 70);
+    dirComboBox->setSize(200, 25);
+    dialog->add(dirComboBox, "dirComboBox");
+
+    auto fileLabel = tgui::Label::create("Sample File:");
+    fileLabel->setPosition(10, 110);
+    fileLabel->setSize(150, 25);
+    dialog->add(fileLabel);
+
+    auto fileListBox = tgui::ListBox::create();
+    fileListBox->setPosition(10, 140);
+    fileListBox->setSize(400, 160);
+    dialog->add(fileListBox, "fileListBox");
+
+    // Populate directories
+    auto sampleDirs = getAllSampleDirectories();
+    for (const auto& d : sampleDirs) dirComboBox->addItem(d);
+    if (!sampleDirs.empty()) dirComboBox->setSelectedItem(sampleDirs[0]);
+
+    // Update file list when directory changes
+    dirComboBox->onItemSelect([=]() {
+        auto selectedDir = dirComboBox->getSelectedItem();
+        if (!selectedDir.empty()) {
+            fileListBox->removeAllItems();
+            auto files = getSampleFiles("samples/" + selectedDir.toStdString());
+            for (const auto& file : files) fileListBox->addItem(file);
+        }
+    });
+
+    // Initialize file list with first directory
+    if (!sampleDirs.empty()) {
+        auto files = getSampleFiles("samples/" + sampleDirs[0]);
+        for (const auto& file : files) fileListBox->addItem(file);
+    }
+
+    // Pre-select current file if known
+    std::string curPath = neuron->getSampleFilePath();
+    if (!curPath.empty()) {
+        try {
+            auto p = std::filesystem::path(curPath);
+            auto parent = p.parent_path().filename().string();
+            auto fname = p.filename().string();
+            if (!parent.empty()) {
+                dirComboBox->setSelectedItem(parent);
+                fileListBox->removeAllItems();
+                auto files = getSampleFiles("samples/" + parent);
+                for (const auto& file : files) fileListBox->addItem(file);
+                // Try to pre-select matching file in the list if available.
+                // TGUI ListBox selection API varies between versions; leave unselected if method not present.
+                (void)fname; // silence unused variable warning when selection is skipped
+            }
+        } catch (...) {
+            // ignore
+        }
+    }
+
+    // Buttons
+    auto changeButton = tgui::Button::create("Change Sample");
+    changeButton->setPosition(10, 310);
+    changeButton->setSize(140, 30);
+    changeButton->onPress([=]() {
+        auto selectedDir = dirComboBox->getSelectedItem();
+        auto selectedFile = fileListBox->getSelectedItem();
+
+        if (selectedDir.empty() || selectedFile.empty()) return;
+
+        std::string fullPath = "samples/" + selectedDir.toStdString() + "/" + selectedFile.toStdString();
+
+        if (!audioManager) {
+            std::cerr << "No AudioManager available to load sample" << std::endl;
+            dialog->close();
+            return;
+        }
+
+        int assignedIndex = neuron->getSampleIndex();
+        if (assignedIndex <= 0) {
+            // Provide a default mapping if neuron doesn't have an index
+            assignedIndex = static_cast<int>(neuronIndex) + 1;
+            neuron->setSampleIndex(assignedIndex);
+        }
+
+        if (!audioManager->loadSampleFromPath(assignedIndex, fullPath)) {
+            std::cerr << "Failed to load sample: " << fullPath << std::endl;
+            // Show small error dialog
+            auto err = tgui::ChildWindow::create("Error");
+            err->setSize(300, 120);
+            err->setPosition("50% - 150", "50% - 60");
+            auto msg = tgui::Label::create("Failed to load sample file: " + selectedFile.toStdString());
+            msg->setPosition(10, 20);
+            msg->setSize(280, 60);
+            err->add(msg);
+            auto ok = tgui::Button::create("OK");
+            ok->setPosition(100, 70);
+            ok->setSize(100, 30);
+            ok->onPress([err]() { err->close(); });
+            err->add(ok);
+            gui->add(err);
+            return;
+        }
+
+        // Update neuron's sample file path
+        neuron->setSampleFilePath(fullPath);
+
+        // Update sample button text to show filename
+        if (neuronIndex < neuronSampleButtons.size()) {
+            try {
+                std::string label = std::filesystem::path(fullPath).filename().string();
+                // Truncate long filenames to fit the small button
+                const size_t maxLabelLen = 12;
+                std::string display = label;
+                if (display.size() > maxLabelLen) display = display.substr(0, maxLabelLen - 3) + "...";
+                neuronSampleButtons[neuronIndex]->setText(display);
+            } catch (...) {
+                std::string display = selectedFile.toStdString();
+                const size_t maxLabelLen = 12;
+                if (display.size() > maxLabelLen) display = display.substr(0, maxLabelLen - 3) + "...";
+                neuronSampleButtons[neuronIndex]->setText(display);
+            }
+        }
+
+        std::cout << "Neuron " << neuronIndex << " sample changed to " << fullPath << std::endl;
+
+        dialog->close();
+    });
+    dialog->add(changeButton);
+
+    auto cancelButton = tgui::Button::create("Cancel");
+    cancelButton->setPosition(160, 310);
+    cancelButton->setSize(100, 30);
+    cancelButton->onPress([=]() { dialog->close(); });
+    dialog->add(cancelButton);
+
     gui->add(dialog);
 }
 
