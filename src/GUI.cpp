@@ -59,6 +59,8 @@ void GUI::initialize() {
         quantizerWindow->getRenderer()->setBorders(2);
         quantizerWindow->setVisible(false); // start hidden; toggled by user
         quantizerWindow->setResizable(false);
+        quantizerWindow->setTitleButtons(tgui::ChildWindow::TitleButton::None); // Remove close button
+        
         gui->add(quantizerWindow, "QuantizerWindow");
 
         // Initialize the quantizer widget inside the child window
@@ -1976,6 +1978,7 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixWindow->getRenderer()->setBorderColor(tgui::Color(80, 80, 80));
     connectionMatrixWindow->getRenderer()->setBorders(2);
     connectionMatrixWindow->setVisible(matrixVisible);
+    connectionMatrixWindow->setTitleButtons(tgui::ChildWindow::TitleButton::None); // Remove close button
 
     // Inner scrollable panel - all existing matrix widgets will be added to this panel
     connectionMatrixPanel = tgui::ScrollablePanel::create();
