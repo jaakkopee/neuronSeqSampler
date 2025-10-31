@@ -1,0 +1,123 @@
+{
+  "connections": [
+    {
+      "source_id": 0,
+      "target_id": 0,
+      "weight": 0.3399999141693115
+    },
+    {
+      "source_id": 0,
+      "target_id": 1,
+      "weight": 0.2999999523162842
+    },
+    {
+      "source_id": 2,
+      "target_id": 1,
+      "weight": -0.060000061988830566
+    },
+    {
+      "source_id": 1,
+      "target_id": 2,
+      "weight": 1.119999885559082
+    },
+    {
+      "source_id": 2,
+      "target_id": 3,
+      "weight": 1.0
+    },
+    {
+      "source_id": 3,
+      "target_id": 0,
+      "weight": -0.5300000905990601
+    },
+    {
+      "source_id": 2,
+      "target_id": 4,
+      "weight": -0.4100000858306885
+    }
+  ],
+  "neurons": [
+    {
+      "activation": -0.48337283730506897,
+      "activation_function": "Linear",
+      "activation_increase_per_iteration": 0.3799999952316284,
+      "decay_rate": 1.0,
+      "id": 0,
+      "sample_file_path": "samples/clap/clap (ginger claps).wav",
+      "sample_index": 1,
+      "threshold": 1.0
+    },
+    {
+      "activation": 0.6709231734275818,
+      "activation_function": "Linear",
+      "activation_increase_per_iteration": 0.0,
+      "decay_rate": 1.0,
+      "id": 1,
+      "sample_file_path": "samples/kick/kick (ionic funk).wav",
+      "sample_index": 2,
+      "threshold": 1.0
+    },
+    {
+      "activation": 0.5650515556335449,
+      "activation_function": "Linear",
+      "activation_increase_per_iteration": 0.09999998658895493,
+      "decay_rate": 1.0,
+      "id": 2,
+      "sample_file_path": "samples/hat/open hat (ionic funk).wav",
+      "sample_index": 3,
+      "threshold": 1.0
+    },
+    {
+      "activation": 0.9240864515304565,
+      "activation_function": "Linear",
+      "activation_increase_per_iteration": 0.0,
+      "decay_rate": 1.0,
+      "id": 3,
+      "sample_file_path": "samples/fx/crash (frenesi).wav",
+      "sample_index": 4,
+      "threshold": 1.0
+    },
+    {
+      "activation": 0.4631573259830475,
+      "activation_function": "Linear",
+      "activation_increase_per_iteration": 0.29999998211860657,
+      "decay_rate": 1.0,
+      "id": 4,
+      "sample_file_path": "samples/808/808_13.wav",
+      "sample_index": 5,
+      "threshold": 1.0
+    }
+  ],
+  "preset_info": {
+    "author": "User",
+    "connection_count": 7,
+    "created_date": "2025-10-31T07:30:38Z",
+    "description": "GititonmahGoodFoot",
+    "name": "Funky Doodle Dandy",
+    "neuron_count": 5,
+    "tags": "",
+    "version": "1.0"
+  },
+  "quantization": {
+    "bpm": 130.17369079589844,
+    "enabled": true,
+    "grid_resolution": "thirty_second_note",
+    "grid_resolution_value": 4,
+    "quantization_amount": 0.9099999666213989,
+    "swing_factor": 0.5199999809265137
+  },
+  "rhythmogram_matrix": {
+    "enabled": true,
+    "filter_gains": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "scale": 5.0
+  }
+}
