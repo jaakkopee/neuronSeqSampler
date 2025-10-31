@@ -108,7 +108,7 @@
       "decay_rate": 0.94,
       "activation_increase_per_iteration": 0.0,
       "activation_function": "Tanh",
-      "sample_file_path": "samples/clap/clap (ghost).wav"
+      "sample_file_path": "samples/unknown/sample_6.wav"
     },
     {
       "id": 10,
@@ -118,7 +118,7 @@
       "decay_rate": 0.94,
       "activation_increase_per_iteration": 0.0,
       "activation_function": "Tanh",
-      "sample_file_path": "samples/fx/crash (frenesi).wav"
+      "sample_file_path": "samples/unknown/sample_7.wav"
     },
     {
       "id": 11,
@@ -128,7 +128,7 @@
       "decay_rate": 0.96,
       "activation_increase_per_iteration": 0.0,
       "activation_function": "Tanh",
-      "sample_file_path": "samples/perc/tom (post rave maximalist).wav"
+      "sample_file_path": "samples/unknown/sample_8.wav"
     },
     {
       "id": 12,
@@ -138,7 +138,7 @@
       "decay_rate": 0.93,
       "activation_increase_per_iteration": 0.0,
       "activation_function": "Tanh",
-      "sample_file_path": "samples/clap/clap (ghost).wav"
+      "sample_file_path": "samples/unknown/sample_6.wav"
     },
     {
       "id": 13,
@@ -148,7 +148,7 @@
       "decay_rate": 0.93,
       "activation_increase_per_iteration": 0.0,
       "activation_function": "Tanh",
-      "sample_file_path": "samples/fx/crash (frenesi).wav"
+      "sample_file_path": "samples/unknown/sample_7.wav"
     },
     {
       "id": 14,
@@ -158,7 +158,7 @@
       "decay_rate": 0.96,
       "activation_increase_per_iteration": 0.0,
       "activation_function": "Tanh",
-      "sample_file_path": "samples/perc/tom (post rave maximalist).wav"
+      "sample_file_path": "samples/unknown/sample_8.wav"
     },
     {
       "id": 15,
@@ -168,7 +168,7 @@
       "decay_rate": 0.96,
       "activation_increase_per_iteration": 0.0,
       "activation_function": "Tanh",
-      "sample_file_path": "samples/perc/tom (post rave maximalist).wav"
+      "sample_file_path": "samples/unknown/sample_8.wav"
     }
   ],
   "connections": [

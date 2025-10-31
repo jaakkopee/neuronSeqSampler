@@ -78,7 +78,7 @@
       "decay_rate": 0.94,
       "activation_increase_per_iteration": 0.0,
       "activation_function": "Tanh",
-      "sample_file_path": "samples/clap/clap (ghost).wav"
+      "sample_file_path": "samples/unknown/sample_6.wav"
     },
     {
       "id": 7,
@@ -88,7 +88,7 @@
       "decay_rate": 0.96,
       "activation_increase_per_iteration": 0.0,
       "activation_function": "Tanh",
-      "sample_file_path": "samples/perc/tom (post rave maximalist).wav"
+      "sample_file_path": "samples/unknown/sample_8.wav"
     }
   ],
   "connections": [

@@ -11,6 +11,7 @@
 #include <TGUI/Widgets/SpinControl.hpp>
 #include <TGUI/Widgets/EditBox.hpp>
 #include <TGUI/Widgets/ListBox.hpp>
+#include <TGUI/Container.hpp>
 #include <SFML/Graphics.hpp>
 #include <memory>
 #include <filesystem>
@@ -192,4 +193,8 @@ public:
     
     // Update frequency labels with current BPM scaling
     void updateFrequencyLabels();
+    
+    // Text input detection for keyboard handling
+    bool isTextInputActive() const;
+    bool checkWidgetTreeForFocusedEditBox(tgui::Container::Ptr container) const;
 };

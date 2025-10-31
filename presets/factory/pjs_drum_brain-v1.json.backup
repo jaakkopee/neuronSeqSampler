@@ -68,7 +68,7 @@
       "decay_rate": 0.92,
       "activation_increase_per_iteration": 0.0,
       "activation_function": "Tanh",
-      "sample_file_path": "samples/clap/clap (ghost).wav"
+      "sample_file_path": "samples/unknown/sample_6.wav"
     },
     {
       "id": 6,
@@ -78,7 +78,7 @@
       "decay_rate": 0.9,
       "activation_increase_per_iteration": 0.0,
       "activation_function": "Tanh",
-      "sample_file_path": "samples/fx/crash (frenesi).wav"
+      "sample_file_path": "samples/unknown/sample_7.wav"
     },
     {
       "id": 7,
@@ -88,7 +88,7 @@
       "decay_rate": 0.93,
       "activation_increase_per_iteration": 0.0,
       "activation_function": "Tanh",
-      "sample_file_path": "samples/perc/tom (post rave maximalist).wav"
+      "sample_file_path": "samples/unknown/sample_8.wav"
     },
     {
       "id": 8,
@@ -98,7 +98,7 @@
       "decay_rate": 0.88,
       "activation_increase_per_iteration": 0.0,
       "activation_function": "ReLU",
-      "sample_file_path": "samples/hat/open hat (ionic funk).wav"
+      "sample_file_path": "samples/unknown/sample_9.wav"
     },
     {
       "id": 9,
@@ -108,7 +108,7 @@
       "decay_rate": 0.88,
       "activation_increase_per_iteration": 0.0,
       "activation_function": "ReLU",
-      "sample_file_path": "samples/snare/snare (ionic funk).wav"
+      "sample_file_path": "samples/unknown/sample_10.wav"
     },
     {
       "id": 10,
@@ -118,7 +118,7 @@
       "decay_rate": 0.87,
       "activation_increase_per_iteration": 0.0,
       "activation_function": "ReLU",
-      "sample_file_path": "samples/kick/kick (krystle).wav"
+      "sample_file_path": "samples/unknown/sample_11.wav"
     },
     {
       "id": 11,
@@ -128,7 +128,7 @@
       "decay_rate": 0.89,
       "activation_increase_per_iteration": 0.0,
       "activation_function": "ReLU",
-      "sample_file_path": "samples/perc/bongo (frenesi).wav"
+      "sample_file_path": "samples/unknown/sample_12.wav"
     },
     {
       "id": 12,
@@ -138,7 +138,7 @@
       "decay_rate": 0.95,
       "activation_increase_per_iteration": 0.0,
       "activation_function": "Tanh",
-      "sample_file_path": "samples/fx/siren (krystle).wav"
+      "sample_file_path": "samples/unknown/sample_13.wav"
     },
     {
       "id": 13,
@@ -148,7 +148,7 @@
       "decay_rate": 0.95,
       "activation_increase_per_iteration": 0.0,
       "activation_function": "Tanh",
-      "sample_file_path": "samples/stabs/stab (ghost).wav"
+      "sample_file_path": "samples/unknown/sample_14.wav"
     },
     {
       "id": 14,
@@ -158,7 +158,7 @@
       "decay_rate": 0.96,
       "activation_increase_per_iteration": 0.0,
       "activation_function": "Tanh",
-      "sample_file_path": "samples/808/808_1.wav"
+      "sample_file_path": "samples/unknown/sample_15.wav"
     },
     {
       "id": 15,
@@ -168,7 +168,7 @@
       "decay_rate": 0.96,
       "activation_increase_per_iteration": 0.0,
       "activation_function": "Tanh",
-      "sample_file_path": "samples/loops & samples/amen chop (freewill).wav"
+      "sample_file_path": "samples/unknown/sample_16.wav"
     }
   ],
   "connections": [

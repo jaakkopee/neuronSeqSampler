@@ -2809,6 +2809,32 @@ void GUI::updateFrequencyLabels() {
 
 // Frequency response visualization method temporarily removed due to TGUI widget limitations
 
+bool GUI::isTextInputActive() const {
+    if (!gui) {
+        return false;
+    }
+    
+    // Check if any EditBox currently has focus by recursively searching through all widgets
+    return checkWidgetTreeForFocusedEditBox(gui->getContainer());
+}
+
+bool GUI::checkWidgetTreeForFocusedEditBox(tgui::Container::Ptr container) const {
+    for (auto& widget : container->getWidgets()) {
+        // Check if this widget is an EditBox and has focus
+        auto editBox = std::dynamic_pointer_cast<tgui::EditBox>(widget);
+        if (editBox && editBox->isFocused()) {
+            return true;
+        }
+        
+        // Recursively check containers (panels, child windows, etc.)
+        auto childContainer = std::dynamic_pointer_cast<tgui::Container>(widget);
+        if (childContainer && checkWidgetTreeForFocusedEditBox(childContainer)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // ================================================================================================
 // Preset Management Methods
 // ================================================================================================

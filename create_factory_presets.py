@@ -14,29 +14,46 @@ def create_factory_presets():
     
     # 1. Basic Drum Pattern (beginner-friendly)
     basic_drum = {
+        "preset_info": {
+            "name": "Basic Drum Pattern",
+            "version": "1.0",
+            "author": "NeuronSeqSampler",
+            "description": "Simple 3-neuron drum pattern perfect for beginners",
+            "created_date": "2025-10-29T00:00:00Z",
+            "tags": "drum,basic,beginner,3neuron"
+        },
         "neurons": [
             {
                 "id": 0,
+                "sample_index": 1,
+                "sample_file_path": "samples/kick/kick (ghost).wav",
+                "activation": 0.0,
                 "threshold": 0.7,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "Linear",
-                "sample_file": "samples/kick/kick (ghost).wav",
-                "is_output": True,
                 "position": [100.0, 100.0]
             },
             {
                 "id": 1,
+                "sample_index": 2,
+                "sample_file_path": "samples/snare/snare (ghost).wav",
+                "activation": 0.0,
                 "threshold": 0.6,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "Linear",
-                "sample_file": "samples/snare/snare (ghost).wav",
-                "is_output": True,
                 "position": [200.0, 100.0]
             },
             {
                 "id": 2,
+                "sample_index": 3,
+                "sample_file_path": "samples/hat/hat 2 (ghost).wav",
+                "activation": 0.0,
                 "threshold": 0.5,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "Linear",
-                "sample_file": "samples/hat/hat 2 (ghost).wav",
-                "is_output": True,
                 "position": [300.0, 100.0]
             }
         ],
@@ -60,45 +77,68 @@ def create_factory_presets():
     
     # 2. Complex Network (5-neuron interconnected)
     complex_network = {
+        "preset_info": {
+            "name": "Complex Network",
+            "version": "1.0", 
+            "author": "NeuronSeqSampler",
+            "description": "5-neuron interconnected network with mixed activation functions",
+            "created_date": "2025-10-29T00:00:00Z",
+            "tags": "complex,5neuron,mixed,interconnected"
+        },
         "neurons": [
             {
                 "id": 0,
+                "sample_index": 1,
+                "sample_file_path": "samples/kick/kick (krystle).wav",
+                "activation": 0.0,
                 "threshold": 0.6,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "ReLU",
-                "sample_file": "samples/kick/kick (krystle).wav",
-                "is_output": True,
                 "position": [150.0, 80.0]
             },
             {
                 "id": 1,
+                "sample_index": 2,
+                "sample_file_path": "samples/snare/snare (ionic funk).wav",
+                "activation": 0.0,
                 "threshold": 0.5,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "Sigmoid",
-                "sample_file": "samples/snare/snare (ionic funk).wav",
-                "is_output": True,
                 "position": [250.0, 120.0]
             },
             {
                 "id": 2,
+                "sample_index": 3,
+                "sample_file_path": "samples/hat/open hat (ionic funk).wav",
+                "activation": 0.0,
                 "threshold": 0.7,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "Tanh",
-                "sample_file": "samples/hat/open hat (ionic funk).wav",
-                "is_output": True,
                 "position": [200.0, 200.0]
             },
             {
                 "id": 3,
+                "sample_index": 4,
+                "sample_file_path": "samples/perc/clav (frenesi).wav",
+                "activation": 0.0,
                 "threshold": 0.4,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "ReLU",
-                "sample_file": "samples/perc/clav (frenesi).wav",
-                "is_output": True,
                 "position": [100.0, 180.0]
             },
             {
                 "id": 4,
+                "sample_index": 5,
+                "sample_file_path": "samples/perc/rim (ghost).wav",
+                "activation": 0.0,
                 "threshold": 0.8,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "Sigmoid",
-                "sample_file": "samples/perc/rim (ghost).wav",
-                "is_output": True,
                 "position": [300.0, 160.0]
             }
         ],
@@ -131,34 +171,46 @@ def create_factory_presets():
         "neurons": [
             {
                 "id": 0,
+                "sample_index": 1,
+                "sample_file_path": "samples/kick/kick (hidden power).wav",
+                "activation": 0.0,
                 "threshold": 0.3,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "Sigmoid",
-                "sample_file": "samples/kick/kick (hidden power).wav",
-                "is_output": True,
                 "position": [120.0, 100.0]
             },
             {
                 "id": 1,
+                "sample_index": 2,
+                "sample_file_path": "samples/snare/snare (post rave maximalist).wav",
+                "activation": 0.0,
                 "threshold": 0.4,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "Sigmoid",
-                "sample_file": "samples/snare/snare (post rave maximalist).wav",
-                "is_output": True,
                 "position": [220.0, 120.0]
             },
             {
                 "id": 2,
+                "sample_index": 3,
+                "sample_file_path": "samples/hat/open hat (post rave maximalist).wav",
+                "activation": 0.0,
                 "threshold": 0.5,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "Sigmoid",
-                "sample_file": "samples/hat/open hat (post rave maximalist).wav",
-                "is_output": True,
                 "position": [180.0, 200.0]
             },
             {
                 "id": 3,
+                "sample_index": 4,
+                "sample_file_path": "samples/perc/chant 2 (wlfgrl acid).wav",
+                "activation": 0.0,
                 "threshold": 0.35,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "Sigmoid",
-                "sample_file": "samples/perc/chant 2 (wlfgrl acid).wav",
-                "is_output": True,
                 "position": [280.0, 180.0]
             }
         ],
@@ -187,26 +239,35 @@ def create_factory_presets():
         "neurons": [
             {
                 "id": 0,
+                "sample_index": 1,
+                "sample_file_path": "samples/kick.wav",
+                "activation": 0.0,
                 "threshold": 0.2,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "Linear",
-                "sample_file": "samples/kick.wav",
-                "is_output": True,
                 "position": [150.0, 90.0]
             },
             {
                 "id": 1,
+                "sample_index": 2,
+                "sample_file_path": "samples/snare.wav",
+                "activation": 0.0,
                 "threshold": 0.15,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "ReLU",
-                "sample_file": "samples/snare.wav",
-                "is_output": True,
                 "position": [250.0, 110.0]
             },
             {
                 "id": 2,
+                "sample_index": 3,
+                "sample_file_path": "samples/hihat.wav",
+                "activation": 0.0,
                 "threshold": 0.1,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "Linear",
-                "sample_file": "samples/hihat.wav",
-                "is_output": True,
                 "position": [200.0, 170.0]
             }
         ],
@@ -234,26 +295,35 @@ def create_factory_presets():
         "neurons": [
             {
                 "id": 0,
+                "sample_index": 1,
+                "sample_file_path": "samples/kick.wav",
+                "activation": 0.0,
                 "threshold": 0.8,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "Tanh",
-                "sample_file": "samples/kick.wav",
-                "is_output": True,
                 "position": [180.0, 120.0]
             },
             {
                 "id": 1,
+                "sample_index": 2,
+                "sample_file_path": "samples/perc1.wav",
+                "activation": 0.0,
                 "threshold": 0.75,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "Tanh",
-                "sample_file": "samples/perc1.wav",
-                "is_output": True,
                 "position": [220.0, 180.0]
             },
             {
                 "id": 2,
+                "sample_index": 3,
+                "sample_file_path": "samples/perc2.wav",
+                "activation": 0.0,
                 "threshold": 0.9,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "Tanh",
-                "sample_file": "samples/perc2.wav",
-                "is_output": True,
                 "position": [140.0, 200.0]
             }
         ],
@@ -280,34 +350,46 @@ def create_factory_presets():
         "neurons": [
             {
                 "id": 0,
+                "sample_index": 1,
+                "sample_file_path": "samples/kick.wav",
+                "activation": 0.0,
                 "threshold": 0.95,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "ReLU",
-                "sample_file": "samples/kick.wav",
-                "is_output": True,
                 "position": [160.0, 80.0]
             },
             {
                 "id": 1,
+                "sample_index": 2,
+                "sample_file_path": "samples/snare.wav",
+                "activation": 0.0,
                 "threshold": 0.1,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "Sigmoid",
-                "sample_file": "samples/snare.wav",
-                "is_output": True,
                 "position": [240.0, 140.0]
             },
             {
                 "id": 2,
+                "sample_index": 3,
+                "sample_file_path": "samples/hihat.wav",
+                "activation": 0.0,
                 "threshold": 0.5,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "Tanh",
-                "sample_file": "samples/hihat.wav",
-                "is_output": True,
                 "position": [120.0, 190.0]
             },
             {
                 "id": 3,
+                "sample_index": 4,
+                "sample_file_path": "samples/perc1.wav",
+                "activation": 0.0,
                 "threshold": 0.25,
+                "decay_rate": 1.0,
+                "activation_increase_per_iteration": 0.0,
                 "activation_function": "Linear",
-                "sample_file": "samples/perc1.wav",
-                "is_output": True,
                 "position": [280.0, 160.0]
             }
         ],
