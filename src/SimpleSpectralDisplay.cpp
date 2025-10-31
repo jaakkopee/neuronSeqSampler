@@ -259,8 +259,8 @@ void SimpleSpectralDisplay::drawGrid(sf::RenderWindow& window) {
     }
     
     // Vertical grid lines
-    for (int i = 0; i <= 4; ++i) {
-        float xPos = displayX + i * displayWidth / 4;
+    for (int i = 0; i <= 6; ++i) {
+        float xPos = displayX + i * displayWidth / 6;
         
         sf::RectangleShape line(sf::Vector2f(1, displayHeight));
         line.setPosition(sf::Vector2f(xPos, displayY));

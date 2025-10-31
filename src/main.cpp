@@ -553,7 +553,7 @@ public:
         float spectralHeight = height / 5.0f; // 20% of window height
         float spectralY = height - spectralHeight - 20.0f; // Position from bottom with margin
         spectralDisplay.setPosition(canvasPadding, spectralY);
-        spectralDisplay.setSize(canvasSize, spectralHeight);
+        spectralDisplay.setSize(canvasSize * 1.25f, spectralHeight); // 25% wider
         
         // Adjust neuron radius based on canvas size
         float neuronRadius = std::max(15.0f, canvasSize / 40.0f);
