@@ -75,7 +75,8 @@ private:
     // Frequency response visualization temporarily removed due to TGUI limitations
     
     // Connection matrix GUI (8 filters × N neurons)
-    tgui::ScrollablePanel::Ptr connectionMatrixPanel;
+    tgui::Panel::Ptr connectionMatrixPanel; // now a content panel hosted inside a ChildWindow
+    tgui::ChildWindow::Ptr connectionMatrixWindow; // popover window for rhythmogram (was full-width panel)
     tgui::Label::Ptr matrixTitleLabel;
     std::vector<std::vector<tgui::Button::Ptr>> matrixToggleButtons; // [filter][neuron]
     std::vector<std::vector<tgui::Slider::Ptr>> matrixGainSliders;   // [filter][neuron] 
@@ -112,6 +113,7 @@ private:
     // Quantization system
     std::unique_ptr<Quantizer> quantizer;        // Musical quantization engine
     std::unique_ptr<QuantizerWidget> quantizerWidget; // Quantization controls widget
+    tgui::ChildWindow::Ptr quantizerWindow; // popover window for quantizer controls
     float lastQuantizerBPM = -1.0f;             // Track last BPM to avoid unnecessary updates
     
     // Layout
