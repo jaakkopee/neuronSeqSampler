@@ -848,45 +848,6 @@ void GUI::showConnectionDialog() {
                 }
                 std::cout << "Network now has " << network->getConnectionCount() << " connections" << std::endl;
                 
-                // Show success message
-                auto successDialog = tgui::ChildWindow::create("🔗 Connection Created Successfully");
-                successDialog->setSize(380, 180);
-                successDialog->setPosition("50%", "50%");
-                
-                // Enhanced success dialog styling
-                auto renderer = successDialog->getRenderer();
-                renderer->setBackgroundColor(tgui::Color(40, 80, 120)); // Blue background
-                renderer->setBorderColor(tgui::Color(60, 120, 180)); // Bright blue border
-                renderer->setBorders(3);
-                renderer->setTitleBarColor(tgui::Color(30, 60, 100));
-                renderer->setTitleColor(tgui::Color::White);
-                
-                std::string connectionText = (fromIndex == toIndex) ?
-                    "🔄 Self-connection added to Neuron " + std::to_string(fromIndex + 1) + "\n⚖️ Weight: " + std::to_string(weight) :
-                    "🔗 Connection: Neuron " + std::to_string(fromIndex + 1) + " → Neuron " + std::to_string(toIndex + 1) + "\n⚖️ Weight: " + std::to_string(weight);
-                
-                connectionText += "\n\n🌐 Total connections: " + std::to_string(network->getConnectionCount());
-                
-                auto message = tgui::Label::create(connectionText);
-                message->setPosition(15, 50);
-                message->setSize(350, 80);
-                message->getRenderer()->setTextColor(tgui::Color::White);
-                message->getRenderer()->setBackgroundColor(tgui::Color(20, 40, 80, 180)); // Semi-transparent dark blue
-                successDialog->add(message);
-                
-                auto okButton = tgui::Button::create("🔗 OK");
-                okButton->setPosition(140, 140);
-                okButton->setSize(100, 30);
-                okButton->getRenderer()->setBackgroundColor(tgui::Color(60, 120, 180)); // Bright blue
-                okButton->getRenderer()->setBackgroundColorHover(tgui::Color(80, 140, 200));
-                okButton->getRenderer()->setTextColor(tgui::Color::White);
-                okButton->onPress([=]() {
-                    successDialog->close();
-                });
-                successDialog->add(okButton);
-                
-                gui->add(successDialog);
-                
                 // Refresh GUI and visualizer
                 refreshNeuronSliders();
                 refreshConnectionSliders();
@@ -1220,39 +1181,6 @@ void GUI::showAddNeuronDialog() {
                 if (visualizer) {
                     visualizer->refreshLayout();
                 }
-                
-                // Show success message
-                auto successDialog = tgui::ChildWindow::create("✅ Neuron Created Successfully");
-                successDialog->setSize(350, 180);
-                successDialog->setPosition("50%", "50%");
-                
-                // Enhanced success dialog styling
-                auto renderer = successDialog->getRenderer();
-                renderer->setBackgroundColor(tgui::Color(40, 120, 40)); // Green background
-                renderer->setBorderColor(tgui::Color(60, 180, 60)); // Bright green border
-                renderer->setBorders(3);
-                renderer->setTitleBarColor(tgui::Color(30, 100, 30));
-                renderer->setTitleColor(tgui::Color::White);
-                
-                auto message = tgui::Label::create("🎵 Neuron added successfully!\n\n📁 Sample: " + selectedFile.toStdString() + "\n🎚️ Threshold: " + std::to_string(threshold));
-                message->setPosition(15, 50);
-                message->setSize(320, 80);
-                message->getRenderer()->setTextColor(tgui::Color::White);
-                message->getRenderer()->setBackgroundColor(tgui::Color(20, 80, 20, 180)); // Semi-transparent dark green
-                successDialog->add(message);
-                
-                auto okButton = tgui::Button::create("✅ OK");
-                okButton->setPosition(125, 140);
-                okButton->setSize(100, 30);
-                okButton->getRenderer()->setBackgroundColor(tgui::Color(60, 180, 60)); // Bright green
-                okButton->getRenderer()->setBackgroundColorHover(tgui::Color(80, 200, 80));
-                okButton->getRenderer()->setTextColor(tgui::Color::White);
-                okButton->onPress([=]() {
-                    successDialog->close();
-                });
-                successDialog->add(okButton);
-                
-                gui->add(successDialog);
                 
                 // Close add neuron dialog
                 dialog->close();
