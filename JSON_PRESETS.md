@@ -208,7 +208,7 @@ Currently basic matrix settings are saved. Future versions will include:
 - Full connection matrix state (8×N routing)
 - Per-connection gain settings  
 - Toggle states for each frequency→neuron route
-- BeatRoot configuration
+- Tempo detection settings (autodetect state, BPM)
 
 ## Troubleshooting
 

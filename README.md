@@ -17,7 +17,7 @@
 
 NeuronSeqSampler is an innovative experimental audio application that uses interconnected artificial neurons to trigger and sequence audio samples. Each neuron can be connected to others through customizable connection matrices, creating complex cascading patterns that generate evolving rhythms, melodies, and soundscapes in real-time.
 
-This isn't just a traditional step sequencer - it's a living, breathing musical organism where advanced tempo detection (including professional BeatRoot multi-agent beat tracking) and rhythm analysis directly drive neural activity, creating emergent musical behaviors that can surprise even experienced users.
+This isn't just a traditional step sequencer - it's a living, breathing musical organism where tempo detection and rhythm analysis directly drive neural activity, creating emergent musical behaviors that can surprise even experienced users.
 
 ![Neural Network Visualization](https://img.shields.io/badge/Interface-Real--time%20Neural%20Visualization-blue)
 ![Audio Engine](https://img.shields.io/badge/Audio-SFML%20Based-green)
@@ -35,13 +35,10 @@ This isn't just a traditional step sequencer - it's a living, breathing musical 
 - **⚡ Real-Time Response**: Rhythmic analysis bypasses traditional audio processing for immediate neural triggering
 - **🔄 Intelligent Feedback Loop**: 8-band filterbank analyzes the network's own output, creating evolving self-organization
 
-### Advanced Tempo Detection (BeatRoot)
-- **🎯 Professional Beat Tracking**: Multi-agent system based on academic beat tracking research
-- **🧠 Intelligent Analysis**: Multiple tracking agents compete to find the most stable tempo
-- **📊 Tempo Confidence**: Real-time stability analysis ensures reliable beat detection before BPM updates
-- **🔄 Automatic Switching**: Seamlessly switches between BeatRoot and simple detector for optimal performance
-- **⚙️ Resource Optimization**: Complete mutual exclusivity prevents unnecessary CPU usage
-- **🎼 Wide Range Support**: Accurate detection from 30-300 BPM for diverse musical styles
+### Tempo Detection
+- **🎯 Autodetect Mode**: Lightweight tempo detector estimates BPM in real time
+- **📊 Manual Control**: BPM slider (30–260 BPM) for precise tempo setting
+- **🎼 Wide Range Support**: Accurate detection across common musical tempos
 
 ### Interactive Performance Interface
 - **�️ Live Connection Matrix**: Visual routing interface between frequency bands and neurons with precise control
@@ -130,17 +127,9 @@ make
 - **🎛️ Quick Actions**: "Clear All" and "Random" buttons for rapid matrix reconfiguration
 - **🎵 Rhythmogram Scale Slider**: Vertical control (0.0-20.0) with large, easy-to-read value display
 - **🎼 BPM Control**: Tempo slider (30-260 BPM) with large, clear value display for precise readings
-- **🤖 Dual Tempo Detection System**: 
-  - **BeatRoot**: Professional-grade multi-agent beat tracking system for superior accuracy
-  - **Simple RhythmDetector**: Lightweight fallback system for basic tempo detection
-  - **Automatic Switching**: Mutual exclusivity ensures optimal resource usage
-- **⚡ Resource Optimization**: Only one tempo detection system active at a time for maximum performance
+- **🤖 Tempo Detection**: Autodetect BPM with a lightweight rhythm detector; use the BPM slider to override manually
 
-**BeatRoot Controls** (Located left of Scale Slider):
-- **🎯 Enable/Disable Toggle**: Switch between BeatRoot and simple rhythm detector
-- **📊 Status Display**: Real-time information showing active agents, tempo strength, and stability
-- **🔧 Manual Initialization**: Initialize BeatRoot with current BPM for faster lock-on
-- **📈 Performance Monitoring**: Visual feedback of beat tracking confidence and system health
+Beat tracking controls are streamlined: use Autodetect and the BPM slider.
 
 ### Sample Organization
 
@@ -272,10 +261,7 @@ Audio Output → Rhythmogram Analysis → Connection Matrix → Direct Neuron Ac
 - **Self-Organization**: Optimal frequency-to-neuron mappings emerge over time
 - **Polyrhythmic Patterns**: Complex interactions between frequency bands
 - **Tempo Awareness**: BPM control scales Todd frequencies relative to musical tempo (120 BPM baseline)
-- **Advanced Tempo Detection**: Dual-system approach for optimal accuracy:
-  - **BeatRoot System**: Multi-agent beat tracking with stability analysis and tempo confidence scoring
-  - **Simple Detector**: Fast rhythm analysis for basic tempo tracking when BeatRoot is disabled
-  - **Intelligent Switching**: Automatic mutual exclusivity prevents resource conflicts
+- **Tempo Detection**: Lightweight detector with optional manual BPM override
 - **Musical Scaling**: All frequency bands maintain proportional relationships across tempo changes
 
 ### Technical Specifications
@@ -285,8 +271,7 @@ Audio Output → Rhythmogram Analysis → Connection Matrix → Direct Neuron Ac
 - **Sample Rate**: 44.1kHz with 512-sample buffers for optimal real-time response
 - **Analysis Window**: 100 frames (~1.16 seconds) rhythmic history for pattern detection
 - **CPU Overhead**: <5% on modern systems with full 8×N matrix active
-- **Tempo Detection Optimization**: Mutual exclusivity ensures only BeatRoot OR simple detector processes audio
-- **Resource Management**: Complete bypass of inactive tempo detection systems saves CPU cycles
+- **Resource Management**: Efficient detector keeps CPU usage low
 
 **📊 Matrix Capabilities:**
 - **Matrix Size**: 8 Todd frequency bands × unlimited neurons (tested up to 20+ neurons)
@@ -300,13 +285,9 @@ Audio Output → Rhythmogram Analysis → Connection Matrix → Direct Neuron Ac
 - **Precision**: Per decamille (‰) display accuracy for rhythmic activity monitoring
 - **Processing**: Hybrid envelope following (<4Hz) + biquad filtering (≥4Hz) approach
 
-**🎯 BeatRoot System:**
-- **Multi-Agent Architecture**: Multiple competing beat tracking agents for robust tempo detection
-- **Tempo Range**: 30-300 BPM with automatic stability analysis
-- **Confidence Scoring**: Real-time beat strength and stability metrics
-- **Mutual Exclusivity**: Complete bypass when disabled to prevent resource conflicts
-- **Initialization**: Manual tempo seeding for faster convergence on known BPMs
-- **Status Monitoring**: Live display of active agents, tempo confidence, and system health
+**🎯 Tempo Detector:**
+- **Real-time Estimation**: Continuously updates BPM based on rhythmic content
+- **Manual Override**: Set exact BPM via slider when needed
 
 ### How It Works
 
@@ -626,26 +607,9 @@ Todd identified specific frequency bands that correspond to fundamental musical 
 
 This hierarchy forms the theoretical basis for NeuronSeqSampler's 8-band rhythmogram analyzer, enabling **musically intelligent** frequency-to-neuron routing.
 
-### BeatRoot: Advanced Beat Tracking Research
+### Tempo Detection Approach
 
-The professional tempo detection system integrates **BeatRoot**, a sophisticated multi-agent beat tracking system based on decades of academic research in computational rhythm analysis.
-
-#### **Multi-Agent Beat Tracking Architecture**
-BeatRoot implements a **competitive agent system** where multiple tracking hypotheses compete to identify the most stable tempo:
-
-- **Parallel Hypothesis Testing**: Multiple agents simultaneously track different tempo possibilities
-- **Confidence Scoring**: Real-time evaluation of each agent's tracking stability and accuracy
-- **Dynamic Adaptation**: Agents adjust their predictions based on incoming audio analysis
-- **Stability Analysis**: Only stable, high-confidence tempo estimates influence the system BPM
-
-#### **Academic Foundation**
-This approach builds on established research in:
-- **Beat Tracking Algorithms**: Multi-agent systems for robust rhythm detection in complex audio
-- **Temporal Pattern Recognition**: Machine learning approaches to musical meter and tempo analysis  
-- **Competitive Learning**: Agent-based systems that converge on optimal solutions through competition
-- **Musical Intelligence**: Systems that understand musical context rather than just signal processing
-
-The integration of BeatRoot with Todd's rhythmogram analysis creates a **dual-layer rhythm intelligence** system - Todd's frequency analysis provides detailed rhythmic content while BeatRoot ensures accurate tempo tracking across diverse musical styles.
+The system uses a lightweight real-time tempo detector to estimate BPM from input audio. Combine this with Todd's rhythmogram analysis for musically intelligent routing, and optionally override BPM manually via the slider for tight performance control.
 
 ### Neural Network Foundations
 
@@ -672,14 +636,14 @@ NeuronSeqSampler represents a **unique synthesis** of Todd's rhythmogram theory 
 - **Multi-Function Neurons**: Linear, Sigmoid, ReLU, Tanh activation functions per neuron
 
 #### **Revolutionary Integration**
-This **triple-stream approach** creates unprecedented musical intelligence:
+This integrated approach creates musical intelligence:
 - **Rhythmic Hierarchy → Neural Activation**: Todd's frequency bands directly drive neural network input
-- **Professional Tempo Detection**: BeatRoot's multi-agent system ensures accurate tempo tracking across musical styles
+- **Tempo Detection**: Lightweight detector provides BPM awareness for tempo scaling
 - **Emergent Musical Patterns**: Neural dynamics generate complex rhythmic structures with tempo-aware scaling
 - **Real-time Interaction**: Live performance capabilities with immediate visual/auditory feedback
 - **Biological Authenticity**: Rhythmic perception, tempo detection, and neural processing all mirror natural systems
 
-The result bridges **computational musicology** (Todd 1994), **advanced beat tracking research** (BeatRoot), and **artificial neural networks** (Laine), creating a system that generates music through scientifically grounded principles while maintaining artistic expressiveness.
+The result bridges **computational musicology** (Todd 1994) and **artificial neural networks** (Laine), creating a system that generates music through scientifically grounded principles while maintaining artistic expressiveness.
 
 ## Contributing
 

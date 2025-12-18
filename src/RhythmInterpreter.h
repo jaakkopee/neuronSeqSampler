@@ -7,7 +7,6 @@
 // Forward declarations
 class NeuronNetwork;
 class AudioManager;
-class BeatRoot;
 
 /**
  * Adaptive filterbank for rhythm analysis
@@ -120,6 +119,7 @@ public:
     
     // Configuration
     void setLearningRate(float rate) { learningRate = rate; }
+    float getLearningRate() const { return learningRate; }
     void setAdaptiveMode(bool enabled) { adaptiveMode = enabled; }
     void randomizeWeights(float minWeight = -0.5f, float maxWeight = 0.5f);
     void clearWeights();
@@ -141,7 +141,6 @@ private:
     std::vector<std::unique_ptr<AdaptiveFilter>> filterBank;
     std::unique_ptr<RhythmDetector> rhythmDetector;
     std::unique_ptr<ConnectionMatrix> connectionMatrix;
-    std::unique_ptr<BeatRoot> beatRoot; // BeatRoot beat tracking system
     
     // Network integration
     NeuronNetwork* neuronNetwork;
@@ -165,8 +164,6 @@ private:
     float rhythmogramScale; // Scaling factor for rhythmogram to neural activation (0.0-20.0, default 5.0)
     float bpm; // Beats per minute for tempo-relative frequency scaling (30.0-260.0, default 120.0)
     bool autodetectTempo; // Enable automatic tempo detection from RhythmDetector (default false)
-    bool useBeatRoot; // Use BeatRoot system instead of simple RhythmDetector (default true)
-    float beatRootSensitivity; // BeatRoot sensitivity (0.1-2.0, default 1.0)
     
     // Frequency bands for filterbank (in Hz)
     static const std::vector<float> DEFAULT_FREQUENCIES;
@@ -236,34 +233,6 @@ public:
     // Autodetect tempo control
     void setAutodetectTempo(bool enable);
     bool getAutodetectTempo() const { return autodetectTempo; }
-    
-    // BeatRoot control
-    void setUseBeatRoot(bool enable);
-    bool getUseBeatRoot() const { return useBeatRoot; }
-    void setBeatRootSensitivity(float sensitivity);
-    float getBeatRootSensitivity() const { return beatRootSensitivity; }
-    void initializeBeatRoot(float tempo = 0.0f); // Initialize with specific tempo or auto-detect
-    void resetBeatRoot();
-    
-    // BeatRoot information access
-    bool isBeatRootBeatDetected() const;
-    float getBeatRootOnsetStrength() const;
-    size_t getBeatRootNumAgents() const;
-    
-    // BeatRoot advanced parameter control
-    BeatRoot* getBeatRoot() const { return beatRoot.get(); }
-    void setBeatRootOnsetThreshold(float threshold);
-    float getBeatRootOnsetThreshold() const;
-    void setBeatRootBeatTolerance(float tolerance);
-    float getBeatRootBeatTolerance() const;
-    void setBeatRootMaxAgents(size_t maxAgents);
-    size_t getBeatRootMaxAgents() const;
-    void setBeatRootAgentSpawnThreshold(float threshold);
-    float getBeatRootAgentSpawnThreshold() const;
-    void setBeatRootAutoInitialize(bool enable);
-    bool getBeatRootAutoInitialize() const;
-    bool hasBeatRootStableTempo() const;
-    float getBeatRootCurrentTempo() const;
     
     // Getters
     bool isEnabled() const { return enabled; }

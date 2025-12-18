@@ -1,7 +1,6 @@
 #include "RhythmInterpreter.h"
 #include "NeuronNetwork.h"
 #include "AudioManager.h"
-#include "BeatRoot.h"
 #include "Debug.h"
 #include <algorithm>
 #include <random>
@@ -475,24 +474,24 @@ void ConnectionMatrix::resizeMatrix(size_t newNumNeurons) {
 // ============================================================================
 
 RhythmInterpreter::RhythmInterpreter(NeuronNetwork* network, AudioManager* audioMgr, 
-                                   size_t sampleRate, size_t bufferSize)
-    : neuronNetwork(network), audioManager(audioMgr), 
-      sampleRate(sampleRate), bufferSize(bufferSize),
-      enabled(true), globalGain(0.0f), // Set to 0 for analysis-only mode
-      rhythmogramScale(5.0f), // Default rhythmogram scale of 5.0
-      bpm(120.0f), // Default BPM of 120
-      autodetectTempo(true), // Default autodetect ON for better user experience
-      useBeatRoot(true), // Use BeatRoot by default
-      beatRootSensitivity(1.0f) { // Default sensitivity
+                                                                     size_t sampleRate, size_t bufferSize)
+        : neuronNetwork(network), audioManager(audioMgr), 
+            sampleRate(sampleRate), bufferSize(bufferSize),
+            enabled(true), globalGain(0.0f), // Set to 0 for analysis-only mode
+            rhythmogramScale(5.0f), // Default rhythmogram scale of 5.0
+            bpm(120.0f), // Default BPM of 120
+            autodetectTempo(true) { // Default autodetect ON for better user experience
     
     initializeFilterBank();
     updateFilterBankForBPM(); // Apply initial BPM scaling to filters
     rhythmDetector = std::make_unique<RhythmDetector>();
-    beatRoot = std::make_unique<BeatRoot>(neuronNetwork); // Initialize BeatRoot
     
     if (neuronNetwork) {
         size_t numNeurons = neuronNetwork->getNeurons().size();
         connectionMatrix = std::make_unique<ConnectionMatrix>(filterBank.size(), numNeurons);
+        // Enable adaptive learning governed by rhythmogram output
+        connectionMatrix->setAdaptiveMode(true);
+        connectionMatrix->setLearningRate(0.001f);
     }
     
     audioBuffer.resize(bufferSize);
@@ -508,8 +507,7 @@ RhythmInterpreter::RhythmInterpreter(NeuronNetwork* network, AudioManager* audio
 }
 
 RhythmInterpreter::~RhythmInterpreter() {
-    // Default destructor implementation - required to be in .cpp file
-    // for unique_ptr<BeatRoot> to work with forward declaration
+    // Default destructor implementation
 }
 
 void RhythmInterpreter::initializeFilterBank() {
@@ -553,85 +551,21 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         DEBUG_PRINT_STREAM("📢 Audio input: " << audioData.size() << " samples, max: " << maxSample);
     }
     
-    // Process audio through rhythm analysis systems
-    if (useBeatRoot && beatRoot) {
-        // Use BeatRoot for advanced beat tracking (simple RhythmDetector bypassed to save resources)
-        static int beatRootDebugCounter = 0;
-        beatRootDebugCounter++;
-        if (beatRootDebugCounter % 100 == 0) {
-            DEBUG_PRINT("🎯 BeatRoot ENABLED - Simple rhythm detector bypassed to save resources");
-        }
-        
-        float deltaTime = audioData.size() / static_cast<float>(sampleRate);
-        beatRoot->processAudioFrame(audioData, deltaTime);
-        
-        // Update BPM from BeatRoot if autodetect is enabled
+    // Process audio through rhythm detector and optionally update BPM
+    if (rhythmDetector) {
+        rhythmDetector->processAudioChunk(audioData);
         if (autodetectTempo) {
-            float detectedTempo = beatRoot->getCurrentTempo();
-            bool isStable = beatRoot->hasStableTempo();
-            float beatStrength = beatRoot->getBeatStrength();
-            size_t numAgents = beatRoot->getNumActiveAgents();
-            
-            DEBUG_PRINT_STREAM("🎯 AutodetectTempo ENABLED - checking BeatRoot tempo updates");
-            
-            static int tempoDebugCounter = 0;
-            tempoDebugCounter++;
-            if (tempoDebugCounter % 20 == 0) {  // More frequent updates
-                DEBUG_PRINT_STREAM("🎯 BeatRoot: detected=" << detectedTempo << " BPM, strength=" 
-                          << beatStrength << ", agents=" << numAgents 
-                          << ", stable=" << (isStable ? "YES" : "NO")
-                          << ", current_bpm=" << bpm);
-            }
-            
-            if (detectedTempo >= 30.0f && detectedTempo <= 300.0f) {
-                if (isStable) {
-                    if (std::abs(detectedTempo - bpm) > 1.0f) {
-                        ESSENTIAL_PRINT_STREAM("🎯 BeatRoot updating BPM: " << bpm << " → " << detectedTempo);
-                        bpm = detectedTempo;
-                        updateFilterBankForBPM();
-                    }
-                } else {
-                    DEBUG_PRINT_STREAM("🎯 BeatRoot: Tempo not stable yet - not updating BPM");
-                }
-            } else {
-                DEBUG_PRINT_STREAM("🎯 BeatRoot: Tempo out of range (" << detectedTempo << ") - not updating BPM");
-            }
-        } else {
-            DEBUG_PRINT_STREAM("🎯 AutodetectTempo DISABLED - using simple rhythm detector");
-        }
-    } else {
-        // Use simple rhythm detector (BeatRoot bypassed to save resources)
-        static int bypassDebugCounter = 0;
-        bypassDebugCounter++;
-        if (bypassDebugCounter % 100 == 0) {
-            DEBUG_PRINT("🎵 BeatRoot DISABLED - Using simple rhythm detector to save resources");
-        }
-        
-        // Only process simple rhythm detector when BeatRoot is not active (mutual exclusivity)
-        if (!useBeatRoot && rhythmDetector) {
-            rhythmDetector->processAudioChunk(audioData);
-        }
-        
-        // Update BPM from rhythm detector if autodetect is enabled (only when BeatRoot is not active)
-        if (autodetectTempo && !useBeatRoot && rhythmDetector) {
             float detectedTempo = rhythmDetector->getCurrentTempo();
-            
             static int tempoDebugCounter = 0;
             tempoDebugCounter++;
-            if (tempoDebugCounter % 20 == 0) {  // More frequent debug output
+            if (tempoDebugCounter % 20 == 0) {
                 DEBUG_PRINT_STREAM("🎵 Autodetect: detected=" << detectedTempo << " BPM, current=" << bpm << " BPM");
             }
-            
-            if (detectedTempo >= 30.0f && detectedTempo <= 300.0f) { // Expanded valid BPM range
-                // Only update if the detected tempo is significantly different to avoid jitter
+            if (detectedTempo >= 30.0f && detectedTempo <= 300.0f) {
                 if (std::abs(detectedTempo - bpm) > 0.5f) {
                     ESSENTIAL_PRINT_STREAM("🎵 Updating BPM: " << bpm << " → " << detectedTempo);
                     bpm = detectedTempo;
-                    updateFilterBankForBPM(); // Update filter frequencies when BPM changes
-                }
-            } else {
-                if (tempoDebugCounter % 20 == 0) {  // More frequent debug output
-                    DEBUG_PRINT_STREAM("🎵 Rejected tempo " << detectedTempo << " BPM (out of range 30-300)");
+                    updateFilterBankForBPM();
                 }
             }
         }
@@ -669,12 +603,7 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         }
         
         // Adapt filter based on rhythm strength
-        float rhythmStrength;
-        if (useBeatRoot && beatRoot) {
-            rhythmStrength = beatRoot->getBeatStrength();
-        } else {
-            rhythmStrength = rhythmDetector ? rhythmDetector->getBeatStrength() : 0.0f;
-        }
+        float rhythmStrength = rhythmDetector ? rhythmDetector->getBeatStrength() : 0.0f;
         filterBank[i]->adaptToRhythm(rhythmStrength);
     }
     
@@ -793,9 +722,11 @@ void RhythmInterpreter::update() {
     
     // Adaptive weight learning if enabled
     if (connectionMatrix->isAdaptiveMode()) {
+        // Reward-modulated Hebbian learning: scale by overall rhythm strength
+        float reward = getOverallRhythmStrength();
         std::vector<float> neuronFeedback(neurons.size());
         for (size_t i = 0; i < neurons.size(); ++i) {
-            neuronFeedback[i] = neurons[i]->getActivation();
+            neuronFeedback[i] = neurons[i]->getActivation() * reward;
         }
         connectionMatrix->adaptWeights(filterOutputs, neuronFeedback);
     }
@@ -848,25 +779,16 @@ void RhythmInterpreter::updateNetworkSize() {
     }
 }
 
-// Status methods - Use BeatRoot when active, fallback to simple RhythmDetector when disabled
+// Status methods
 bool RhythmInterpreter::isRhythmDetected() const {
-    if (useBeatRoot && beatRoot) {
-        return beatRoot->isBeatDetected();
-    }
     return rhythmDetector && rhythmDetector->isBeatDetected();
 }
 
 float RhythmInterpreter::getCurrentTempo() const {
-    if (useBeatRoot && beatRoot) {
-        return beatRoot->getCurrentTempo();
-    }
     return rhythmDetector ? rhythmDetector->getCurrentTempo() : 120.0f;
 }
 
 float RhythmInterpreter::getOverallRhythmStrength() const {
-    if (useBeatRoot && beatRoot) {
-        return beatRoot->getBeatStrength();
-    }
     return rhythmDetector ? rhythmDetector->getGrooveStrength() : 0.0f;
 }
 
@@ -989,119 +911,4 @@ std::vector<float> RhythmInterpreter::getProcessedAudioOutput() const {
     return processedAudioBuffer;
 }
 
-// ============================================================================
-// BeatRoot Integration Methods
-// ============================================================================
-
-void RhythmInterpreter::setUseBeatRoot(bool enable) {
-    useBeatRoot = enable;
-    if (beatRoot) {
-        beatRoot->setEnabled(enable);
-    }
-    std::cout << "🎯 BeatRoot system: " << (enable ? "ENABLED" : "DISABLED") << std::endl;
-}
-
-void RhythmInterpreter::setBeatRootSensitivity(float sensitivity) {
-    beatRootSensitivity = std::clamp(sensitivity, 0.1f, 2.0f);
-    if (useBeatRoot && beatRoot) {
-        beatRoot->setSensitivity(beatRootSensitivity);
-    }
-    DEBUG_PRINT_STREAM("🎯 BeatRoot sensitivity: " << beatRootSensitivity);
-}
-
-void RhythmInterpreter::initializeBeatRoot(float tempo) {
-    if (!useBeatRoot || !beatRoot) {
-        ESSENTIAL_PRINT("🎯 BeatRoot initialization skipped (disabled)");
-        return;
-    }
-    
-    if (tempo > 0.0f) {
-        // Initialize with specific tempo
-        beatRoot->initialize(tempo);
-        ESSENTIAL_PRINT_STREAM("🎯 BeatRoot manually initialized with tempo: " << tempo << " BPM");
-    } else {
-        // Enable auto-initialization
-        beatRoot->setAutoInitialize(true);
-        ESSENTIAL_PRINT("🎯 BeatRoot auto-initialization enabled");
-    }
-}
-
-void RhythmInterpreter::resetBeatRoot() {
-    if (useBeatRoot && beatRoot) {
-        beatRoot->reset();
-        std::cout << "🎯 BeatRoot system reset" << std::endl;
-    } else {
-        std::cout << "🎯 BeatRoot reset skipped (disabled)" << std::endl;
-    }
-}
-
-bool RhythmInterpreter::isBeatRootBeatDetected() const {
-    return useBeatRoot && beatRoot && beatRoot->isBeatDetected();
-}
-
-float RhythmInterpreter::getBeatRootOnsetStrength() const {
-    return (useBeatRoot && beatRoot) ? beatRoot->getOnsetStrength() : 0.0f;
-}
-
-size_t RhythmInterpreter::getBeatRootNumAgents() const {
-    return (useBeatRoot && beatRoot) ? beatRoot->getNumActiveAgents() : 0;
-}
-
-bool RhythmInterpreter::hasBeatRootStableTempo() const {
-    return useBeatRoot && beatRoot && beatRoot->hasStableTempo();
-}
-
-float RhythmInterpreter::getBeatRootCurrentTempo() const {
-    return (useBeatRoot && beatRoot) ? beatRoot->getCurrentTempo() : 120.0f;
-}
-
-// BeatRoot advanced parameter control
-void RhythmInterpreter::setBeatRootOnsetThreshold(float threshold) {
-    if (beatRoot) {
-        beatRoot->setOnsetThreshold(threshold);
-    }
-}
-
-float RhythmInterpreter::getBeatRootOnsetThreshold() const {
-    return beatRoot ? beatRoot->getOnsetThreshold() : 0.3f;
-}
-
-void RhythmInterpreter::setBeatRootBeatTolerance(float tolerance) {
-    if (beatRoot) {
-        beatRoot->setBeatTolerance(tolerance);
-    }
-}
-
-float RhythmInterpreter::getBeatRootBeatTolerance() const {
-    return beatRoot ? beatRoot->getBeatTolerance() : 0.1f;
-}
-
-void RhythmInterpreter::setBeatRootMaxAgents(size_t maxAgents) {
-    if (beatRoot) {
-        beatRoot->setMaxAgents(maxAgents);
-    }
-}
-
-size_t RhythmInterpreter::getBeatRootMaxAgents() const {
-    return beatRoot ? beatRoot->getMaxAgents() : 8;
-}
-
-void RhythmInterpreter::setBeatRootAgentSpawnThreshold(float threshold) {
-    if (beatRoot) {
-        beatRoot->setAgentSpawnThreshold(threshold);
-    }
-}
-
-float RhythmInterpreter::getBeatRootAgentSpawnThreshold() const {
-    return beatRoot ? beatRoot->getAgentSpawnThreshold() : 0.15f;
-}
-
-void RhythmInterpreter::setBeatRootAutoInitialize(bool enable) {
-    if (beatRoot) {
-        beatRoot->setAutoInitialize(enable);
-    }
-}
-
-bool RhythmInterpreter::getBeatRootAutoInitialize() const {
-    return beatRoot ? beatRoot->getAutoInitialize() : true;
-}
+// Simplified tempo detection; BeatRoot removed

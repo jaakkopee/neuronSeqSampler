@@ -47,7 +47,6 @@ set(SOURCES
     src/AudioManager.cpp
     src/Recorder.cpp
     src/RhythmInterpreter.cpp
-    src/BeatRoot.cpp
     src/StartupAnimation.cpp
     src/PresetManager.cpp
 )
@@ -60,7 +59,6 @@ set(HEADERS
     src/AudioManager.h
     src/Recorder.h
     src/RhythmInterpreter.h
-    src/BeatRoot.h
     src/StartupAnimation.h
     src/PresetManager.h
 )
