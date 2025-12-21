@@ -2310,17 +2310,8 @@ void GUI::createConnectionMatrixPanel() {
             tooltip->setTextSize(10);
             toggleButton->setToolTip(tooltip);
             
-            // Check current connection state using the new rhythm connection matrix
+            // Decouple initial UI state from current weights: always start disconnected
             float currentWeight = network->getRhythmConnection(f, n);
-            bool isConnected = std::abs(currentWeight) > 0.001f;
-            
-            if (isConnected) {
-                toggleButton->setText("●");
-                // Color based on connection strength
-                int intensity = static_cast<int>(std::abs(currentWeight) * 255);
-                toggleButton->getRenderer()->setBackgroundColor(tgui::Color(60, intensity, 60));
-                toggleButton->getRenderer()->setTextColor(tgui::Color::White);
-            }
             
             // Toggle connection callback
             toggleButton->onPress([this, f, n, toggleButton]() {
@@ -2366,8 +2357,9 @@ void GUI::createConnectionMatrixPanel() {
             auto gainSlider = tgui::Slider::create(0.0f, 100.0f);
             gainSlider->setPosition(175 + n * 80, 90 + displayRow * 60); // Right of toggle button, reversed position
             gainSlider->setSize(15, 20);
-            gainSlider->setValue(std::abs(currentWeight) * 100.0f); // Convert to 0-100 range
-            gainSlider->setVisible(isConnected);
+            // Initialize with a neutral default; do not reflect live weight
+            gainSlider->setValue(30.0f);
+            gainSlider->setVisible(false);
             
             // Gain change callback
             gainSlider->onValueChange([this, f, n](float value) {
@@ -2400,12 +2392,7 @@ void GUI::createConnectionMatrixPanel() {
             connectionGainDisplay->getRenderer()->setBackgroundColor(tgui::Color(25, 25, 15));
             connectionGainDisplay->getRenderer()->setBorderColor(tgui::Color(60, 60, 40));
             connectionGainDisplay->getRenderer()->setBorders(1);
-            connectionGainDisplay->setVisible(isConnected);
-            
-            // Update display with current weight
-            if (isConnected) {
-                connectionGainDisplay->setText(std::to_string(static_cast<int>(std::abs(currentWeight) * 100)));
-            }
+            connectionGainDisplay->setVisible(false);
             
             connectionMatrixPanel->add(connectionGainDisplay);
             displayRowVec.push_back(connectionGainDisplay);
@@ -2833,8 +2820,7 @@ void GUI::updateConnectionMatrix() {
             // Respect current UI toggle state; do not auto-change it based on weight
             bool uiConnected = (matrixToggleButtons[f][n]->getText() == "●");
             
-            // Update gain slider
-            matrixGainSliders[f][n]->setValue(std::abs(weight) * 100.0f);
+            // Do not change gain slider value automatically; preserve user input
             matrixGainSliders[f][n]->setVisible(uiConnected);
             
             // Update connection gain display
