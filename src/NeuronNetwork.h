@@ -26,6 +26,7 @@ private:
     float learningRate = 0.01f;
     float weightDecay = 0.0005f; // small decay to prevent runaway growth
     float maxWeight = 1.0f;      // clamp weights for stability
+    float mappingGain = 0.2f;    // global scaling for rhythm mapping strength
     
     void ensureMatrixSize(size_t bandCount, size_t connectionCount);
     // Per-neuron rhythmogram band mapping (user configurable)
@@ -79,6 +80,9 @@ public:
     float getWeightDecay() const { return weightDecay; }
     void resetRhythmWeights(float value = 0.0f);
     void learnFromRhythm();
+    // Global mapping gain
+    void setMappingGain(float gain) { mappingGain = std::max(0.0f, std::min(gain, 1.0f)); }
+    float getMappingGain() const { return mappingGain; }
 
     // Mapping controls
     void setNeuronBandMapping(size_t neuronIndex, size_t bandIndex);

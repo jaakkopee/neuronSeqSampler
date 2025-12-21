@@ -208,7 +208,7 @@ void NeuronNetwork::applyRhythmConnections() {
         for (size_t c = 0; c < rhythmConnectionMatrix[f].size() && c < connections.size(); ++c) {
             float mapWeight = rhythmConnectionMatrix[f][c];
             if (std::abs(mapWeight) > 0.001f) {
-                float rhythmInput = filterOutputs[f] * mapWeight;
+                float rhythmInput = filterOutputs[f] * mapWeight * mappingGain;
                 Connection* conn = connections[c].get();
                 if (conn && conn->getTarget()) {
                     conn->getTarget()->addExternalInput(rhythmInput);
@@ -286,6 +286,7 @@ void NeuronNetwork::learnFromRhythm() {
         for (size_t f = 0; f < normOut.size(); ++f) {
             acc += normOut[f] * rhythmConnectionMatrix[f][c];
         }
+        acc *= mappingGain; // reflect actual applied scaling
         predicted[targetIndex] += acc;
     }
 

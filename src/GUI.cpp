@@ -2405,57 +2405,9 @@ void GUI::createConnectionMatrixPanel() {
         }
     }
     
-    // Add rhythmogram scale slider and BPM slider with better spacing from the right edge
-    float scaleSliderX = contentWidth - 160; // Move scale slider further left for better spacing
-    float bpmSliderX = contentWidth - 80; // Move BPM slider further left with more space
-    
-    // Scale control label
-    auto scaleLabel = tgui::Label::create("Scale");
-    scaleLabel->setPosition(scaleSliderX - 10, 50);
-    scaleLabel->setTextSize(10);
-    scaleLabel->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
-    connectionMatrixPanel->add(scaleLabel);
-    
-    // Vertical rhythmogram scale slider (0.0 - 20.0, default 5.0, step 0.1)
-    rhythmogramScaleSlider = tgui::Slider::create(0.0f, 20.0f);
-    rhythmogramScaleSlider->setValue(1.0f); // Default scale for minimal RhythmInterpreter
-    rhythmogramScaleSlider->setStep(0.1f);
-    rhythmogramScaleSlider->setPosition(scaleSliderX, 70);
-    rhythmogramScaleSlider->setSize(20, 300); // Original slider size
-    rhythmogramScaleSlider->setOrientation(tgui::Orientation::Vertical);
-    rhythmogramScaleSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
-    rhythmogramScaleSlider->getRenderer()->setThumbColor(tgui::Color(140, 100, 100));
-    
-    // Connect slider to rhythmogram scale control
-    rhythmogramScaleSlider->onValueChange([this](float value) {
-        // Apply the global rhythmogram scale to RhythmInterpreter
-        if (network && network->getRhythmInterpreter()) {
-            network->getRhythmInterpreter()->setRhythmogramScale(value);
-        }
-        // Update scale display with proper formatting (one decimal place)
-        std::ostringstream stream;
-        stream << std::fixed << std::setprecision(1) << value;
-        rhythmogramScaleLabel->setText(stream.str());
-    });
-    
-    connectionMatrixPanel->add(rhythmogramScaleSlider);
-    
-    // Scale value display - LARGE for easy reading
-    rhythmogramScaleLabel = tgui::Label::create("1.0");
-    rhythmogramScaleLabel->setPosition(scaleSliderX - 20, 375); // Centered under original slider position  
-    rhythmogramScaleLabel->setSize(60, 30); // Match BPM label dimensions for consistency
-    rhythmogramScaleLabel->setTextSize(13); // Match BPM label text size
-    rhythmogramScaleLabel->getRenderer()->setTextColor(tgui::Color(200, 140, 140));
-    rhythmogramScaleLabel->getRenderer()->setBackgroundColor(tgui::Color(25, 15, 15));
-    rhythmogramScaleLabel->getRenderer()->setBorderColor(tgui::Color(60, 40, 40));
-    rhythmogramScaleLabel->getRenderer()->setBorders(1);
-    
-    // Initialize display with current value
-    std::ostringstream initStream;
-    initStream << std::fixed << std::setprecision(1) << 1.0f; // Default scale
-    rhythmogramScaleLabel->setText(initStream.str());
-    
-    connectionMatrixPanel->add(rhythmogramScaleLabel);
+    // Add BPM slider with better spacing from the right edge
+    float scaleSliderX = contentWidth - 160; // Reserved X for right-side controls
+    float bpmSliderX = contentWidth - 80; // Position BPM slider
 
     // Channel count control label
     auto channelsLabel = tgui::Label::create("Channels");
@@ -2714,6 +2666,26 @@ void GUI::createConnectionMatrixPanel() {
     }
     connectionMatrixPanel->add(weightDecayLabel);
 
+    // Mapping gain slider (0.0 - 1.0)
+    auto mgLabelTitle = tgui::Label::create("MapGain");
+    mgLabelTitle->setPosition(scaleSliderX - 60, 595);
+    mgLabelTitle->setTextSize(10);
+    mgLabelTitle->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+    connectionMatrixPanel->add(mgLabelTitle);
+
+    auto mappingGainSlider = tgui::Slider::create(0.0f, 1.0f);
+    mappingGainSlider->setValue(network ? network->getMappingGain() : 0.2f);
+    mappingGainSlider->setStep(0.01f);
+    mappingGainSlider->setPosition(scaleSliderX - 60, 615);
+    mappingGainSlider->setSize(100, 18);
+    mappingGainSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
+    mappingGainSlider->getRenderer()->setThumbColor(tgui::Color(180, 130, 200));
+    mappingGainSlider->onValueChange([this](float value) {
+        if (!network) return;
+        network->setMappingGain(value);
+    });
+    connectionMatrixPanel->add(mappingGainSlider);
+
     // Reset weights button
     resetRhythmWeightsButton = tgui::Button::create("Reset Weights");
     resetRhythmWeightsButton->setPosition(scaleSliderX - 60, 570);
@@ -2882,13 +2854,7 @@ void GUI::updateConnectionMatrix() {
     // Skip slider value updates if user is interacting (prevents overriding user input)
     // Only update displays, not the slider values themselves during normal operation
     
-    // Update rhythmogram scale display (but don't override slider value)
-    if (rhythmogramScaleSlider && rhythmogramScaleLabel) {
-        float currentScale = rhythmogramScaleSlider->getValue(); // Get current slider value
-        std::ostringstream scaleStream;
-        scaleStream << std::fixed << std::setprecision(1) << currentScale;
-        rhythmogramScaleLabel->setText(scaleStream.str());
-    }
+    // Rhythmogram scale control removed
     
     // Update BPM display (but don't override slider value unless auto-tempo is active)
     if (bpmSlider && bpmLabel) {
