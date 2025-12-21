@@ -1,14 +1,12 @@
-![NeuronSeqSampler](NeuronSeqSampler1.png)
-
 # Recent Updates
 
 ![Neural Network Visualization](https://img.shields.io/badge/Interface-Real--time%20Neural%20Visualization-blue)
 ![Audio Engine](https://img.shields.io/badge/Audio-SFML%20Based-green)
 ![Build Status](https://img.shields.io/badge/Build-CMake%20%2B%20C%2B%2B17-orange)
-![Preset System](https://img.shields.io/badge/Presets-JSON%20Save%2FLoad-purple)*🎵 Musical Quantization System**: Professional-grade musical timing with smart grid-based trigger suppression (Q-key toggle).
+![Preset System](https://img.shields.io/badge/Presets-JSON%20Save%2FLoad-purple)*🎵 JSON Preset System**: Complete save/load functionality with keyboard shortcuts (S/L) and GUI dialogs for neural network configurations.
 - **💾 Smart Preset Management**: Factory presets, user presets, metadata support, and automatic network restoration.
 - **Rhythmogram Matrix Panel**: Toggle with 'M', scrollable 8×N grid, real-time routing, per-band and per-connection gain controls.
-- **Robust Keyboard Shortcuts**: Global keys (e.g., 'M' for matrix, 'Q' for quantization) work reliably after all GUI actions.
+- **Robust Keyboard Shortcuts**: Global keys (e.g., 'M' for matrix) work reliably after all GUI actions.
 - **Live Parameter Editing**: Instantly adjust neuron activation and connection weights with immediate audio/visual feedback.
 - **Dual Recording**: Record both internal neural output and external microphone input.
 - **Cross-Platform Compatibility**: Fully tested on both macOS (Homebrew, SFML 3.0.2, TGUI) and Debian/Ubuntu (apt, libsfml-dev, libtgui-dev).
@@ -17,10 +15,9 @@
 
 **A real-time neural network audio sampler that creates dynamic music through artificial neurons**
 
-
 NeuronSeqSampler is an innovative experimental audio application that uses interconnected artificial neurons to trigger and sequence audio samples. Each neuron can be connected to others through customizable connection matrices, creating complex cascading patterns that generate evolving rhythms, melodies, and soundscapes in real-time.
 
-This isn't just a traditional step sequencer - it's a living, breathing musical organism where efficient rhythm analysis directly drives neural activity, creating emergent musical behaviors that can surprise even experienced users. Advanced BeatRoot multi-agent beat tracking is available for users requiring maximum precision in complex rhythmic scenarios.
+This isn't just a traditional step sequencer - it's a living, breathing musical organism where tempo detection and rhythm analysis directly drive neural activity, creating emergent musical behaviors that can surprise even experienced users.
 
 ![Neural Network Visualization](https://img.shields.io/badge/Interface-Real--time%20Neural%20Visualization-blue)
 ![Audio Engine](https://img.shields.io/badge/Audio-SFML%20Based-green)
@@ -38,13 +35,10 @@ This isn't just a traditional step sequencer - it's a living, breathing musical 
 - **⚡ Real-Time Response**: Rhythmic analysis bypasses traditional audio processing for immediate neural triggering
 - **🔄 Intelligent Feedback Loop**: 8-band filterbank analyzes the network's own output, creating evolving self-organization
 
-### Tempo Detection System
-- **⚡ Simple Rhythm Detector** (Default): Fast, efficient rhythm analysis for real-time performance
-- **🎯 BeatRoot System** (Optional): Professional multi-agent beat tracking for complex rhythms
-- **📊 Tempo Confidence**: Real-time stability analysis ensures reliable beat detection before BPM updates
-- **🔄 Intelligent Switching**: Choose between simple detector and advanced BeatRoot based on needs
-- **⚙️ Resource Optimization**: Complete mutual exclusivity prevents unnecessary CPU usage
-- **🎼 Wide Range Support**: Accurate detection from 30-300 BPM for diverse musical styles
+### Tempo Detection
+- **🎯 Autodetect Mode**: Lightweight tempo detector estimates BPM in real time
+- **📊 Manual Control**: BPM slider (30–260 BPM) for precise tempo setting
+- **🎼 Wide Range Support**: Accurate detection across common musical tempos
 
 ### Interactive Performance Interface
 - **�️ Live Connection Matrix**: Visual routing interface between frequency bands and neurons with precise control
@@ -58,25 +52,6 @@ This isn't just a traditional step sequencer - it's a living, breathing musical 
 - **🚀 Instant Gratification**: Testing mode provides pre-configured drum networks for immediate experimentation
 - **💾 JSON Preset System**: Save and load complete neural network configurations with metadata and version control
 - **🎼 Sample Management**: Load and organize your own samples or use the included professional sample library
-
-### Musical Quantization System
-- **🎵 Real-Time Quantization**: Professional-grade musical timing that snaps neural triggers to musical grid points
-- **📐 Flexible Grid Resolutions**: Choose from 1/2 notes to 1/64 notes for anything from sparse grooves to tight patterns
-- **🎚️ Quantization Amount**: Adjustable strength from 0% (no quantization) to 100% (strict musical timing)
-- **🎯 Smart Suppression**: Off-grid triggers are intelligently suppressed to maintain musical coherence
-- **⚡ Zero-Latency Processing**: Quantization decisions happen in real-time without audio delay
-- **🎛️ Q-Key Toggle**: Instant access to quantization controls with keyboard shortcut
-
-#### How Quantization Works
-The quantization system analyzes each neural trigger in real-time and determines whether it falls close enough to a musical grid point. If a trigger occurs **within 10ms** of a grid boundary, it plays immediately. If it's **further than 10ms** from any grid point, it's suppressed entirely.
-
-This approach creates **musically coherent rhythms** by preventing off-beat triggers from cluttering the timing, while allowing natural neural dynamics to drive the composition. You'll notice:
-
-- **Larger grids** (1/2, 1/4 notes): More triggers are suppressed, creating sparse, locked grooves
-- **Smaller grids** (1/16, 1/32 notes): Fewer triggers are suppressed, maintaining density while ensuring rhythmic precision
-- **Live responsiveness**: Changes to grid resolution immediately affect which neural firings become audible
-
-*Example: With 1/2 note quantization at 120 BPM, triggers only play if they occur within 10ms of every 1-second boundary, creating a sparse but perfectly timed kick pattern.*
 
 ## Quick Start
 
@@ -122,43 +97,6 @@ make
 3. **Interaction**: Click neurons to activate them, use spacebar for random activation
 4. **Recording**: Press 'R' to record the neural network's audio output
 
-### Musical Quantization Usage
-
-**🎵 Quick Start with Quantization:**
-
-1. **Enable Quantization Panel**: Press `Q` to show the quantization controls
-2. **Check the Enable Box**: Turn quantization on/off with the checkbox
-3. **Choose Grid Resolution**: Select from dropdown:
-   - **1/2 Note**: Sparse, powerful beats (1-second intervals at 120 BPM)
-   - **1/4 Note**: Standard quarter note timing (500ms intervals)
-   - **1/8 Note**: Eighth note subdivisions (250ms intervals)
-   - **1/16 Note**: Sixteenth note precision (125ms intervals) - *default*
-   - **1/32 Note**: Very tight timing (62.5ms intervals)
-   - **1/64 Note**: Extremely dense grid (31.25ms intervals)
-
-4. **Adjust Quantization Amount**: Use the slider to control strength:
-   - **0%**: No quantization (neural chaos)
-   - **50%**: Partial quantization (some triggers allowed off-grid)
-   - **100%**: Full quantization (strict musical timing)
-
-5. **Add Swing**: Use the swing slider to add groove (-1.0 to 1.0)
-
-**🎯 Practical Tips:**
-
-- **Start with 1/4 notes** for traditional drum patterns
-- **Use 1/32 notes** when you want tight neural activity without losing the organic feel
-- **Try 1/2 notes** for sparse, powerful rhythms where every hit counts
-- **Watch the console output** to see which neural triggers are "on-grid" vs "off-grid"
-- **Quantization works in real-time** - changes are immediate, no restart needed
-
-**🔍 Understanding Suppression:**
-
-When quantization is active, you'll see console messages like:
-- `🎵 Quantized playback: on-grid (delay -0.006s) for sample 1` ← *This sample plays*
-- `🎵 Quantized suppression: off-grid (delay 0.145s) for sample 1` ← *This sample is blocked*
-
-This is **normal behavior** - quantization intelligently blocks neural triggers that would create rhythmic chaos, allowing only those that enhance the musical structure.
-
 ### GUI Controls
 
 **Main Interface:**
@@ -166,7 +104,6 @@ This is **normal behavior** - quantization intelligently blocks neural triggers 
 - **Spacebar**: Random network activation
 - **R Key**: Toggle audio recording
 - **M Key**: Toggle connection matrix visibility
-- **Q Key**: Toggle quantization panel (musical timing controls)
 - **S Key**: Quick save current network as preset
 - **L Key**: Load factory drum pattern preset
 - **Number Keys (1-9)**: Activate specific neurons
@@ -190,14 +127,9 @@ This is **normal behavior** - quantization intelligently blocks neural triggers 
 - **🎛️ Quick Actions**: "Clear All" and "Random" buttons for rapid matrix reconfiguration
 - **🎵 Rhythmogram Scale Slider**: Vertical control (0.0-20.0) with large, easy-to-read value display
 - **🎼 BPM Control**: Tempo slider (30-260 BPM) with large, clear value display for precise readings
-- **🤖 Dual Tempo Detection System**: 
-  - **BeatRoot**: Professional-grade multi-agent beat tracking system for superior accuracy
-  - **Simple RhythmDetector** (Default): Lightweight system for efficient tempo detection
-  - **BeatRoot System** (Advanced): Professional multi-agent beat tracking (disabled by default)
-  - **Streamlined Interface**: BeatRoot controls removed for simplified user experience
-- **⚡ Resource Optimization**: Only one tempo detection system active at a time for maximum performance
+- **🤖 Tempo Detection**: Autodetect BPM with a lightweight rhythm detector; use the BPM slider to override manually
 
-**Tempo Detection**: System defaults to simple rhythm detector for optimal performance. Advanced users can enable BeatRoot through code modifications if needed for complex rhythm analysis.
+Beat tracking controls are streamlined: use Autodetect and the BPM slider.
 
 ### Sample Organization
 
@@ -329,10 +261,7 @@ Audio Output → Rhythmogram Analysis → Connection Matrix → Direct Neuron Ac
 - **Self-Organization**: Optimal frequency-to-neuron mappings emerge over time
 - **Polyrhythmic Patterns**: Complex interactions between frequency bands
 - **Tempo Awareness**: BPM control scales Todd frequencies relative to musical tempo (120 BPM baseline)
-- **Advanced Tempo Detection**: Dual-system approach for optimal accuracy:
-  - **BeatRoot System**: Multi-agent beat tracking with stability analysis and tempo confidence scoring
-  - **Simple Detector**: Fast rhythm analysis for basic tempo tracking when BeatRoot is disabled
-  - **Intelligent Switching**: Automatic mutual exclusivity prevents resource conflicts
+- **Tempo Detection**: Lightweight detector with optional manual BPM override
 - **Musical Scaling**: All frequency bands maintain proportional relationships across tempo changes
 
 ### Technical Specifications
@@ -342,8 +271,7 @@ Audio Output → Rhythmogram Analysis → Connection Matrix → Direct Neuron Ac
 - **Sample Rate**: 44.1kHz with 512-sample buffers for optimal real-time response
 - **Analysis Window**: 100 frames (~1.16 seconds) rhythmic history for pattern detection
 - **CPU Overhead**: <5% on modern systems with full 8×N matrix active
-- **Tempo Detection Optimization**: Mutual exclusivity ensures only BeatRoot OR simple detector processes audio
-- **Resource Management**: Complete bypass of inactive tempo detection systems saves CPU cycles
+- **Resource Management**: Efficient detector keeps CPU usage low
 
 **📊 Matrix Capabilities:**
 - **Matrix Size**: 8 Todd frequency bands × unlimited neurons (tested up to 20+ neurons)
@@ -357,13 +285,9 @@ Audio Output → Rhythmogram Analysis → Connection Matrix → Direct Neuron Ac
 - **Precision**: Per decamille (‰) display accuracy for rhythmic activity monitoring
 - **Processing**: Hybrid envelope following (<4Hz) + biquad filtering (≥4Hz) approach
 
-**🎯 BeatRoot System:**
-- **Multi-Agent Architecture**: Multiple competing beat tracking agents for robust tempo detection
-- **Tempo Range**: 30-300 BPM with automatic stability analysis
-- **Confidence Scoring**: Real-time beat strength and stability metrics
-- **Mutual Exclusivity**: Complete bypass when disabled to prevent resource conflicts
-- **Initialization**: Manual tempo seeding for faster convergence on known BPMs
-- **Status Monitoring**: Live display of active agents, tempo confidence, and system health
+**🎯 Tempo Detector:**
+- **Real-time Estimation**: Continuously updates BPM based on rhythmic content
+- **Manual Override**: Set exact BPM via slider when needed
 
 ### How It Works
 
@@ -447,9 +371,6 @@ The JSON preset system provides professional-grade save/load functionality for c
 #### **🎹 Keyboard Shortcuts**
 - **S Key**: Quick save current network with timestamp (saves to `presets/user/quicksave_[timestamp].json`)
 - **L Key**: Instantly load factory drum pattern preset (3-neuron network with kick/clap/bass)
-- **Q Key**: Toggle musical quantization panel (real-time musical timing controls)
-- **M Key**: Toggle rhythmogram matrix panel (frequency-to-neuron routing)
-- **R Key**: Toggle audio recording (capture network output to WAV files)
 
 #### **🖥️ GUI Integration**
 - **Presets Menu**: Complete preset management system
@@ -473,7 +394,6 @@ Each preset captures the full network configuration:
 - **Neuron Parameters**: Activation levels, thresholds, decay rates, self-modulation, activation functions
 - **Connection Topology**: Complete network structure with precise connection weights
 - **Rhythmogram Matrix**: Filter configurations and frequency-to-neuron routing
-- **Quantization Settings**: Musical timing grid, swing, and quantization strength
 - **Metadata**: Name, author, description, creation date, tags, and version information
 
 #### **🔧 Example Preset Structure**
@@ -508,14 +428,6 @@ Each preset captures the full network configuration:
     "enabled": true,
     "scale": 5.0,
     "filter_gains": [1.0, 1.5, 2.0, 1.2, 0.8, 1.0, 1.0, 1.0]
-  },
-  "quantization": {
-    "enabled": true,
-    "grid_resolution": "sixteenth_note",
-    "grid_resolution_value": 3,
-    "quantization_amount": 0.8,
-    "swing_factor": 0.2,
-    "bpm": 120.0
   }
 }
 ```
@@ -526,21 +438,6 @@ Each preset captures the full network configuration:
 - **Smart Restoration**: Complete network rebuilding including rhythm interpreter reinitialization
 - **GUI Synchronization**: All sliders, matrices, and visual elements update to reflect loaded state
 - **Cross-Session Compatibility**: Presets work across different application sessions and system restarts
-
-#### **🎵 Quantization in Presets**
-Presets now include complete quantization settings, preserving your musical timing preferences:
-
-- **Grid Resolution**: Automatically restores subdivision (1/2 note to 1/64 note)
-- **Quantization Amount**: Preserves timing strength (0% to 100%)
-- **Swing Factor**: Maintains groove timing (straight to triplet feel)
-- **Enable State**: Remembers whether quantization is active
-
-**Factory Preset Examples:**
-- **Drum Pattern**: 1/16 note grid, 80% strength, 20% swing - tight rhythmic patterns
-- **Ambient Textures**: Quantization disabled - free-flowing, organic timing
-- **User Test**: 1/8 note grid, 100% strength, straight timing - locked grooves
-
-*When you load a preset, the quantization panel (Q-key) will automatically update to show the saved settings, and the musical timing will immediately take effect.*
 
 ---
 
@@ -710,26 +607,9 @@ Todd identified specific frequency bands that correspond to fundamental musical 
 
 This hierarchy forms the theoretical basis for NeuronSeqSampler's 8-band rhythmogram analyzer, enabling **musically intelligent** frequency-to-neuron routing.
 
-### BeatRoot: Advanced Beat Tracking Research
+### Tempo Detection Approach
 
-The professional tempo detection system integrates **BeatRoot**, a sophisticated multi-agent beat tracking system based on decades of academic research in computational rhythm analysis.
-
-#### **Multi-Agent Beat Tracking Architecture**
-BeatRoot implements a **competitive agent system** where multiple tracking hypotheses compete to identify the most stable tempo:
-
-- **Parallel Hypothesis Testing**: Multiple agents simultaneously track different tempo possibilities
-- **Confidence Scoring**: Real-time evaluation of each agent's tracking stability and accuracy
-- **Dynamic Adaptation**: Agents adjust their predictions based on incoming audio analysis
-- **Stability Analysis**: Only stable, high-confidence tempo estimates influence the system BPM
-
-#### **Academic Foundation**
-This approach builds on established research in:
-- **Beat Tracking Algorithms**: Multi-agent systems for robust rhythm detection in complex audio
-- **Temporal Pattern Recognition**: Machine learning approaches to musical meter and tempo analysis  
-- **Competitive Learning**: Agent-based systems that converge on optimal solutions through competition
-- **Musical Intelligence**: Systems that understand musical context rather than just signal processing
-
-The integration of BeatRoot with Todd's rhythmogram analysis creates a **dual-layer rhythm intelligence** system - Todd's frequency analysis provides detailed rhythmic content while BeatRoot ensures accurate tempo tracking across diverse musical styles.
+The system uses a lightweight real-time tempo detector to estimate BPM from input audio. Combine this with Todd's rhythmogram analysis for musically intelligent routing, and optionally override BPM manually via the slider for tight performance control.
 
 ### Neural Network Foundations
 
@@ -756,14 +636,14 @@ NeuronSeqSampler represents a **unique synthesis** of Todd's rhythmogram theory 
 - **Multi-Function Neurons**: Linear, Sigmoid, ReLU, Tanh activation functions per neuron
 
 #### **Revolutionary Integration**
-This **triple-stream approach** creates unprecedented musical intelligence:
+This integrated approach creates musical intelligence:
 - **Rhythmic Hierarchy → Neural Activation**: Todd's frequency bands directly drive neural network input
-- **Professional Tempo Detection**: BeatRoot's multi-agent system ensures accurate tempo tracking across musical styles
+- **Tempo Detection**: Lightweight detector provides BPM awareness for tempo scaling
 - **Emergent Musical Patterns**: Neural dynamics generate complex rhythmic structures with tempo-aware scaling
 - **Real-time Interaction**: Live performance capabilities with immediate visual/auditory feedback
 - **Biological Authenticity**: Rhythmic perception, tempo detection, and neural processing all mirror natural systems
 
-The result bridges **computational musicology** (Todd 1994), **advanced beat tracking research** (BeatRoot), and **artificial neural networks** (Laine), creating a system that generates music through scientifically grounded principles while maintaining artistic expressiveness.
+The result bridges **computational musicology** (Todd 1994) and **artificial neural networks** (Laine), creating a system that generates music through scientifically grounded principles while maintaining artistic expressiveness.
 
 ## Contributing
 

@@ -1,7 +1,6 @@
 #include "NeuronNetwork.h"
 #include "AudioManager.h"
 #include "RhythmInterpreter.h"
-#include "BeatRoot.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>

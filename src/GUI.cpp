@@ -5,32 +5,22 @@
 #include "Visualizer.h"
 #include "Recorder.h"
 #include "RhythmInterpreter.h"
-#include "BeatRoot.h"
-#include "SimpleSpectralDisplay.h"
 #include "Debug.h"
-#include <cmath>
 #include <iostream>
 #include <filesystem>
 #include <chrono>
 #include <iomanip>
 #include <sstream>
-#include <cstdlib>
-#include <ctime>
-#include <map>
 
-GUI::GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, Visualizer* visualizerPtr, Recorder* recorderPtr, AudioManager* audioMgr, SimpleSpectralDisplay* spectralDisplayPtr, float* activationIntervalPtr)
+GUI::GUI(tgui::Gui* tguiGui, sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork, Visualizer* visualizerPtr, Recorder* recorderPtr, AudioManager* audioMgr, float* activationIntervalPtr)
     : gui(tguiGui)
     , window(renderWindow)
     , network(neuronNetwork)
     , visualizer(visualizerPtr)
     , recorder(recorderPtr)
     , audioManager(audioMgr)
-    , spectralDisplay(spectralDisplayPtr)
     , activationInterval(activationIntervalPtr)
 {
-    // Initialize quantization system
-    quantizer = std::make_unique<Quantizer>(120.0f, 44100); // Default 120 BPM, 44.1kHz
-    quantizerWidget = std::make_unique<QuantizerWidget>(*quantizer);
 }
 
 void GUI::initialize() {
@@ -40,45 +30,6 @@ void GUI::initialize() {
     createConnectionSliders();
     createConnectionMatrixPanel();
     updateStatusDisplay();  // Initialize status display with current network state
-    
-    // Initialize quantizer widget
-    if (quantizerWidget) {
-        std::cout << "🎵 Reinitializing quantizer widget..." << std::endl;
-        
-        // Clean up previous initialization if it exists
-        quantizerWidget->cleanup();
-        
-        // Create a popover ChildWindow for quantizer controls sized to fit the widget
-        quantizerWindow = tgui::ChildWindow::create("Quantization");
-        // Use a compact pixel size to better fit the quantizer content
-        quantizerWindow->setSize(360, 420);
-        // Position near top-center with a bit of padding
-        quantizerWindow->setPosition("50% - 180", "8%");
-        quantizerWindow->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
-        quantizerWindow->getRenderer()->setBorderColor(tgui::Color(80, 80, 80));
-        quantizerWindow->getRenderer()->setBorders(2);
-        quantizerWindow->setVisible(false); // start hidden; toggled by user
-        quantizerWindow->setResizable(false);
-        quantizerWindow->setTitleButtons(tgui::ChildWindow::TitleButton::None); // Remove close button
-        
-        gui->add(quantizerWindow, "QuantizerWindow");
-
-        // Initialize the quantizer widget inside the child window
-        quantizerWidget->initialize(quantizerWindow);
-        // Make sure the quantizer main panel is centered and sized to fit nicely
-        quantizerWidget->setPosition(20.0f, 20.0f, 320.0f, 380.0f);
-
-        // Initialize quantizer BPM to match default BPM (120.0)
-        updateQuantizerBPM(120.0f);
-        
-        std::cout << "✅ Quantizer widget reinitialized successfully" << std::endl;
-    }
-    
-    // Connect quantizer to the neuron network
-    if (network && quantizer) {
-        network->setQuantizer(quantizer.get());
-        std::cout << "🎵 Quantizer connected to neuron network" << std::endl;
-    }
     
     // Enable rhythmogram analysis by default for neuron activation
     // Audio always plays directly, rhythmogram data drives neural network
@@ -201,33 +152,9 @@ void GUI::createControlPanel() {
     });
     controlPanel->add(viewModeComboBox, "ViewModeComboBox");
     
-    // Spectral Display Contrast Control
-    spectralContrastLabel = tgui::Label::create("Spectral Contrast: 100%");
-    spectralContrastLabel->setPosition("5%", "29%");
-    spectralContrastLabel->setTextSize(10);
-    spectralContrastLabel->getRenderer()->setTextColor(tgui::Color::White);
-    controlPanel->add(spectralContrastLabel, "SpectralContrastLabel");
-    
-    spectralContrastSlider = tgui::Slider::create();
-    spectralContrastSlider->setPosition("5%", "32%");
-    spectralContrastSlider->setSize("90%", "3%");
-    spectralContrastSlider->setMinimum(10.0f);    // 10% contrast (low contrast)
-    spectralContrastSlider->setMaximum(1000.0f);  // 1000% contrast (maximum contrast)
-    spectralContrastSlider->setStep(5.0f);        // 5% increments
-    spectralContrastSlider->setValue(100.0f);     // Default to normal contrast
-    
-    // Connect slider to callback
-    spectralContrastSlider->onValueChange([this](float value) {
-        if (spectralDisplay) {
-            spectralDisplay->setContrast(value / 100.0f); // Convert percentage to factor
-            spectralContrastLabel->setText("Spectral Contrast: " + std::to_string(static_cast<int>(value)) + "%");
-        }
-    });
-    controlPanel->add(spectralContrastSlider, "SpectralContrastSlider");
-    
     // Create scrollable panel for sliders - adjusted position for new control
-    slidersPanel = tgui::ScrollablePanel::create({"95%", "62%"}); // Reduced height to accommodate opacity control
-    slidersPanel->setPosition("2.5%", "36%"); // Moved down to accommodate opacity control
+    slidersPanel = tgui::ScrollablePanel::create({"95%", "68%"}); // Reduced height to accommodate view mode control
+    slidersPanel->setPosition("2.5%", "30%"); // Moved down to accommodate view mode control
     slidersPanel->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40, 200));
     controlPanel->add(slidersPanel, "SlidersPanel");
 }
@@ -235,27 +162,12 @@ void GUI::createControlPanel() {
 void GUI::createConnectionSliders() {
     if (!network) return;
     
-    if (!slidersPanel) {
-        return;
-    }
-    
-    // Remove old connection sliders and labels from the panel
-    for (auto& slider : connectionSliders) {
-        slidersPanel->remove(slider);
-    }
-    for (auto& label : connectionLabels) {
-        slidersPanel->remove(label);
-    }
-    for (auto& valueLabel : connectionValueLabels) {
-        slidersPanel->remove(valueLabel);
-    }
-    
     connectionSliders.clear();
     connectionLabels.clear();
     connectionValueLabels.clear();
     
     const auto& connections = network->getConnections();
-    float yPos = 15.0f; // Start at same height as neuron sliders (they're in different columns)
+    float yPos = 5.0f;
     
     for (size_t i = 0; i < connections.size(); ++i) {
         const Connection* conn = connections[i].get();
@@ -306,33 +218,14 @@ void GUI::createConnectionSliders() {
 void GUI::createNeuronSliders() {
     if (!network) return;
     
-    // Remove only neuron-related widgets, not connection sliders
-    for (auto& slider : neuronSliders) {
-        slidersPanel->remove(slider);
-    }
-    for (auto& label : neuronLabels) {
-        slidersPanel->remove(label);
-    }
-    for (auto& valueLabel : neuronValueLabels) {
-        slidersPanel->remove(valueLabel);
-    }
-    for (auto& combo : activationFunctionCombos) {
-        slidersPanel->remove(combo);
-    }
-    // Remove sample buttons if any
-    for (auto& btn : neuronSampleButtons) {
-        slidersPanel->remove(btn);
-    }
-    
     neuronSliders.clear();
     neuronLabels.clear();
     neuronValueLabels.clear();
     activationFunctionCombos.clear();
-    neuronSampleButtons.clear();
+    slidersPanel->removeAllWidgets();
     
     const auto& neurons = network->getNeurons();
-    // Always start neuron sliders at a consistent position (not dependent on connection count)
-    float yPos = 15.0f; // Fixed starting position for consistent behavior
+    float yPos = 5.0f;
     
     for (size_t i = 0; i < neurons.size(); ++i) {
         const Neuron* neuron = neurons[i].get();
@@ -415,44 +308,7 @@ void GUI::createNeuronSliders() {
         funcLabel->setTextSize(9);
         funcLabel->getRenderer()->setTextColor(tgui::Color::Green);
         slidersPanel->add(funcLabel);
-
-        // Create sample selection button to the right of the function combo
-        std::string sampleFile = neuron->getSampleFilePath();
-        std::string sampleLabelText = "(no sample)";
-        if (!sampleFile.empty()) {
-            try {
-                sampleLabelText = std::filesystem::path(sampleFile).filename().string();
-            } catch (...) {
-                sampleLabelText = "(no sample)";
-            }
-        }
-
-        // Truncate long filenames to avoid UI overlap
-        std::string displayLabel = sampleLabelText;
-        const size_t maxLabelLen = 12;
-        if (displayLabel.size() > maxLabelLen) {
-            displayLabel = displayLabel.substr(0, maxLabelLen - 3) + "...";
-        }
-
-        auto sampleButton = tgui::Button::create(displayLabel);
-        // Position sample button to the right of the function combo but left of connection controls
-        // Func combo is at x=40 width=120 -> ends at 160. Connection column begins at ~215.
-        // Use a small button in the gap (x=165..215)
-        float sampleBtnX = 165.0f;
-        sampleButton->setPosition(sampleBtnX, yPos); // align with function combo row
-        sampleButton->setSize(50, 18);
-        sampleButton->setTextSize(9);
-        sampleButton->getRenderer()->setBackgroundColor(tgui::Color(70, 70, 70));
-        sampleButton->getRenderer()->setTextColor(tgui::Color::White);
-
-        // Capture index for the callback
-        sampleButton->onPress([this, i]() {
-            this->showChangeSampleDialog(i);
-        });
-
-        slidersPanel->add(sampleButton);
-        neuronSampleButtons.push_back(sampleButton);
-
+        
         yPos += 22.0f; // Extra spacing after each neuron's controls
     }
     
@@ -533,28 +389,6 @@ void GUI::updateStatusDisplay() {
     std::string status = "Neurons: " + std::to_string(network->getNeuronCount()) + 
                         " | Connections: " + std::to_string(network->getConnectionCount());
     statusLabel->setText(status);
-    
-    // Update tempo displays when auto-tempo is enabled
-    if (network->getRhythmInterpreter() && autodetectTempoToggle && bpmLabel && detectedTempoLabel) {
-        auto rhythmInterpreter = network->getRhythmInterpreter();
-        if (rhythmInterpreter->isAutoTempoEnabled()) {
-            float detectedTempo = rhythmInterpreter->getDetectedTempo();
-            std::ostringstream stream;
-            stream << std::fixed << std::setprecision(1) << detectedTempo;
-            bpmLabel->setText(stream.str());
-            
-            // Update detected tempo display
-            std::ostringstream detectedStream;
-            detectedStream << "Detected: " << std::fixed << std::setprecision(1) << detectedTempo;
-            detectedTempoLabel->setText(detectedStream.str());
-            
-            // Update quantizer BPM to match detected tempo
-            updateQuantizerBPM(detectedTempo);
-        } else {
-            // Clear detected tempo display when auto-tempo is off
-            detectedTempoLabel->setText("Detected: --");
-        }
-    }
 }
 
 void GUI::render() {
@@ -562,14 +396,10 @@ void GUI::render() {
 }
 
 void GUI::setGUIArea(float x, float y, float width, float height) {
-    // Keep using percentage-based layout for TGUI compatibility
-    // The right panel positioning is handled in individual widget creation
-    // Parameters are received but not stored as GUI uses percentage layout
-    
-    // Keep control panel at percentage-based position for proper TGUI function
     if (controlPanel) {
-        controlPanel->setPosition("70%", "0%");
-        controlPanel->setSize("30%", "100%");
+        // Use percentage positioning for better scaling
+        controlPanel->setPosition("80%", "4%");
+        controlPanel->setSize("20%", "96%");
     }
 }
 
@@ -588,7 +418,7 @@ void GUI::refreshConnectionMatrix() {
     }
     
     // Only recreate the panel if it doesn't exist or if the number of neurons changed
-    if (!connectionMatrixWindow || !network || !network->getRhythmInterpreter()) {
+    if (!connectionMatrixPanel || !network || !network->getRhythmInterpreter()) {
         createConnectionMatrixPanel();
         return;
     }
@@ -625,10 +455,6 @@ void GUI::removeNeuron() {
         auto messageDialog = tgui::ChildWindow::create("No Neurons");
         messageDialog->setSize(300, 150);
         messageDialog->setPosition("50%", "50%");
-        // Style the no neurons dialog
-        messageDialog->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 50, 240));
-        messageDialog->getRenderer()->setBorderColor(tgui::Color(80, 80, 100));
-        messageDialog->getRenderer()->setTitleColor(tgui::Color::Yellow);
         
         auto message = tgui::Label::create("There are no neurons to remove.\n\nAdd some neurons first.");
         message->setPosition(10, 40);
@@ -652,23 +478,15 @@ void GUI::removeNeuron() {
     auto dialog = tgui::ChildWindow::create("Remove Neuron");
     dialog->setSize("300", "150");
     dialog->setPosition("50% - 150", "50% - 75");
-    // Style the remove neuron dialog
-    dialog->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 50, 240));
-    dialog->getRenderer()->setBorderColor(tgui::Color(80, 120, 180));
     dialog->getRenderer()->setTitleColor(tgui::Color::White);
     
     auto label = tgui::Label::create("Select neuron to remove:");
     label->setPosition("10", "30");
-    label->getRenderer()->setTextColor(tgui::Color::White);
     dialog->add(label);
     
     auto comboBox = tgui::ComboBox::create();
     comboBox->setPosition("10", "60");
     comboBox->setSize("200", "25");
-    // Style the combobox
-    comboBox->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 70));
-    comboBox->getRenderer()->setTextColor(tgui::Color::White);
-    comboBox->getRenderer()->setBorderColor(tgui::Color(80, 120, 180));
     
     // Populate with neuron indices
     for (size_t i = 0; i < neuronCount; ++i) {
@@ -679,11 +497,6 @@ void GUI::removeNeuron() {
     auto removeButton = tgui::Button::create("Remove");
     removeButton->setPosition("10", "100");
     removeButton->setSize("80", "30");
-    // Style the remove button with red theme
-    removeButton->getRenderer()->setBackgroundColor(tgui::Color(120, 40, 40));
-    removeButton->getRenderer()->setBackgroundColorHover(tgui::Color(150, 50, 50));
-    removeButton->getRenderer()->setTextColor(tgui::Color::White);
-    removeButton->getRenderer()->setBorderColor(tgui::Color(180, 60, 60));
     removeButton->onClick([this, dialog, comboBox]() {
         int selectedIndex = comboBox->getSelectedItemIndex();
         if (selectedIndex >= 0) {
@@ -725,17 +538,13 @@ void GUI::showConnectionDialog() {
     if (!network) return;
     
     size_t neuronCount = network->getNeuronCount();
-    if (neuronCount < 1) {
-        // Show message that we need at least 1 neuron (self-connections are now allowed)
+    if (neuronCount < 2) {
+        // Show message that we need at least 2 neurons
         auto messageDialog = tgui::ChildWindow::create("Cannot Add Connection");
         messageDialog->setSize(300, 150);
         messageDialog->setPosition("50%", "50%");
-        // Improve dialog styling - dark background with bright text
-        messageDialog->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 50, 240));
-        messageDialog->getRenderer()->setBorderColor(tgui::Color(80, 80, 100));
-        messageDialog->getRenderer()->setTitleColor(tgui::Color::Yellow);
         
-        auto message = tgui::Label::create("You need at least 1 neuron\nto create a connection.\n\nAdd a neuron first.");
+        auto message = tgui::Label::create("You need at least 2 neurons\nto create a connection.\n\nAdd more neurons first.");
         message->setPosition(10, 40);
         message->setSize(280, 60);
         message->getRenderer()->setTextColor(tgui::Color::White);
@@ -744,10 +553,6 @@ void GUI::showConnectionDialog() {
         auto okButton = tgui::Button::create("OK");
         okButton->setPosition(100, 110);
         okButton->setSize(100, 30);
-        // Style the button for better visibility
-        okButton->getRenderer()->setBackgroundColor(tgui::Color(60, 100, 60));
-        okButton->getRenderer()->setTextColor(tgui::Color::White);
-        okButton->getRenderer()->setBorderColor(tgui::Color(100, 150, 100));
         okButton->onPress([=]() {
             messageDialog->close();
         });
@@ -758,55 +563,37 @@ void GUI::showConnectionDialog() {
     }
     
     auto dialog = tgui::ChildWindow::create("Add Connection");
-    dialog->setSize("380", "230");
-    dialog->setPosition("50% - 190", "50% - 115");
-    // Improve dialog styling - dark background with bright accents
-    dialog->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 50, 240));
-    dialog->getRenderer()->setBorderColor(tgui::Color(80, 120, 180));
-    dialog->getRenderer()->setTitleColor(tgui::Color::Cyan);
+    dialog->setSize("350", "200");
+    dialog->setPosition("50% - 175", "50% - 100");
+    dialog->getRenderer()->setTitleColor(tgui::Color::White);
     
     auto fromLabel = tgui::Label::create("From Neuron:");
     fromLabel->setPosition("10", "30");
-    fromLabel->getRenderer()->setTextColor(tgui::Color::White);
     dialog->add(fromLabel);
     
     auto fromCombo = tgui::ComboBox::create();
-    fromCombo->setPosition("120", "30");
-    fromCombo->setSize("200", "25");
-    fromCombo->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 70));
-    fromCombo->getRenderer()->setTextColor(tgui::Color::White);
+    fromCombo->setPosition("100", "30");
+    fromCombo->setSize("120", "25");
     
     auto toLabel = tgui::Label::create("To Neuron:");
     toLabel->setPosition("10", "70");
-    toLabel->getRenderer()->setTextColor(tgui::Color::White);
     dialog->add(toLabel);
     
     auto toCombo = tgui::ComboBox::create();
-    toCombo->setPosition("120", "70");
-    toCombo->setSize("200", "25");
-    toCombo->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 70));
-    toCombo->getRenderer()->setTextColor(tgui::Color::White);
+    toCombo->setPosition("100", "70");
+    toCombo->setSize("120", "25");
     
     auto weightLabel = tgui::Label::create("Weight:");
     weightLabel->setPosition("10", "110");
-    weightLabel->getRenderer()->setTextColor(tgui::Color::White);
     dialog->add(weightLabel);
     
-    // Add info label for self-connections
-    auto infoLabel = tgui::Label::create("Tip: Same neuron = self-connection (arc)");
-    infoLabel->setPosition("10", "140");
-    infoLabel->setTextSize(10);
-    infoLabel->getRenderer()->setTextColor(tgui::Color::Yellow);
-    dialog->add(infoLabel);
-    
     auto weightSpin = tgui::SpinControl::create();
-    weightSpin->setPosition("120", "110");
+    weightSpin->setPosition("100", "110");
     weightSpin->setSize("120", "25");
     weightSpin->setMinimum(-1.2f);
     weightSpin->setMaximum(1.2f);
     weightSpin->setStep(0.1f);
-    weightSpin->setValue(0.5f);  // Default to positive weight
-    // Note: SpinControl styling not supported in this TGUI version
+    weightSpin->setValue(0.0f);
     dialog->add(weightSpin);
     
     // Populate neuron lists
@@ -819,18 +606,14 @@ void GUI::showConnectionDialog() {
     dialog->add(toCombo);
     
     auto addButton = tgui::Button::create("Add");
-    addButton->setPosition("10", "170");
+    addButton->setPosition("10", "150");
     addButton->setSize("80", "30");
-    // Style the Add button
-    addButton->getRenderer()->setBackgroundColor(tgui::Color(60, 120, 60));
-    addButton->getRenderer()->setTextColor(tgui::Color::White);
-    addButton->getRenderer()->setBorderColor(tgui::Color(100, 200, 100));
     addButton->onClick([this, dialog, fromCombo, toCombo, weightSpin]() {
         int fromIndex = fromCombo->getSelectedItemIndex();
         int toIndex = toCombo->getSelectedItemIndex();
         float weight = weightSpin->getValue();
         
-        if (fromIndex >= 0 && toIndex >= 0) {  // Allow self-connections (fromIndex == toIndex)
+        if (fromIndex >= 0 && toIndex >= 0 && fromIndex != toIndex) {
             // Get the neurons
             Neuron* sourceNeuron = network->getNeuron(fromIndex);
             Neuron* targetNeuron = network->getNeuron(toIndex);
@@ -839,13 +622,8 @@ void GUI::showConnectionDialog() {
                 // Create the connection
                 auto connection = network->connect(sourceNeuron, targetNeuron, weight);
                 
-                if (fromIndex == toIndex) {
-                    std::cout << "Added self-connection to neuron " << (fromIndex + 1) 
-                             << " (arc) with weight " << weight << std::endl;
-                } else {
-                    std::cout << "Added connection from neuron " << (fromIndex + 1) 
-                             << " to neuron " << (toIndex + 1) << " with weight " << weight << std::endl;
-                }
+                std::cout << "Added connection from neuron " << (fromIndex + 1) 
+                         << " to neuron " << (toIndex + 1) << " with weight " << weight << std::endl;
                 std::cout << "Network now has " << network->getConnectionCount() << " connections" << std::endl;
                 
                 // Refresh GUI and visualizer
@@ -870,12 +648,8 @@ void GUI::showConnectionDialog() {
     dialog->add(addButton);
     
     auto cancelButton = tgui::Button::create("Cancel");
-    cancelButton->setPosition("100", "170");
+    cancelButton->setPosition("100", "150");
     cancelButton->setSize("80", "30");
-    // Style the Cancel button
-    cancelButton->getRenderer()->setBackgroundColor(tgui::Color(120, 60, 60));
-    cancelButton->getRenderer()->setTextColor(tgui::Color::White);
-    cancelButton->getRenderer()->setBorderColor(tgui::Color(200, 100, 100));
     cancelButton->onClick([dialog]() { dialog->close(); });
     dialog->add(cancelButton);
     
@@ -1010,34 +784,11 @@ void GUI::resetNetwork() {
     yesButton->onPress([=]() {
         std::cout << "Resetting network..." << std::endl;
         
-        // Step 1: Notify spectral display that rhythm interpreter will be cleared
-        // This prevents any further access attempts during the reset process
-        if (spectralDisplay) {
-            spectralDisplay->setRhythmInterpreter(nullptr);
-            std::cout << "🔄 Spectral display cleared" << std::endl;
-        }
-        
-        // Step 2: Clear the entire network (this deletes the rhythm interpreter)
+        // Clear the entire network
         network->clearNetwork();
         
         std::cout << "Network reset complete. Neurons: " << network->getNeuronCount() 
                  << ", Connections: " << network->getConnectionCount() << std::endl;
-        
-        // Step 3: Reinitialize rhythm interpreter
-        network->initializeRhythmInterpreter();
-        
-        // Step 4: Update AudioManager with new rhythm interpreter
-        auto audioManager = network->getAudioManager();
-        if (audioManager && network->getRhythmInterpreter()) {
-            audioManager->setRhythmInterpreter(network->getRhythmInterpreter());
-            std::cout << "🔄 AudioManager reconnected to new rhythm interpreter" << std::endl;
-        }
-        
-        // Step 5: Update spectral display with new rhythm interpreter
-        if (spectralDisplay && network->getRhythmInterpreter()) {
-            spectralDisplay->setRhythmInterpreter(network->getRhythmInterpreter());
-            std::cout << "🔄 Spectral display reconnected to new rhythm interpreter" << std::endl;
-        }
         
         // Refresh GUI and visualizer
         refreshNeuronSliders();
@@ -1164,8 +915,8 @@ void GUI::showAddNeuronDialog() {
                     }
                 }
                 
-                // Add neuron to network with the sample file path
-                auto neuron = network->addNeuron(sampleIndex, 0.0f, threshold, 1.0f, 0.0f, ActivationFunction::Linear, fullPath);
+                // Add neuron to network
+                auto neuron = network->addNeuron(sampleIndex, 0.0f, threshold, 1.0f, 0.0f, ActivationFunction::Linear);
                 
                 std::cout << "Added neuron with sample: " << fullPath << std::endl;
                 std::cout << "Sample index: " << sampleIndex << ", Threshold: " << threshold << std::endl;
@@ -1181,6 +932,27 @@ void GUI::showAddNeuronDialog() {
                 if (visualizer) {
                     visualizer->refreshLayout();
                 }
+                
+                // Show success message
+                auto successDialog = tgui::ChildWindow::create("Success");
+                successDialog->setSize(300, 150);
+                successDialog->setPosition("50%", "50%");
+                
+                auto message = tgui::Label::create("Neuron added successfully!\nSample: " + selectedFile.toStdString() + "\nThreshold: " + std::to_string(threshold));
+                message->setPosition(10, 40);
+                message->setSize(280, 60);
+                message->getRenderer()->setTextColor(tgui::Color::White);
+                successDialog->add(message);
+                
+                auto okButton = tgui::Button::create("OK");
+                okButton->setPosition(100, 110);
+                okButton->setSize(100, 30);
+                okButton->onPress([=]() {
+                    successDialog->close();
+                });
+                successDialog->add(okButton);
+                
+                gui->add(successDialog);
                 
                 // Close add neuron dialog
                 dialog->close();
@@ -1200,163 +972,6 @@ void GUI::showAddNeuronDialog() {
     });
     dialog->add(cancelButton);
     
-    gui->add(dialog);
-}
-
-void GUI::showChangeSampleDialog(size_t neuronIndex) {
-    if (!network) return;
-
-    if (neuronIndex >= network->getNeuronCount()) return;
-
-    Neuron* neuron = network->getNeuron(neuronIndex);
-    if (!neuron) return;
-
-    // Create dialog window for changing sample
-    auto dialog = tgui::ChildWindow::create("Change Neuron Sample");
-    dialog->setSize(420, 360);
-    dialog->setPosition("50% - 210", "50% - 180");
-    dialog->getRenderer()->setTitleBarHeight(30);
-    dialog->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40, 240));
-
-    auto dirLabel = tgui::Label::create("Sample Directory:");
-    dirLabel->setPosition(10, 40);
-    dirLabel->setSize(150, 25);
-    dirLabel->getRenderer()->setTextColor(tgui::Color::White);
-    dialog->add(dirLabel);
-
-    auto dirComboBox = tgui::ComboBox::create();
-    dirComboBox->setPosition(10, 70);
-    dirComboBox->setSize(200, 25);
-    dialog->add(dirComboBox, "dirComboBox");
-
-    auto fileLabel = tgui::Label::create("Sample File:");
-    fileLabel->setPosition(10, 110);
-    fileLabel->setSize(150, 25);
-    dialog->add(fileLabel);
-
-    auto fileListBox = tgui::ListBox::create();
-    fileListBox->setPosition(10, 140);
-    fileListBox->setSize(400, 160);
-    dialog->add(fileListBox, "fileListBox");
-
-    // Populate directories
-    auto sampleDirs = getAllSampleDirectories();
-    for (const auto& d : sampleDirs) dirComboBox->addItem(d);
-    if (!sampleDirs.empty()) dirComboBox->setSelectedItem(sampleDirs[0]);
-
-    // Update file list when directory changes
-    dirComboBox->onItemSelect([=]() {
-        auto selectedDir = dirComboBox->getSelectedItem();
-        if (!selectedDir.empty()) {
-            fileListBox->removeAllItems();
-            auto files = getSampleFiles("samples/" + selectedDir.toStdString());
-            for (const auto& file : files) fileListBox->addItem(file);
-        }
-    });
-
-    // Initialize file list with first directory
-    if (!sampleDirs.empty()) {
-        auto files = getSampleFiles("samples/" + sampleDirs[0]);
-        for (const auto& file : files) fileListBox->addItem(file);
-    }
-
-    // Pre-select current file if known
-    std::string curPath = neuron->getSampleFilePath();
-    if (!curPath.empty()) {
-        try {
-            auto p = std::filesystem::path(curPath);
-            auto parent = p.parent_path().filename().string();
-            auto fname = p.filename().string();
-            if (!parent.empty()) {
-                dirComboBox->setSelectedItem(parent);
-                fileListBox->removeAllItems();
-                auto files = getSampleFiles("samples/" + parent);
-                for (const auto& file : files) fileListBox->addItem(file);
-                // Try to pre-select matching file in the list if available.
-                // TGUI ListBox selection API varies between versions; leave unselected if method not present.
-                (void)fname; // silence unused variable warning when selection is skipped
-            }
-        } catch (...) {
-            // ignore
-        }
-    }
-
-    // Buttons
-    auto changeButton = tgui::Button::create("Change Sample");
-    changeButton->setPosition(10, 310);
-    changeButton->setSize(140, 30);
-    changeButton->onPress([=]() {
-        auto selectedDir = dirComboBox->getSelectedItem();
-        auto selectedFile = fileListBox->getSelectedItem();
-
-        if (selectedDir.empty() || selectedFile.empty()) return;
-
-        std::string fullPath = "samples/" + selectedDir.toStdString() + "/" + selectedFile.toStdString();
-
-        if (!audioManager) {
-            std::cerr << "No AudioManager available to load sample" << std::endl;
-            dialog->close();
-            return;
-        }
-
-        int assignedIndex = neuron->getSampleIndex();
-        if (assignedIndex <= 0) {
-            // Provide a default mapping if neuron doesn't have an index
-            assignedIndex = static_cast<int>(neuronIndex) + 1;
-            neuron->setSampleIndex(assignedIndex);
-        }
-
-        if (!audioManager->loadSampleFromPath(assignedIndex, fullPath)) {
-            std::cerr << "Failed to load sample: " << fullPath << std::endl;
-            // Show small error dialog
-            auto err = tgui::ChildWindow::create("Error");
-            err->setSize(300, 120);
-            err->setPosition("50% - 150", "50% - 60");
-            auto msg = tgui::Label::create("Failed to load sample file: " + selectedFile.toStdString());
-            msg->setPosition(10, 20);
-            msg->setSize(280, 60);
-            err->add(msg);
-            auto ok = tgui::Button::create("OK");
-            ok->setPosition(100, 70);
-            ok->setSize(100, 30);
-            ok->onPress([err]() { err->close(); });
-            err->add(ok);
-            gui->add(err);
-            return;
-        }
-
-        // Update neuron's sample file path
-        neuron->setSampleFilePath(fullPath);
-
-        // Update sample button text to show filename
-        if (neuronIndex < neuronSampleButtons.size()) {
-            try {
-                std::string label = std::filesystem::path(fullPath).filename().string();
-                // Truncate long filenames to fit the small button
-                const size_t maxLabelLen = 12;
-                std::string display = label;
-                if (display.size() > maxLabelLen) display = display.substr(0, maxLabelLen - 3) + "...";
-                neuronSampleButtons[neuronIndex]->setText(display);
-            } catch (...) {
-                std::string display = selectedFile.toStdString();
-                const size_t maxLabelLen = 12;
-                if (display.size() > maxLabelLen) display = display.substr(0, maxLabelLen - 3) + "...";
-                neuronSampleButtons[neuronIndex]->setText(display);
-            }
-        }
-
-        std::cout << "Neuron " << neuronIndex << " sample changed to " << fullPath << std::endl;
-
-        dialog->close();
-    });
-    dialog->add(changeButton);
-
-    auto cancelButton = tgui::Button::create("Cancel");
-    cancelButton->setPosition(160, 310);
-    cancelButton->setSize(100, 30);
-    cancelButton->onPress([=]() { dialog->close(); });
-    dialog->add(cancelButton);
-
     gui->add(dialog);
 }
 
@@ -1917,12 +1532,11 @@ void GUI::showExternalRecordingDialog() {
     gui->add(dialog);
 }
 void GUI::createConnectionMatrixPanel() {
-    // Remove existing window if it exists
-    if (connectionMatrixWindow) {
-        // Preserve current visibility state before removing window
-        matrixVisible = connectionMatrixWindow->isVisible();
-        gui->remove(connectionMatrixWindow);
-        connectionMatrixWindow = nullptr;
+    // Remove existing panel if it exists
+    if (connectionMatrixPanel) {
+        // Preserve current visibility state before removing panel
+        matrixVisible = connectionMatrixPanel->isVisible();
+        gui->remove(connectionMatrixPanel);
         connectionMatrixPanel = nullptr;
         matrixToggleButtons.clear();
         matrixGainSliders.clear();
@@ -1933,19 +1547,10 @@ void GUI::createConnectionMatrixPanel() {
         bpmSlider = nullptr;
         bpmLabel = nullptr;
         autodetectTempoToggle = nullptr;
-        detectedTempoLabel = nullptr;
-        // BeatRoot controls
-        beatRootToggle = nullptr;
-        beatRootStatusLabel = nullptr;
-        beatRootOnsetThresholdSlider = nullptr;
-        beatRootOnsetThresholdLabel = nullptr;
-        beatRootBeatToleranceSlider = nullptr;
-        beatRootBeatToleranceLabel = nullptr;
-        beatRootMaxAgentsSlider = nullptr;
-        beatRootMaxAgentsLabel = nullptr;
-        beatRootAutoInitToggle = nullptr;
-        beatRootResetButton = nullptr;
-        beatRootInitButton = nullptr;
+        // Learning controls
+        learningToggle = nullptr;
+        learningRateSlider = nullptr;
+        learningRateLabel = nullptr;
     }
     // Always use the current value of matrixVisible when creating the panel, even if it did not exist before
     
@@ -1954,38 +1559,26 @@ void GUI::createConnectionMatrixPanel() {
     }
     
     auto rhythmInterpreter = network->getRhythmInterpreter();
-    size_t numFilters = 8; // Minimal RhythmInterpreter uses 8 frequency bands
+    size_t numFilters = rhythmInterpreter->getNumFilters();
     size_t numNeurons = network->getNeuronCount();
     
     // Create panel even if no neurons yet - it will show as empty but ready
     
-    // Create a popover ChildWindow to host the rhythmogram (non-transparent, centered)
-    connectionMatrixWindow = tgui::ChildWindow::create("Rhythmogram Mapping");
-    connectionMatrixWindow->setSize("90%", "75%");
-    connectionMatrixWindow->setPosition("50% - 45%", "50% - 37.5%");
-    // Make the window semi-transparent so the neuron visualization is visible beneath
-    connectionMatrixWindow->getRenderer()->setBackgroundColor(tgui::Color(20, 20, 20, 200));
-    connectionMatrixWindow->getRenderer()->setBorderColor(tgui::Color(80, 80, 80));
-    connectionMatrixWindow->getRenderer()->setBorders(2);
-    connectionMatrixWindow->setVisible(matrixVisible);
-    connectionMatrixWindow->setTitleButtons(tgui::ChildWindow::TitleButton::None); // Remove close button
-
-    // Inner scrollable panel - all existing matrix widgets will be added to this panel
+    // Create main matrix panel with scrolling capability
     connectionMatrixPanel = tgui::ScrollablePanel::create();
-    connectionMatrixPanel->setPosition("0%", "0%");
-    connectionMatrixPanel->setSize("100%", "100%");
-    // Make inner panel transparent to allow underlying visualization to show through
-    connectionMatrixPanel->getRenderer()->setBackgroundColor(tgui::Color(0,0,0,0));
-    connectionMatrixWindow->add(connectionMatrixPanel);
-
-    gui->add(connectionMatrixWindow, "ConnectionMatrixPanel");
-
-    // Compute content size estimates (used for laying out controls inside the popover)
-    float contentWidth = std::max(350.0f, static_cast<float>(270 + numNeurons * 80 + 280)); // estimate
-    float contentHeight = std::max(550.0f, static_cast<float>(150 + numFilters * 60 + 150)); // estimate
+    connectionMatrixPanel->setPosition("60%", "20%");
+    connectionMatrixPanel->setSize("39%", "75%");
+    connectionMatrixPanel->getRenderer()->setBackgroundColor(tgui::Color(20, 20, 20, 200));
+    connectionMatrixPanel->getRenderer()->setBorderColor(tgui::Color(60, 60, 60));
+    connectionMatrixPanel->getRenderer()->setBorders(1);
+    connectionMatrixPanel->setVisible(matrixVisible);
     
-    // Set content size for scrollable panel now that we have computed the dimensions
-    connectionMatrixPanel->setContentSize(tgui::Vector2f(contentWidth, contentHeight));
+    // Set content size to accommodate all filters, neurons, and control sliders (Scale + BPM)
+    float contentWidth = std::max(350.0f, static_cast<float>(270 + numNeurons * 80));
+    float contentHeight = std::max(400.0f, static_cast<float>(150 + numFilters * 60));
+    static_cast<tgui::ScrollablePanel*>(connectionMatrixPanel.get())->setContentSize(tgui::Vector2f(contentWidth, contentHeight));
+    
+    gui->add(connectionMatrixPanel, "ConnectionMatrixPanel");
     
     // Title label
     std::string title = numNeurons == 0 ? "🎛️ Rhythmogram Mapping (8×0) - Add neurons first" : 
@@ -2002,30 +1595,12 @@ void GUI::createConnectionMatrixPanel() {
     clearAllButton->setSize(70, 20);
     clearAllButton->setTextSize(10);
     clearAllButton->getRenderer()->setBackgroundColor(tgui::Color(80, 40, 40));
-    clearAllButton->onPress([this]() {
-        if (!network) return;
-        
-        // Clear all rhythm connections
-        for (size_t f = 0; f < matrixToggleButtons.size(); ++f) {
-            for (size_t n = 0; n < matrixToggleButtons[f].size(); ++n) {
-                network->clearRhythmConnection(f, n);
-                
-                // Update button appearance
-                matrixToggleButtons[f][n]->setText("○");
-                matrixToggleButtons[f][n]->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
-                matrixToggleButtons[f][n]->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
-                
-                // Hide gain controls
-                if (f < matrixGainSliders.size() && n < matrixGainSliders[f].size()) {
-                    matrixGainSliders[f][n]->setValue(30.0f);
-                    matrixGainSliders[f][n]->setVisible(false);
-                }
-                if (f < matrixGainDisplays.size() && n < matrixGainDisplays[f].size()) {
-                    matrixGainDisplays[f][n]->setVisible(false);
-                }
-            }
+    clearAllButton->onPress([=, this]() {
+        if (network && network->getRhythmInterpreter()) {
+            network->getRhythmInterpreter()->getConnectionMatrix()->clearWeights();
+            // Force manual matrix update for Clear All
+            forceMatrixUpdate();
         }
-        std::cout << "🔄 Cleared all rhythm connections" << std::endl;
     });
     connectionMatrixPanel->add(clearAllButton);
     
@@ -2034,56 +1609,12 @@ void GUI::createConnectionMatrixPanel() {
     randomizeButton->setSize(70, 20);
     randomizeButton->setTextSize(10);
     randomizeButton->getRenderer()->setBackgroundColor(tgui::Color(40, 80, 40));
-    randomizeButton->onPress([this]() {
-        if (!network) return;
-        
-        // Randomize rhythm connections (30% chance per connection)
-        std::srand(static_cast<unsigned>(std::time(nullptr))); // Seed random number generator
-        
-        for (size_t f = 0; f < matrixToggleButtons.size(); ++f) {
-            for (size_t n = 0; n < matrixToggleButtons[f].size(); ++n) {
-                bool shouldConnect = (std::rand() % 100) < 30; // 30% chance
-                
-                if (shouldConnect) {
-                    // Create random connection with random gain (0.1 to 0.8)
-                    float randomGain = 0.1f + (static_cast<float>(std::rand()) / RAND_MAX) * 0.7f;
-                    network->setRhythmConnection(f, n, randomGain);
-                    
-                    // Update button appearance
-                    matrixToggleButtons[f][n]->setText("●");
-                    matrixToggleButtons[f][n]->getRenderer()->setBackgroundColor(tgui::Color(60, 120, 60));
-                    matrixToggleButtons[f][n]->getRenderer()->setTextColor(tgui::Color::White);
-                    
-                    // Show and set gain controls
-                    if (f < matrixGainSliders.size() && n < matrixGainSliders[f].size()) {
-                        matrixGainSliders[f][n]->setValue(randomGain * 100.0f);
-                        matrixGainSliders[f][n]->setVisible(true);
-                    }
-                    if (f < matrixGainDisplays.size() && n < matrixGainDisplays[f].size()) {
-                        matrixGainDisplays[f][n]->setText(std::to_string(static_cast<int>(randomGain * 100)));
-                        matrixGainDisplays[f][n]->setVisible(true);
-                    }
-                } else {
-                    // Clear connection
-                    network->clearRhythmConnection(f, n);
-                    
-                    // Update button appearance
-                    matrixToggleButtons[f][n]->setText("○");
-                    matrixToggleButtons[f][n]->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
-                    matrixToggleButtons[f][n]->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
-                    
-                    // Hide gain controls
-                    if (f < matrixGainSliders.size() && n < matrixGainSliders[f].size()) {
-                        matrixGainSliders[f][n]->setValue(30.0f);
-                        matrixGainSliders[f][n]->setVisible(false);
-                    }
-                    if (f < matrixGainDisplays.size() && n < matrixGainDisplays[f].size()) {
-                        matrixGainDisplays[f][n]->setVisible(false);
-                    }
-                }
-            }
+    randomizeButton->onPress([=, this]() {
+        if (network && network->getRhythmInterpreter()) {
+            network->getRhythmInterpreter()->randomizeConnections();
+            // Force manual matrix update for Random
+            forceMatrixUpdate();
         }
-        std::cout << "🎲 Randomized rhythm connections (30% density)" << std::endl;
     });
     connectionMatrixPanel->add(randomizeButton);
     
@@ -2092,278 +1623,132 @@ void GUI::createConnectionMatrixPanel() {
     connectAllButton->setSize(70, 20);
     connectAllButton->setTextSize(10);
     connectAllButton->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 80));
-    connectAllButton->onPress([this]() {
-        if (!network) return;
-        
-        // Connect all rhythm connections with default gain
-        float defaultGain = 0.3f;
-        
-        for (size_t f = 0; f < matrixToggleButtons.size(); ++f) {
-            for (size_t n = 0; n < matrixToggleButtons[f].size(); ++n) {
-                network->setRhythmConnection(f, n, defaultGain);
-                
-                // Update button appearance
-                matrixToggleButtons[f][n]->setText("●");
-                matrixToggleButtons[f][n]->getRenderer()->setBackgroundColor(tgui::Color(60, 120, 60));
-                matrixToggleButtons[f][n]->getRenderer()->setTextColor(tgui::Color::White);
-                
-                // Show and set gain controls
-                if (f < matrixGainSliders.size() && n < matrixGainSliders[f].size()) {
-                    matrixGainSliders[f][n]->setValue(defaultGain * 100.0f);
-                    matrixGainSliders[f][n]->setVisible(true);
-                }
-                if (f < matrixGainDisplays.size() && n < matrixGainDisplays[f].size()) {
-                    matrixGainDisplays[f][n]->setText(std::to_string(static_cast<int>(defaultGain * 100)));
-                    matrixGainDisplays[f][n]->setVisible(true);
+    connectAllButton->onPress([=, this]() {
+        if (network && network->getRhythmInterpreter()) {
+            auto connectionMatrix = network->getRhythmInterpreter()->getConnectionMatrix();
+            size_t numFilters = network->getRhythmInterpreter()->getNumFilters();
+            size_t numNeurons = network->getNeuronCount();
+            
+            // Set all connections to a default value of 0.3 (30%)
+            for (size_t f = 0; f < numFilters; ++f) {
+                for (size_t n = 0; n < numNeurons; ++n) {
+                    connectionMatrix->setWeight(f, n, 0.3f);
                 }
             }
+            // Force manual matrix update for Connect All
+            forceMatrixUpdate();
         }
-        std::cout << "🔗 Connected all rhythm connections (30% gain)" << std::endl;
     });
     connectionMatrixPanel->add(connectAllButton);
-    
-    // Rhythmogram frequency bands (Todd, 1994) - Logarithmic distribution for rhythmic hierarchy
-    const std::vector<std::string> filterNames = {
-        "Phrase (0.125Hz)", "Whole (0.25Hz)", "Half (0.5Hz)", "Quarter (1Hz)",
-        "Eighth (2Hz)", "16th (4Hz)", "32nd (8Hz)", "Onset (16Hz)"
-    };
-    
-    const std::vector<std::string> filterTooltips = {
-        "Phrase Structure: 8-beat phrases, 2-measure groups, long-term rhythmic patterns",
-        "Whole Note Level: 4-beat units, measure-level rhythmic structure", 
-        "Half Note Level: 2-beat units, strong-weak beat patterns",
-        "Quarter Note Level: Basic beat, fundamental pulse, main tempo",
-        "Eighth Note Level: Sub-beat subdivisions, syncopation, groove",
-        "Sixteenth Note Level: Fast subdivisions, hi-hat patterns, shuffle",
-        "Thirty-Second Note Level: Very fast subdivisions, rolls, ornaments", 
-        "Onset Detection: Micro-timing, attack transients, rhythmic precision"
-    };
-    
-    filterLabels.clear();
-    filterGainSliders.clear();
-    filterGainDisplays.clear();
-    filterOutputDisplays.clear();
-    for (size_t f = 0; f < numFilters; ++f) {
-        // Reverse vertical order: Onset at top (f=7 -> y=90), Phrase at bottom (f=0 -> y=90+420)
-        size_t displayRow = (numFilters - 1) - f;
-        
-        auto label = tgui::Label::create(filterNames[f]);
-        label->setPosition(5, 90 + displayRow * 60); // Reversed position: Onset top, Phrase bottom
-        label->setTextSize(10);
-        label->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
-        
-        // Tooltip available via hover (handled elsewhere)
-        
-        connectionMatrixPanel->add(label);
-        filterLabels.push_back(label);
-        
-        // Add filter gain slider next to each frequency label
-        auto gainSlider = tgui::Slider::create(0.0f, 5.0f);
-        gainSlider->setValue(1.0f); // Default gain for minimal RhythmInterpreter
-        gainSlider->setStep(0.1f); // 0.1x step increments
-        gainSlider->setPosition(5, 105 + displayRow * 60); // Just below the label, reversed position
-        gainSlider->setSize(65, 15); // Small horizontal slider
-        gainSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
-        gainSlider->getRenderer()->setThumbColor(tgui::Color(100, 140, 100));
-        // Filter gain control from 0.0x to 5.0x with 0.1x steps
-        
-        // Connect slider to filter gain control
-        gainSlider->onValueChange([this, f](float value) {
-            if (network && network->getRhythmInterpreter()) {
-                network->getRhythmInterpreter()->setFilterGain(f, value);
-            }
-            // Update filter gain display with proper formatting (one decimal place)
-            std::ostringstream stream;
-            stream << std::fixed << std::setprecision(1) << value << "x";
-            filterGainDisplays[f]->setText(stream.str());
-        });
-        
-        connectionMatrixPanel->add(gainSlider);
-        filterGainSliders.push_back(gainSlider);
-        
-        // Add filter gain value display (shows current gain setting)
-        auto gainDisplay = tgui::Label::create("1.0x");
-        gainDisplay->setPosition(75, 105 + displayRow * 60); // Right of the gain slider, reversed position
-        gainDisplay->setSize(25, 15); // Small label
-        gainDisplay->setTextSize(8);
-        gainDisplay->getRenderer()->setTextColor(tgui::Color(140, 140, 200));
-        gainDisplay->getRenderer()->setBackgroundColor(tgui::Color(15, 15, 25));
-        gainDisplay->getRenderer()->setBorderColor(tgui::Color(40, 40, 60));
-        gainDisplay->getRenderer()->setBorders(1);
-        
-        connectionMatrixPanel->add(gainDisplay);
-        filterGainDisplays.push_back(gainDisplay);
-        
-        // Add filter output display (label showing current output level)
-        auto outputDisplay = tgui::Label::create("0.0");
-        outputDisplay->setPosition(105, 95 + displayRow * 60); // Per decamille displays, reversed position
-        outputDisplay->setSize(40, 15); // Small label
-        outputDisplay->setTextSize(8);
-        outputDisplay->getRenderer()->setTextColor(tgui::Color(100, 200, 100));
-        outputDisplay->getRenderer()->setBackgroundColor(tgui::Color(20, 20, 20));
-        outputDisplay->getRenderer()->setBorderColor(tgui::Color(60, 60, 60));
-        outputDisplay->getRenderer()->setBorders(1);
-        
-        connectionMatrixPanel->add(outputDisplay);
-        filterOutputDisplays.push_back(outputDisplay);
-        
 
+    // ----------------------------------------------------------------------------
+    // Learning controls (toggle + learning rate) below quick actions
+    // ----------------------------------------------------------------------------
+    auto connectionMatrix = rhythmInterpreter->getConnectionMatrix();
+    bool learningEnabled = connectionMatrix ? connectionMatrix->isAdaptiveMode() : false;
+
+    learningToggle = tgui::Button::create("Learning");
+    learningToggle->setPosition(235, matrixTitleLabel->getPosition().y + 20);
+    learningToggle->setSize(70, 20);
+    learningToggle->setTextSize(10);
+    learningToggle->getRenderer()->setBorderColor(tgui::Color(80, 80, 80));
+    learningToggle->getRenderer()->setBorders(1);
+    if (learningEnabled) {
+        learningToggle->getRenderer()->setBackgroundColor(tgui::Color(80, 140, 80));
+        learningToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
+    } else {
+        learningToggle->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+        learningToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
     }
-    
-    // Neuron column labels (horizontal) - only if we have neurons
-    neuronColumnLabels.clear();
-    if (numNeurons > 0) {
-        for (size_t n = 0; n < numNeurons; ++n) {
-            auto label = tgui::Label::create("N" + std::to_string(n + 1));
-            label->setPosition(150 + n * 80, 40); // Increased spacing to 80px for wider gaps between neurons
-            label->setTextSize(10);
-            label->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
-            connectionMatrixPanel->add(label);
-            neuronColumnLabels.push_back(label);
-        }
-    }
-    
-    // Create matrix of toggle buttons and gain sliders - only if we have neurons
-    matrixToggleButtons.clear();
-    matrixGainSliders.clear();
-    matrixGainDisplays.clear();
-    
-    if (numNeurons > 0) {
-        for (size_t f = 0; f < numFilters; ++f) {
-            // Reverse vertical order: Onset at top (f=7 -> y=90), Phrase at bottom (f=0 -> y=90+420)
-            size_t displayRow = (numFilters - 1) - f;
-            
-            std::vector<tgui::Button::Ptr> buttonRow;
-            std::vector<tgui::Slider::Ptr> sliderRow;
-            std::vector<tgui::Label::Ptr> displayRowVec;
-            
-            for (size_t n = 0; n < numNeurons; ++n) {
-            // Toggle button
-            auto toggleButton = tgui::Button::create("○");
-            toggleButton->setPosition(150 + n * 80, 90 + displayRow * 60); // Aligned with neuron column labels, reversed position
-            toggleButton->setSize(20, 20);
-            toggleButton->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
-            toggleButton->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
-            toggleButton->getRenderer()->setBorderColor(tgui::Color(80, 80, 80));
-            toggleButton->getRenderer()->setBorders(1);
-            
-            // Add tooltip with filter description
-            auto tooltip = tgui::Label::create(filterTooltips[f] + "\n→ Neuron " + std::to_string(n + 1));
-            tooltip->getRenderer()->setBackgroundColor(tgui::Color(0, 0, 0, 200));
-            tooltip->getRenderer()->setTextColor(tgui::Color::White);
-            tooltip->setTextSize(10);
-            toggleButton->setToolTip(tooltip);
-            
-            // Check current connection state using the new rhythm connection matrix
-            float currentWeight = network->getRhythmConnection(f, n);
-            bool isConnected = std::abs(currentWeight) > 0.001f;
-            
-            if (isConnected) {
-                toggleButton->setText("●");
-                // Color based on connection strength
-                int intensity = static_cast<int>(std::abs(currentWeight) * 255);
-                toggleButton->getRenderer()->setBackgroundColor(tgui::Color(60, intensity, 60));
-                toggleButton->getRenderer()->setTextColor(tgui::Color::White);
+    learningToggle->onPress([this]() {
+        if (network && network->getRhythmInterpreter()) {
+            auto* ri = network->getRhythmInterpreter();
+            auto* cm = ri->getConnectionMatrix();
+            if (!cm) return;
+            bool newState = !cm->isAdaptiveMode();
+            ri->enableAdaptiveConnections(newState);
+            if (newState) {
+                learningToggle->getRenderer()->setBackgroundColor(tgui::Color(80, 140, 80));
+                learningToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
+            } else {
+                learningToggle->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+                learningToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
             }
-            
-            // Toggle connection callback
-            toggleButton->onPress([this, f, n, toggleButton]() {
-                if (!network) return;
-                
-                // Get current connection state
-                float currentWeight = network->getRhythmConnection(f, n);
-                bool wasConnected = std::abs(currentWeight) > 0.001f;
-                
-                if (wasConnected) {
-                    // Deactivate: Clear connection and reset gain
-                    network->clearRhythmConnection(f, n);
-                    toggleButton->setText("○");
-                    toggleButton->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
-                    toggleButton->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
-                    // Reset gain slider to default value and hide it
-                    matrixGainSliders[f][n]->setValue(30.0f); // Reset to default 30% (0.3 * 100)
-                    matrixGainSliders[f][n]->setVisible(false);
-                    // Hide connection gain display
-                    matrixGainDisplays[f][n]->setVisible(false);
-                } else {
-                    // Connect with default gain
-                    float defaultGain = 0.3f;
-                    network->setRhythmConnection(f, n, defaultGain);
-                    toggleButton->setText("●");
-                    toggleButton->getRenderer()->setBackgroundColor(tgui::Color(60, 120, 60));
-                    toggleButton->getRenderer()->setTextColor(tgui::Color::White);
-                    matrixGainSliders[f][n]->setValue(defaultGain * 100.0f); // Convert to 0-100 range
-                    matrixGainSliders[f][n]->setVisible(true);
-                    // Show and update connection gain display
-                    matrixGainDisplays[f][n]->setText(std::to_string(static_cast<int>(defaultGain * 100)));
-                    matrixGainDisplays[f][n]->setVisible(true);
-                }
-                
-                // Block matrix updates for several frames after toggle interaction
-                toggleBlockCounter = 30; // Block for ~0.5 seconds at 60fps
-            });
-            
-            connectionMatrixPanel->add(toggleButton);
-            buttonRow.push_back(toggleButton);
-            
-            // Gain slider (only visible when connected)
-            auto gainSlider = tgui::Slider::create(0.0f, 100.0f);
-            gainSlider->setPosition(175 + n * 80, 90 + displayRow * 60); // Right of toggle button, reversed position
-            gainSlider->setSize(15, 20);
-            gainSlider->setValue(std::abs(currentWeight) * 100.0f); // Convert to 0-100 range
-            gainSlider->setVisible(isConnected);
-            
-            // Gain change callback
-            gainSlider->onValueChange([this, f, n](float value) {
-                if (!network) return;
-                
-                float weight = value / 100.0f; // Convert from 0-100 to 0-1 range
-                
-                // Preserve sign if it was negative
-                float currentWeight = network->getRhythmConnection(f, n);
-                if (currentWeight < 0) {
-                    weight = -weight;
-                }
-                
-                // Update the rhythm connection weight
-                network->setRhythmConnection(f, n, weight);
-                
-                // Update connection gain display
-                matrixGainDisplays[f][n]->setText(std::to_string(static_cast<int>(value)));
-            });
-            
-            connectionMatrixPanel->add(gainSlider);
-            sliderRow.push_back(gainSlider);
-            
-            // Connection gain value display (shows current connection weight)
-            auto connectionGainDisplay = tgui::Label::create("0.0");
-            connectionGainDisplay->setPosition(195 + n * 80, 90 + displayRow * 60); // Right of the gain slider, reversed position
-            connectionGainDisplay->setSize(20, 20); // Small square label
-            connectionGainDisplay->setTextSize(7);
-            connectionGainDisplay->getRenderer()->setTextColor(tgui::Color(200, 200, 140));
-            connectionGainDisplay->getRenderer()->setBackgroundColor(tgui::Color(25, 25, 15));
-            connectionGainDisplay->getRenderer()->setBorderColor(tgui::Color(60, 60, 40));
-            connectionGainDisplay->getRenderer()->setBorders(1);
-            connectionGainDisplay->setVisible(isConnected);
-            
-            // Update display with current weight
-            if (isConnected) {
-                connectionGainDisplay->setText(std::to_string(static_cast<int>(std::abs(currentWeight) * 100)));
+        }
+    });
+    connectionMatrixPanel->add(learningToggle);
+
+    auto lrTitle = tgui::Label::create("LR");
+    lrTitle->setPosition(310, matrixTitleLabel->getPosition().y + 22);
+    lrTitle->setTextSize(10);
+    lrTitle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+    connectionMatrixPanel->add(lrTitle);
+
+    learningRateSlider = tgui::Slider::create(0.0f, 0.01f);
+    learningRateSlider->setStep(0.0005f);
+    learningRateSlider->setPosition(330, matrixTitleLabel->getPosition().y + 22);
+    learningRateSlider->setSize(110, 15);
+    learningRateSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
+    learningRateSlider->getRenderer()->setThumbColor(tgui::Color(100, 140, 100));
+    // Initialize from current connection matrix learning rate
+    float initLr = (connectionMatrix ? connectionMatrix->getLearningRate() : 0.001f);
+    learningRateSlider->setValue(initLr);
+    learningRateSlider->onValueChange([this](float value) {
+        if (network && network->getRhythmInterpreter()) {
+            auto* cm = network->getRhythmInterpreter()->getConnectionMatrix();
+            if (cm) {
+                cm->setLearningRate(value);
             }
-            
-            connectionMatrixPanel->add(connectionGainDisplay);
-            displayRowVec.push_back(connectionGainDisplay);
+            if (learningRateLabel) {
+                std::ostringstream s; s.setf(std::ios::fixed); s<<std::setprecision(4)<<value;
+                learningRateLabel->setText(s.str());
+            }
+            // Ensure global keys keep working after slider change
+            learningRateSlider->setFocused(false);
+            if (gui) gui->unfocusAllWidgets();
         }
-        
-            matrixToggleButtons.push_back(buttonRow);
-            matrixGainSliders.push_back(sliderRow);
-            matrixGainDisplays.push_back(displayRowVec);
-        }
+    });
+    connectionMatrixPanel->add(learningRateSlider);
+
+    {
+        std::ostringstream s; s.setf(std::ios::fixed); s<<std::setprecision(4)<<initLr;
+        learningRateLabel = tgui::Label::create(s.str());
     }
+    learningRateLabel->setPosition(445, matrixTitleLabel->getPosition().y + 20);
+    learningRateLabel->setSize(55, 18);
+    learningRateLabel->setTextSize(9);
+    learningRateLabel->getRenderer()->setTextColor(tgui::Color(140, 200, 140));
+    learningRateLabel->getRenderer()->setBackgroundColor(tgui::Color(15, 25, 15));
+    learningRateLabel->getRenderer()->setBorderColor(tgui::Color(40, 60, 40));
+    learningRateLabel->getRenderer()->setBorders(1);
+    connectionMatrixPanel->add(learningRateLabel);
+
+    // Reset weights button
+    auto resetWeightsButton = tgui::Button::create("Reset Weights");
+    resetWeightsButton->setPosition(505, matrixTitleLabel->getPosition().y + 20);
+    resetWeightsButton->setSize(95, 20);
+    resetWeightsButton->setTextSize(10);
+    resetWeightsButton->getRenderer()->setBackgroundColor(tgui::Color(80, 40, 40));
+    resetWeightsButton->getRenderer()->setTextColor(tgui::Color(220, 200, 200));
+    resetWeightsButton->getRenderer()->setBorderColor(tgui::Color(120, 80, 80));
+    resetWeightsButton->getRenderer()->setBorders(1);
+    resetWeightsButton->onPress([this]() {
+        if (network && network->getRhythmInterpreter()) {
+            auto* cm = network->getRhythmInterpreter()->getConnectionMatrix();
+            if (cm) {
+                cm->clearWeights();
+                forceMatrixUpdate();
+            }
+        }
+    });
+    connectionMatrixPanel->add(resetWeightsButton);
     
-    // Add rhythmogram scale slider and BPM slider with better spacing from the right edge
-    float scaleSliderX = contentWidth - 160; // Move scale slider further left for better spacing
-    float bpmSliderX = contentWidth - 80; // Move BPM slider further left with more space
+    // Initialize frequency labels with current BPM scaling
+    updateFrequencyLabels();
+    
+    // Add rhythmogram scale slider and BPM slider at the right end of the matrix
+    float scaleSliderX = contentWidth - 80; // Position scale slider
+    float bpmSliderX = contentWidth - 50; // Position BPM slider to the right of scale slider
     
     // Scale control label
     auto scaleLabel = tgui::Label::create("Scale");
@@ -2374,7 +1759,7 @@ void GUI::createConnectionMatrixPanel() {
     
     // Vertical rhythmogram scale slider (0.0 - 20.0, default 5.0, step 0.1)
     rhythmogramScaleSlider = tgui::Slider::create(0.0f, 20.0f);
-    rhythmogramScaleSlider->setValue(1.0f); // Default scale for minimal RhythmInterpreter
+    rhythmogramScaleSlider->setValue(rhythmInterpreter->getRhythmogramScale());
     rhythmogramScaleSlider->setStep(0.1f);
     rhythmogramScaleSlider->setPosition(scaleSliderX, 70);
     rhythmogramScaleSlider->setSize(20, 300); // Original slider size
@@ -2384,20 +1769,19 @@ void GUI::createConnectionMatrixPanel() {
     
     // Connect slider to rhythmogram scale control
     rhythmogramScaleSlider->onValueChange([this](float value) {
-        // Apply the global rhythmogram scale to RhythmInterpreter
         if (network && network->getRhythmInterpreter()) {
             network->getRhythmInterpreter()->setRhythmogramScale(value);
+            // Update scale display with proper formatting (one decimal place)
+            std::ostringstream stream;
+            stream << std::fixed << std::setprecision(1) << value;
+            rhythmogramScaleLabel->setText(stream.str());
         }
-        // Update scale display with proper formatting (one decimal place)
-        std::ostringstream stream;
-        stream << std::fixed << std::setprecision(1) << value;
-        rhythmogramScaleLabel->setText(stream.str());
     });
     
     connectionMatrixPanel->add(rhythmogramScaleSlider);
     
     // Scale value display - LARGE for easy reading
-    rhythmogramScaleLabel = tgui::Label::create("1.0");
+    rhythmogramScaleLabel = tgui::Label::create("5.0");
     rhythmogramScaleLabel->setPosition(scaleSliderX - 20, 375); // Centered under original slider position  
     rhythmogramScaleLabel->setSize(60, 30); // Match BPM label dimensions for consistency
     rhythmogramScaleLabel->setTextSize(13); // Match BPM label text size
@@ -2408,23 +1792,23 @@ void GUI::createConnectionMatrixPanel() {
     
     // Initialize display with current value
     std::ostringstream initStream;
-    initStream << std::fixed << std::setprecision(1) << 1.0f; // Default scale
+    initStream << std::fixed << std::setprecision(1) << rhythmInterpreter->getRhythmogramScale();
     rhythmogramScaleLabel->setText(initStream.str());
     
     connectionMatrixPanel->add(rhythmogramScaleLabel);
     
-    // BPM control label - make more prominent with better spacing
+    // BPM control label  
     auto bpmLabelTitle = tgui::Label::create("BPM");
-    bpmLabelTitle->setPosition(bpmSliderX - 20, 45); // Move left and up slightly
-    bpmLabelTitle->setTextSize(12); // Larger text
-    bpmLabelTitle->getRenderer()->setTextColor(tgui::Color(200, 200, 100)); // Yellowish for visibility
+    bpmLabelTitle->setPosition(bpmSliderX - 10, 50);
+    bpmLabelTitle->setTextSize(10);
+    bpmLabelTitle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
     connectionMatrixPanel->add(bpmLabelTitle);
     
     // Vertical BPM slider (30.0 - 300.0, default 120.0, step 0.1) - expanded range for better autodetect
     bpmSlider = tgui::Slider::create(30.0f, 300.0f);
-    bpmSlider->setValue(120.0f); // Default BPM for minimal RhythmInterpreter
+    bpmSlider->setValue(rhythmInterpreter->getBPM());
     bpmSlider->setStep(0.1f);
-    bpmSlider->setPosition(bpmSliderX - 10, 65); // Move left and up slightly  
+    bpmSlider->setPosition(bpmSliderX, 70);
     bpmSlider->setSize(20, 300); // Original slider size
     bpmSlider->setOrientation(tgui::Orientation::Vertical);
     bpmSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
@@ -2433,15 +1817,18 @@ void GUI::createConnectionMatrixPanel() {
     // Connect BPM slider to BPM control (only when autodetect is disabled)
     bpmSlider->onValueChange([this](float value) {
         if (network && network->getRhythmInterpreter()) {
-            // Minimal RhythmInterpreter: getAutodetectTempo and setBPM methods not supported
-            // Update BPM display with proper formatting (one decimal place)
-            std::ostringstream stream;
-            stream << std::fixed << std::setprecision(1) << value;
-            bpmLabel->setText(stream.str());
-            // Update frequency labels to reflect new tempo scaling
-            updateFrequencyLabels();
-            // Update quantizer BPM to match global tempo
-            updateQuantizerBPM(value);
+            auto rhythmInterpreter = network->getRhythmInterpreter();
+            
+            // Only allow manual BPM changes when autodetect is disabled
+            if (!rhythmInterpreter->getAutodetectTempo()) {
+                rhythmInterpreter->setBPM(value);
+                // Update BPM display with proper formatting (one decimal place)
+                std::ostringstream stream;
+                stream << std::fixed << std::setprecision(1) << value;
+                bpmLabel->setText(stream.str());
+                // Update frequency labels to reflect new tempo scaling
+                updateFrequencyLabels();
+            }
         }
     });
     
@@ -2449,65 +1836,58 @@ void GUI::createConnectionMatrixPanel() {
     
     // BPM value display - LARGE for easy reading
     bpmLabel = tgui::Label::create("120.0");
-    bpmLabel->setPosition(bpmSliderX - 35, 370); // Centered under moved slider position  
-    bpmLabel->setSize(70, 35); // Larger for better visibility
-    bpmLabel->setTextSize(16); // Larger text for better readability
-    bpmLabel->getRenderer()->setTextColor(tgui::Color(150, 255, 150)); // Brighter green
-    bpmLabel->getRenderer()->setBackgroundColor(tgui::Color(20, 40, 20)); // Darker background
-    bpmLabel->getRenderer()->setBorderColor(tgui::Color(60, 120, 60)); // Brighter border
-    bpmLabel->getRenderer()->setBorders(2); // Thicker border
+    bpmLabel->setPosition(bpmSliderX - 20, 375); // Centered under original slider position
+    bpmLabel->setSize(60, 30); // Wider to fit 3-digit numbers, slightly shorter
+    bpmLabel->setTextSize(13); // Reduced text size to fit better
+    bpmLabel->getRenderer()->setTextColor(tgui::Color(140, 200, 140));
+    bpmLabel->getRenderer()->setBackgroundColor(tgui::Color(15, 25, 15));
+    bpmLabel->getRenderer()->setBorderColor(tgui::Color(40, 60, 40));
+    bpmLabel->getRenderer()->setBorders(1);
     
     // Initialize BPM display with current value
     std::ostringstream bpmInitStream;
-    bpmInitStream << std::fixed << std::setprecision(1) << 120.0f; // Default BPM
+    bpmInitStream << std::fixed << std::setprecision(1) << rhythmInterpreter->getBPM();
     bpmLabel->setText(bpmInitStream.str());
     
     connectionMatrixPanel->add(bpmLabel);
     
-    // Add tempo control section label for better visibility with proper spacing
-    auto tempoSectionLabel = tgui::Label::create("TEMPO CONTROLS");
-    tempoSectionLabel->setPosition(bpmSliderX - 50, 415); // Move further left and down
-    tempoSectionLabel->setTextSize(10);
-    tempoSectionLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 100));
-    connectionMatrixPanel->add(tempoSectionLabel);
+    // Add Autodetect Tempo toggle button positioned below BPM slider
+    autodetectTempoToggle = tgui::Button::create("Autodetect Tempo");
+    autodetectTempoToggle->setPosition(bpmSliderX - 25, 420); // Below enlarged value displays
+    autodetectTempoToggle->setSize(70, 25);
+    autodetectTempoToggle->setTextSize(9);
+    autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+    autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+    autodetectTempoToggle->getRenderer()->setBorderColor(tgui::Color(80, 80, 80));
+    autodetectTempoToggle->getRenderer()->setBorders(1);
     
-    // Add Autodetect Tempo toggle button with better spacing
-    autodetectTempoToggle = tgui::Button::create("AUTO TEMPO");
-    autodetectTempoToggle->setPosition(bpmSliderX - 40, 440); // More space below section label
-    autodetectTempoToggle->setSize(80, 30); // Larger for better visibility
-    autodetectTempoToggle->setTextSize(10); // Larger text
-    autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 60)); // Lighter background
-    autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(220, 220, 100)); // Yellowish text
-    autodetectTempoToggle->getRenderer()->setBorderColor(tgui::Color(120, 120, 60)); // Yellow border
-    autodetectTempoToggle->getRenderer()->setBorders(2); // Thicker border
-    
-    // Set initial state (default is OFF)
-    // Auto-tempo is available now with the enhanced RhythmInterpreter
+    // Set initial state (default is now ON)
+    if (rhythmInterpreter->getAutodetectTempo()) {
+        autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(80, 140, 80));
+        autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
+    }
     
     // Connect autodetect toggle to tempo control
     autodetectTempoToggle->onPress([this]() {
         if (network && network->getRhythmInterpreter()) {
             auto rhythmInterpreter = network->getRhythmInterpreter();
-            bool currentState = rhythmInterpreter->isAutoTempoEnabled();
+            bool currentState = rhythmInterpreter->getAutodetectTempo();
             bool newState = !currentState;
             
-            // Enable/disable auto-tempo functionality
-            rhythmInterpreter->setAutoTempoEnabled(newState);
+            rhythmInterpreter->setAutodetectTempo(newState);
             
             // Update toggle appearance
             if (newState) {
-                autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(100, 200, 100)); // Bright green when active
+                autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(80, 140, 80));
                 autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
-                autodetectTempoToggle->setText("AUTO ON");
                 
                 // Disable BPM slider when autodetect is ON
                 if (bpmSlider) {
                     bpmSlider->getRenderer()->setThumbColor(tgui::Color(60, 60, 60)); // Grayed out
                 }
             } else {
-                autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 60)); // Default gray
-                autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(220, 220, 100));
-                autodetectTempoToggle->setText("AUTO TEMPO");
+                autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+                autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
                 
                 // Re-enable BPM slider when autodetect is OFF
                 if (bpmSlider) {
@@ -2519,25 +1899,8 @@ void GUI::createConnectionMatrixPanel() {
     
     connectionMatrixPanel->add(autodetectTempoToggle);
     
-    // Add detected tempo status display with better spacing
-    detectedTempoLabel = tgui::Label::create("Detected: --");
-    detectedTempoLabel->setPosition(bpmSliderX - 45, 480); // More space below auto-tempo button
-    detectedTempoLabel->setSize(90, 25); // Slightly taller
-    detectedTempoLabel->setTextSize(10); // Slightly larger text
-    detectedTempoLabel->getRenderer()->setTextColor(tgui::Color(150, 150, 255)); // Blue for detected tempo
-    detectedTempoLabel->getRenderer()->setBackgroundColor(tgui::Color(10, 10, 30));
-    detectedTempoLabel->getRenderer()->setBorderColor(tgui::Color(50, 50, 100));
-    detectedTempoLabel->getRenderer()->setBorders(1);
-    connectionMatrixPanel->add(detectedTempoLabel);
+    // Tempo detection controls updated; BeatRoot removed
     
-    // ============================================================================
-    // BeatRoot Controls - DISABLED BY DEFAULT
-    // ============================================================================
-    
-    // BeatRoot controls have been removed from the GUI to simplify the interface
-    // The BeatRoot system is disabled by default in RhythmInterpreter
-    
-    /* BeatRoot controls disabled in minimal RhythmInterpreter */
 }
 
 void GUI::updateConnectionMatrix() {
@@ -2558,7 +1921,8 @@ void GUI::updateConnectionMatrix() {
     isUpdatingMatrix = true; // Prevent recursive calls
     
     auto rhythmInterpreter = network->getRhythmInterpreter();
-    size_t numFilters = 8; // FFT-based gamma-tone filter bank uses 8 frequency bands
+    auto connectionMatrix = rhythmInterpreter->getConnectionMatrix();
+    size_t numFilters = rhythmInterpreter->getNumFilters();
     size_t numNeurons = network->getNeuronCount();
     
     // Update title
@@ -2569,8 +1933,8 @@ void GUI::updateConnectionMatrix() {
     // Update button states and slider values
     for (size_t f = 0; f < std::min(numFilters, matrixToggleButtons.size()); ++f) {
         for (size_t n = 0; n < std::min(numNeurons, matrixToggleButtons[f].size()); ++n) {
-            float weight = network->getRhythmConnection(f, n); // Get actual connection weight
-            bool isConnected = std::abs(weight) > 0.001f; // Connection exists if weight is non-zero
+            float weight = connectionMatrix->getWeight(f, n);
+            bool isConnected = std::abs(weight) > 0.001f;
             
             // Update toggle button
             if (isConnected) {
@@ -2604,7 +1968,7 @@ void GUI::updateConnectionMatrix() {
     }
     
     // Update filter output displays with real-time levels
-    auto filterOutputs = rhythmInterpreter->getFilterOutputs(); // This method exists in minimal RhythmInterpreter
+    auto filterOutputs = rhythmInterpreter->getFilterOutputs();
     static int guiDebugCounter = 0;
     
     for (size_t f = 0; f < std::min(numFilters, filterOutputDisplays.size()) && f < filterOutputs.size(); ++f) {
@@ -2643,35 +2007,32 @@ void GUI::updateConnectionMatrix() {
         }
     }
     
-    // Skip slider value updates if user is interacting (prevents overriding user input)
-    // Only update displays, not the slider values themselves during normal operation
+    // Update filter gain sliders to match current values
+    for (size_t f = 0; f < std::min(numFilters, filterGainSliders.size()); ++f) {
+        float currentGain = rhythmInterpreter->getFilterGain(f);
+        filterGainSliders[f]->setValue(currentGain);
+    }
     
-    // Update rhythmogram scale display (but don't override slider value)
+    // Update rhythmogram scale slider and display
     if (rhythmogramScaleSlider && rhythmogramScaleLabel) {
-        float currentScale = rhythmogramScaleSlider->getValue(); // Get current slider value
+        float currentScale = rhythmInterpreter->getRhythmogramScale();
+        rhythmogramScaleSlider->setValue(currentScale);
         std::ostringstream scaleStream;
         scaleStream << std::fixed << std::setprecision(1) << currentScale;
         rhythmogramScaleLabel->setText(scaleStream.str());
     }
     
-    // Update BPM display (but don't override slider value unless auto-tempo is active)
+    // Update BPM slider and display
     if (bpmSlider && bpmLabel) {
-        bool autodetectActive = network && network->getRhythmInterpreter() && 
-                               network->getRhythmInterpreter()->isAutoTempoEnabled();
-        
-        float currentBPM;
-        if (autodetectActive) {
-            // When auto-tempo is active, show detected tempo and update slider
-            currentBPM = network->getRhythmInterpreter()->getDetectedTempo();
-            bpmSlider->setValue(currentBPM);
-        } else {
-            // When manual control, get BPM from slider (don't override user input)
-            currentBPM = bpmSlider->getValue();
-        }
+        float currentBPM = rhythmInterpreter->getBPM();
+        bool autodetectActive = rhythmInterpreter->getAutodetectTempo();
         
         // Check if BPM has changed (for frequency label updates)
         static float lastBPM = currentBPM;
         bool bpmChanged = (std::abs(currentBPM - lastBPM) > 0.1f);
+        
+        // Always update the slider position to show current BPM
+        bpmSlider->setValue(currentBPM);
         
         // Format BPM display with autodetect indicator
         std::ostringstream bpmStream;
@@ -2697,43 +2058,48 @@ void GUI::updateConnectionMatrix() {
     
     // Update autodetect toggle button appearance
     if (autodetectTempoToggle) {
-        bool autodetectActive = network && network->getRhythmInterpreter() && 
-                               network->getRhythmInterpreter()->isAutoTempoEnabled();
+        bool autodetectActive = rhythmInterpreter->getAutodetectTempo();
         if (autodetectActive) {
-            autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(100, 200, 100)); // Bright green when active
+            autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(80, 140, 80));
             autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
-            autodetectTempoToggle->setText("AUTO ON");
         } else {
-            autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 60)); // Default gray
-            autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(220, 220, 100));
-            autodetectTempoToggle->setText("AUTO TEMPO");
+            autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+            autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
         }
     }
+
+    // Update learning toggle appearance (reflect current adaptive mode)
+    if (learningToggle) {
+        bool learningOn = connectionMatrix && connectionMatrix->isAdaptiveMode();
+        if (learningOn) {
+            learningToggle->getRenderer()->setBackgroundColor(tgui::Color(80, 140, 80));
+            learningToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
+        } else {
+            learningToggle->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+            learningToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+        }
+    }
+
+    // Keep learning rate slider/label in sync with current value
+    if (learningRateSlider && learningRateLabel && connectionMatrix) {
+        float lr = connectionMatrix->getLearningRate();
+        learningRateSlider->setValue(lr);
+        std::ostringstream s; s.setf(std::ios::fixed); s<<std::setprecision(4)<<lr;
+        learningRateLabel->setText(s.str());
+    }
     
-    // BeatRoot controls disabled in minimal RhythmInterpreter
+    // Tempo detection controls updated; BeatRoot removed
     
     isUpdatingMatrix = false; // Reset the flag
 }
 
 void GUI::toggleMatrixVisibility() {
-    if (!connectionMatrixWindow) {
-        std::cout << "⚠️ Matrix window not initialized - creating now..." << std::endl;
-        createConnectionMatrixPanel(); // Try to initialize if not done yet
-        if (!connectionMatrixWindow) {
-            std::cout << "❌ Failed to create matrix window" << std::endl;
-            return;
-        }
+    if (!connectionMatrixPanel) {
+        return;
     }
-
-    // Sync matrixVisible with actual window state before toggling
-    matrixVisible = connectionMatrixWindow->isVisible();
-    matrixVisible = !matrixVisible;
-    connectionMatrixWindow->setVisible(matrixVisible);
     
-    // Force the window to the front if showing
-    if (matrixVisible && gui) {
-        connectionMatrixWindow->moveToFront();
-    }
+    matrixVisible = !matrixVisible;
+    connectionMatrixPanel->setVisible(matrixVisible);
     
     std::cout << "🎛️ Rhythmogram Mapping " << (matrixVisible ? "shown" : "hidden") 
               << " (press M to toggle)" << std::endl;
@@ -2745,64 +2111,15 @@ void GUI::forceMatrixUpdate() {
     // Keep allowMatrixUpdates = true to allow future automatic updates
 }
 
-void GUI::toggleQuantizerVisibility() {
-    if (quantizerWindow) {
-        bool currentState = quantizerWindow->isVisible();
-        bool newState = !currentState;
-        quantizerWindow->setVisible(newState);
-        
-        // Also ensure the internal widget is visible when the window is shown
-        if (quantizerWidget) {
-            quantizerWidget->setVisible(newState);
-        }
-        
-        // Force the window to the front if showing
-        if (newState && gui) {
-            quantizerWindow->moveToFront();
-        }
-        
-        std::cout << "🎵 Quantizer " << (newState ? "shown" : "hidden") << " (press Q to toggle)" << std::endl;
-    } else if (quantizerWidget) {
-        // Fallback: toggle internal widget visibility
-        std::cout << "⚠️ Quantizer window not found, using widget fallback..." << std::endl;
-        quantizerWidget->toggleVisibility();
-        std::cout << "🎵 Quantizer " << (quantizerWidget->isVisible() ? "shown" : "hidden") 
-                  << " (press Q to toggle)" << std::endl;
-    } else {
-        std::cout << "❌ Quantizer not initialized - cannot toggle visibility" << std::endl;
-    }
-}
-
-void GUI::updateQuantizerBPM(float bpm) {
-    // Only update if BPM changed significantly (more than 0.1 BPM difference)
-    if (std::abs(bpm - lastQuantizerBPM) < 0.1f) {
-        return;
-    }
-    
-    lastQuantizerBPM = bpm;
-    
-    if (quantizer) {
-        quantizer->setBPM(bpm);
-    }
-    if (quantizerWidget) {
-        quantizerWidget->updateFromQuantizer();
-    }
-}
-
 void GUI::updateFrequencyLabels() {
     if (!network || !network->getRhythmInterpreter()) {
         return;
     }
     
-    // Get current BPM from slider and calculate scaling factor
+    // Get current BPM and calculate scaling factor
     auto rhythmInterpreter = network->getRhythmInterpreter();
-    float currentBPM = bpmSlider ? bpmSlider->getValue() : 120.0f;
-    float tempoScale = currentBPM / 120.0f; // Scale relative to 120 BPM baseline
-    
-    // Update spectral display frequency labels too
-    if (spectralDisplay) {
-        spectralDisplay->setManualBPM(currentBPM);
-    }
+    float currentBPM = rhythmInterpreter->getBPM();
+    float tempoScale = currentBPM / 120.0f;
     
     // Base frequencies from Todd (1994) rhythmogram
     const std::vector<float> baseFrequencies = {
@@ -2813,12 +2130,9 @@ void GUI::updateFrequencyLabels() {
         "Phrase", "Whole", "Half", "Quarter", "Eighth", "16th", "32nd", "Onset"
     };
     
-    // Update each label with scaled frequency and update RhythmInterpreter filter frequencies
+    // Update each label with scaled frequency
     for (size_t i = 0; i < filterLabels.size() && i < baseFrequencies.size(); ++i) {
         float scaledFrequency = baseFrequencies[i] * tempoScale;
-        
-        // Update the actual filter frequency in RhythmInterpreter
-        rhythmInterpreter->setBandFrequency(i, scaledFrequency);
         
         // Format frequency display (1 decimal place for small values, integer for large)
         std::string freqText;
@@ -2837,32 +2151,6 @@ void GUI::updateFrequencyLabels() {
 }
 
 // Frequency response visualization method temporarily removed due to TGUI widget limitations
-
-bool GUI::isTextInputActive() const {
-    if (!gui) {
-        return false;
-    }
-    
-    // Check if any EditBox currently has focus by recursively searching through all widgets
-    return checkWidgetTreeForFocusedEditBox(gui->getContainer());
-}
-
-bool GUI::checkWidgetTreeForFocusedEditBox(tgui::Container::Ptr container) const {
-    for (auto& widget : container->getWidgets()) {
-        // Check if this widget is an EditBox and has focus
-        auto editBox = std::dynamic_pointer_cast<tgui::EditBox>(widget);
-        if (editBox && editBox->isFocused()) {
-            return true;
-        }
-        
-        // Recursively check containers (panels, child windows, etc.)
-        auto childContainer = std::dynamic_pointer_cast<tgui::Container>(widget);
-        if (childContainer && checkWidgetTreeForFocusedEditBox(childContainer)) {
-            return true;
-        }
-    }
-    return false;
-}
 
 // ================================================================================================
 // Preset Management Methods
@@ -2944,17 +2232,6 @@ void GUI::showLoadPresetDialog() {
     presetList->setSize(450, 280);
     presetList->setPosition(25, 40);
     
-    // Force dark theme colors for ListBox using direct renderer methods
-    auto renderer = presetList->getRenderer();
-    renderer->setBackgroundColor(tgui::Color(60, 60, 60));
-    renderer->setBackgroundColorHover(tgui::Color(70, 70, 70));
-    renderer->setTextColor(tgui::Color::White);
-    renderer->setTextColorHover(tgui::Color::White);
-    renderer->setSelectedBackgroundColor(tgui::Color(80, 120, 200));
-    renderer->setSelectedBackgroundColorHover(tgui::Color(90, 130, 210));
-    renderer->setBorderColor(tgui::Color(100, 100, 100));
-    renderer->setBorders(1);
-    
     // Populate with available presets
     auto factoryPresets = PresetManager::getAvailablePresets("presets/factory/");
     auto userPresets = PresetManager::getAvailablePresets("presets/user/");
@@ -2964,8 +2241,7 @@ void GUI::showLoadPresetDialog() {
         auto info = PresetManager::getPresetInfo(preset);
         std::string displayName = info.name.empty() ? 
             std::filesystem::path(preset).stem().string() : info.name;
-        std::string filename = std::filesystem::path(preset).stem().string();
-        presetList->addItem("F: " + displayName + " (" + filename + ")", preset);
+        presetList->addItem("F: " + displayName, preset);
     }
     
     presetList->addItem("--- User Presets ---");
@@ -2973,8 +2249,7 @@ void GUI::showLoadPresetDialog() {
         auto info = PresetManager::getPresetInfo(preset);
         std::string displayName = info.name.empty() ? 
             std::filesystem::path(preset).stem().string() : info.name;
-        std::string filename = std::filesystem::path(preset).stem().string();
-        presetList->addItem("U: " + displayName + " (" + filename + ")", preset);
+        presetList->addItem("U: " + displayName, preset);
     }
     
     dialog->add(presetList);
@@ -2988,32 +2263,11 @@ void GUI::showLoadPresetDialog() {
         if (!selectedItem.empty() && presetList->getSelectedItemId() != "") {
             std::string filename = presetList->getSelectedItemId().toStdString();
             if (!filename.empty() && filename != "--- Factory Presets ---" && filename != "--- User Presets ---") {
-                // Notify spectral display before loading (which calls clearNetwork)
-                if (spectralDisplay) {
-                    spectralDisplay->setRhythmInterpreter(nullptr);
-                }
-                
                 if (PresetManager::loadPreset(*network, filename)) {
                     std::cout << "✅ Preset loaded: " << filename << std::endl;
-                    
-                    // Load sample files into AudioManager
-                    loadPresetSamplesIntoAudioManager();
-                    
-                    // Update AudioManager with new rhythm interpreter
-                    auto audioManager = network->getAudioManager();
-                    if (audioManager && network->getRhythmInterpreter()) {
-                        audioManager->setRhythmInterpreter(network->getRhythmInterpreter());
-                        std::cout << "🔄 AudioManager updated after preset load" << std::endl;
-                    }
-                    
-                    // Update spectral display with new rhythm interpreter
-                    if (spectralDisplay) {
-                        spectralDisplay->setRhythmInterpreter(network->getRhythmInterpreter());
-                    }
-                    
                     visualizer->refreshLayout();  // Refresh visualizer layout
-                    refreshNeuronSliders();      // Refresh neurons first (consistent with manual adding)
                     refreshConnectionSliders();
+                    refreshNeuronSliders();
                     refreshConnectionMatrix();
                 } else {
                     std::cout << "❌ Failed to load preset" << std::endl;
@@ -3036,32 +2290,11 @@ void GUI::showLoadPresetDialog() {
 }
 
 void GUI::loadFactoryDrumPattern() {
-    // Notify spectral display before loading (which calls clearNetwork)
-    if (spectralDisplay) {
-        spectralDisplay->setRhythmInterpreter(nullptr);
-    }
-    
     if (PresetManager::loadFactoryPreset(*network, "drum_pattern")) {
         std::cout << "✅ Loaded factory drum pattern preset" << std::endl;
-        
-        // Load sample files into AudioManager
-        loadPresetSamplesIntoAudioManager();
-        
-        // Update AudioManager with new rhythm interpreter
-        auto audioManager = network->getAudioManager();
-        if (audioManager && network->getRhythmInterpreter()) {
-            audioManager->setRhythmInterpreter(network->getRhythmInterpreter());
-            std::cout << "🔄 AudioManager updated after preset load" << std::endl;
-        }
-        
-        // Update spectral display with new rhythm interpreter
-        if (spectralDisplay) {
-            spectralDisplay->setRhythmInterpreter(network->getRhythmInterpreter());
-        }
-        
         visualizer->refreshLayout();  // Refresh visualizer layout
-        refreshNeuronSliders();      // Refresh neurons first (consistent with manual adding)
         refreshConnectionSliders();
+        refreshNeuronSliders();
         refreshConnectionMatrix();
     } else {
         std::cout << "❌ Failed to load factory preset" << std::endl;
@@ -3099,19 +2332,19 @@ void GUI::showPresetBrowser() {
         for (const auto& info : factoryInfos) {
             auto nameLabel = tgui::Label::create(info.name);
             nameLabel->setPosition(20, yPos);
-            nameLabel->getRenderer()->setTextColor(tgui::Color(80, 80, 80));
+            nameLabel->getRenderer()->setTextColor(tgui::Color::White);
             nameLabel->getRenderer()->setTextStyle(tgui::TextStyle::Bold);
             scrollPanel->add(nameLabel);
             
             auto authorLabel = tgui::Label::create("Author: " + info.author);
             authorLabel->setPosition(20, yPos + 20);
-            authorLabel->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
+            authorLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
             scrollPanel->add(authorLabel);
             
             auto descLabel = tgui::Label::create(info.description);
             descLabel->setPosition(20, yPos + 40);
             descLabel->setSize(500, 40);
-            descLabel->getRenderer()->setTextColor(tgui::Color(120, 120, 120));
+            descLabel->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
             scrollPanel->add(descLabel);
             
             yPos += 80;
@@ -3130,19 +2363,19 @@ void GUI::showPresetBrowser() {
         for (const auto& info : userInfos) {
             auto nameLabel = tgui::Label::create(info.name);
             nameLabel->setPosition(20, yPos);
-            nameLabel->getRenderer()->setTextColor(tgui::Color(80, 80, 80));
+            nameLabel->getRenderer()->setTextColor(tgui::Color::White);
             nameLabel->getRenderer()->setTextStyle(tgui::TextStyle::Bold);
             scrollPanel->add(nameLabel);
             
             auto authorLabel = tgui::Label::create("Author: " + info.author);
             authorLabel->setPosition(20, yPos + 20);
-            authorLabel->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
+            authorLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
             scrollPanel->add(authorLabel);
             
             auto descLabel = tgui::Label::create(info.description);
             descLabel->setPosition(20, yPos + 40);
             descLabel->setSize(500, 40);
-            descLabel->getRenderer()->setTextColor(tgui::Color(120, 120, 120));
+            descLabel->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
             scrollPanel->add(descLabel);
             
             yPos += 80;
@@ -3159,56 +2392,4 @@ void GUI::showPresetBrowser() {
     dialog->add(closeButton);
     
     gui->add(dialog);
-}
-
-void GUI::loadPresetSamplesIntoAudioManager() {
-    if (!network || !audioManager) {
-        std::cout << "⚠️ Cannot load preset samples: network or audioManager is null" << std::endl;
-        return;
-    }
-    
-    const auto& neurons = network->getNeurons();
-    std::cout << "🔄 Loading " << neurons.size() << " sample files into AudioManager..." << std::endl;
-    
-    // Map to track unique sample files and their assigned indices
-    std::map<std::string, int> sampleFileToIndex;
-    int nextAvailableIndex = 1; // Start from index 1
-    
-    for (size_t i = 0; i < neurons.size(); ++i) {
-        const Neuron* neuron = neurons[i].get();
-        std::string samplePath = neuron->getSampleFilePath();
-        
-        if (samplePath.empty()) {
-            std::cout << "⚠️ Neuron " << i << " has no sample file path" << std::endl;
-            continue;
-        }
-        
-        int assignedIndex;
-        
-        // Check if we've already loaded this sample file
-        auto it = sampleFileToIndex.find(samplePath);
-        if (it != sampleFileToIndex.end()) {
-            // Reuse existing index
-            assignedIndex = it->second;
-            std::cout << "🔄 Reusing sample " << assignedIndex << " for neuron " << i << ": " << samplePath << std::endl;
-        } else {
-            // Load new sample file
-            assignedIndex = nextAvailableIndex++;
-            
-            if (audioManager->loadSampleFromPath(assignedIndex, samplePath)) {
-                sampleFileToIndex[samplePath] = assignedIndex;
-                std::cout << "✅ Loaded sample " << assignedIndex << " for neuron " << i << ": " << samplePath << std::endl;
-            } else {
-                std::cout << "❌ Failed to load sample for neuron " << i << ": " << samplePath << std::endl;
-                continue; // Skip updating neuron's sample index if loading failed
-            }
-        }
-        
-        // Update the neuron's sample index to point to the loaded sample
-        // We need to cast away const to modify the neuron
-        Neuron* mutableNeuron = const_cast<Neuron*>(neuron);
-        mutableNeuron->setSampleIndex(assignedIndex);
-    }
-    
-    std::cout << "🎵 Preset sample loading complete! Loaded " << sampleFileToIndex.size() << " unique samples." << std::endl;
 }
