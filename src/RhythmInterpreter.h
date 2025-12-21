@@ -1,248 +1,250 @@
 #pragma once
 #include <vector>
-#include <memory>
+#include <cstddef>
 #include <complex>
-#include <SFML/Audio.hpp>
-
-// Forward declarations
-class NeuronNetwork;
-class AudioManager;
+#include <fftw3.h>
 
 /**
- * Adaptive filterbank for rhythm analysis
- * Each filter represents a different frequency band that adapts to detected rhythms
+ * @brief FFT-based Gamma-tone filterbank for frequency analysis
+ * 
+ * Implements a high-performance bank of gamma-tone filters using FFTW3
+ * for real-time audio frequency decomposition with proper gamma-tone characteristics
  */
-class AdaptiveFilter {
-private:
-    float centerFrequency;
-    float bandwidth;
-    float adaptationRate;
-    float resonance; // Q factor for filter resonance (higher = more resonant)
-    std::vector<float> coefficients;
-    std::vector<float> delayLine;
-    float currentEnergy;
-    float adaptiveGain;
-    
-    // Rhythmogram processing state for low-frequency detection
-    float sampleCount;          // For phase tracking in rhythmogram analysis
-    float smoothedOutput;       // Smoothed correlation output for rhythmogram
-    
-    void updateFilterCoefficients(); // Update coefficients when parameters change
-
+class GammaToneFilterBank {
 public:
-    AdaptiveFilter(float freq, float bw, float adaptRate = 0.1f, float res = 1.0f);
+    GammaToneFilterBank(size_t sampleRate, size_t bandCount);
+    ~GammaToneFilterBank();
     
-    float process(float input);
-    void adaptToRhythm(float rhythmStrength);
+    std::vector<float> process(const std::vector<float>& input);
+    std::vector<float> FFTProcess(const std::vector<float>& input);
+    void setBandFrequency(size_t bandIndex, float frequency);
+    void setBandBandwidth(size_t bandIndex, float bandwidth);
     
-    // Getters
-    float getCenterFrequency() const { return centerFrequency; }
-    float getBandwidth() const { return bandwidth; }
-    float getResonance() const { return resonance; }
-    float getCurrentEnergy() const { return currentEnergy; }
-    float getAdaptiveGain() const { return adaptiveGain; }
+private:
+    size_t sampleRate;
+    size_t bandCount;
+    size_t fftSize;
     
-    // Setters for real-time control
-    void setCenterFrequency(float freq);
-    void setBandwidth(float bw);
-    void setResonance(float res);
-    void setAdaptationRate(float rate) { adaptationRate = rate; }
+    // FFTW3 structures
+    double* fftInput;
+    fftw_complex* fftOutput;
+    fftw_complex* ifftInput;
+    double* ifftOutput;
+    fftw_plan forwardPlan;
+    fftw_plan inversePlan;
+    
+    // Gamma-tone filter characteristics
+    struct GammaToneBand {
+        float centerFrequency;     // Center frequency in Hz
+        float bandwidth;          // Bandwidth in Hz  
+        float gain;              // Filter gain
+        int order;               // Gamma-tone filter order (typically 4)
+        std::vector<std::complex<double>> frequencyResponse; // Pre-computed frequency domain response
+        
+        // Legacy state variables (for time-domain fallback)
+        float prevInput1;
+        float prevInput2;
+        float prevOutput1;
+        float prevOutput2;
+    };
+    std::vector<GammaToneBand> bands;
+    
+    // Buffer for overlap-add processing
+    std::vector<float> overlapBuffer;
+    
+    // Internal methods
+    void initializeFFTW();
+    void generateGammaToneResponse(size_t bandIndex);
+    void cleanupFFTW();
+    std::complex<double> gammaToneFrequencyResponse(double frequency, const GammaToneBand& band);
 };
 
 /**
- * Multi-band rhythm detection and analysis
- * Detects tempo, beat strength, and rhythmic patterns
- */
-class RhythmDetector {
-private:
-    static constexpr size_t BUFFER_SIZE = 1024;
-    static constexpr size_t HISTORY_LENGTH = 100;
-    
-    std::vector<float> audioBuffer;
-    std::vector<float> onsetBuffer;
-    std::vector<float> tempoHistory;
-    
-    float currentTempo;
-    float beatStrength;
-    float rhythmicComplexity;
-    
-    // Analysis parameters
-    float onsetThreshold;
-    float tempoSmoothingFactor;
-    
-    void detectOnsets();
-    void analyzeTempo();
-    void calculateComplexity();
-
-public:
-    RhythmDetector();
-    
-    void processAudioChunk(const std::vector<float>& audioData);
-    void reset();
-    
-    // Getters
-    float getCurrentTempo() const { return currentTempo; }
-    float getBeatStrength() const { return beatStrength; }
-    float getRhythmicComplexity() const { return rhythmicComplexity; }
-    
-    // Analysis results
-    bool isBeatDetected() const;
-    float getGrooveStrength() const;
-    std::vector<float> getRhythmPattern() const;
-};
-
-/**
- * Connection matrix between filterbank outputs and neural network inputs
- * Allows flexible routing of rhythm analysis to specific neurons
- */
-class ConnectionMatrix {
-private:
-    std::vector<std::vector<float>> weights; // [filterIndex][neuronIndex]
-    size_t numFilters;
-    size_t numNeurons;
-    
-    // Learning parameters
-    float learningRate;
-    bool adaptiveMode;
-    
-public:
-    ConnectionMatrix(size_t filters, size_t neurons, float lr = 0.01f);
-    
-    // Weight management
-    void setWeight(size_t filterIndex, size_t neuronIndex, float weight);
-    float getWeight(size_t filterIndex, size_t neuronIndex) const;
-    
-    // Matrix operations
-    std::vector<float> transform(const std::vector<float>& filterOutputs, float rhythmogramScale = 500.0f) const;
-    void adaptWeights(const std::vector<float>& filterOutputs, 
-                      const std::vector<float>& neuronFeedback);
-    
-    // Configuration
-    void setLearningRate(float rate) { learningRate = rate; }
-    float getLearningRate() const { return learningRate; }
-    void setAdaptiveMode(bool enabled) { adaptiveMode = enabled; }
-    void randomizeWeights(float minWeight = -0.5f, float maxWeight = 0.5f);
-    void clearWeights();
-    void resizeMatrix(size_t newNumNeurons);
-    
-    // Getters
-    size_t getNumFilters() const { return numFilters; }
-    size_t getNumNeurons() const { return numNeurons; }
-    bool isAdaptiveMode() const { return adaptiveMode; }
-};
-
-/**
- * Main rhythm interpreter class
- * Coordinates audio analysis, filtering, and network feedback
+ * @brief Advanced rhythm detection and analysis engine
+ * 
+ * The RhythmInterpreter processes audio data through 8 frequency bands designed
+ * for hierarchical rhythm detection following Todd (1994) rhythmogram theory.
+ * Features direct user sensitivity control and real-time parameter control.
  */
 class RhythmInterpreter {
+public:
+    // ========================= CORE INTERFACE =========================
+    
+    /**
+     * @brief Construct a new Rhythm Interpreter
+     * @param sampleRate Audio sample rate in Hz
+     * @param bufferSize Audio buffer size in samples  
+     */
+    RhythmInterpreter(size_t sampleRate, size_t bufferSize);
+    
+    /**
+     * @brief Process a frame of audio data for rhythm detection
+     * @param audioData Input audio samples
+     */
+    void processAudioFrame(const std::vector<float>& audioData);
+    
+    /**
+     * @brief Get current filter output levels for all bands
+     * @return Vector of 8 filter output values (0.0-1.0 range)
+     */
+    std::vector<float> getFilterOutputs() const;
+    
+    // ========================= FILTER GAIN CONTROLS =========================
+    
+    /**
+     * @brief Set output filter gain for a specific band
+     * @param bandIndex Band index (0-7)
+     * @param gain Output gain multiplier (0.0-5.0)
+     */
+    void setFilterGain(size_t bandIndex, float gain);
+    
+    /**
+     * @brief Get current filter gain for a specific band
+     * @param bandIndex Band index (0-7)
+     * @return Current gain value
+     */
+    float getFilterGain(size_t bandIndex) const;
+    
+    // ========================= BAND PARAMETER CONTROLS =========================
+    
+    // Frequency control (center frequency of each band)
+    void setBandFrequency(size_t bandIndex, float frequency);
+    float getBandFrequency(size_t bandIndex) const;
+    std::vector<float> getBandFrequencies() const;
+    
+    // Bandwidth control (frequency range width)
+    void setBandBandwidth(size_t bandIndex, float bandwidth);
+    float getBandBandwidth(size_t bandIndex) const;
+    
+    // Scaling control (pre-amplification)
+    void setBandScaling(size_t bandIndex, float scaling);
+    float getBandScaling(size_t bandIndex) const;
+    
+    // Limit control (maximum output level)
+    void setBandLimit(size_t bandIndex, float limit);
+    float getBandLimit(size_t bandIndex) const;
+    
+    // Q-factor control (filter resonance/sharpness)
+    void setQValue(size_t bandIndex, float q);
+    float getQValue(size_t bandIndex) const;
+    
+    // ========================= GLOBAL SCALE CONTROLS =========================
+    
+    // Global rhythmogram scale (applies to all bands)
+    void setRhythmogramScale(float scale);
+    float getRhythmogramScale() const;
+    
+    // ========================= Tempo and Beat Detection Controls =========================
+
+    // Set the tempo detection sensitivity
+    void setTempoSensitivity(float sensitivity);
+    float getTempoSensitivity() const;
+
+    // Get the current detected tempo
+    float getDetectedTempo() const;
+
+    // Get the current beat positions
+    std::vector<float> getBeatPositions() const;
+
+    // Auto-tempo following controls
+    void setAutoTempoEnabled(bool enabled);
+    bool isAutoTempoEnabled() const;
+    void setBaseTempoFrequency(float frequency);
+    float getBaseTempoFrequency() const;
+
+    // ========================= UTILITY METHODS =========================
+    
+    /**
+     * @brief Get number of frequency bands
+     * @return Band count (always 8)
+     */
+    size_t getBandCount() const { return bandCount; }
+
 private:
-    // Core components
-    std::vector<std::unique_ptr<AdaptiveFilter>> filterBank;
-    std::unique_ptr<RhythmDetector> rhythmDetector;
-    std::unique_ptr<ConnectionMatrix> connectionMatrix;
+    // ========================= CONFIGURATION CONSTANTS =========================
+    static constexpr size_t DEFAULT_BAND_COUNT = 8;
     
-    // Network integration
-    NeuronNetwork* neuronNetwork;
-    AudioManager* audioManager;
-    
-    // Audio processing
-    std::vector<float> audioBuffer;
-    std::vector<float> filterOutputs;
-    std::vector<float> neuronInputs;
-    std::vector<float> processedAudioBuffer; // Buffer for processed audio output
-    
-    // Configuration
+    // ========================= CORE SYSTEM STATE =========================
     size_t sampleRate;
     size_t bufferSize;
-    bool enabled;
-    float globalGain; // Should be 0 for analysis-only mode, >0 for filtered audio output
-    std::vector<float> filterGains; // User-controlled gain for each filter band
-    std::vector<bool> filterSoloEnabled; // Solo/listen state for each filter band
-    bool anyFilterSoloed; // True if any filter is currently soloed
-    bool audioOutputEnabled; // Enable filtered audio output
-    float rhythmogramScale; // Scaling factor for rhythmogram to neural activation (0.0-20.0, default 5.0)
-    float bpm; // Beats per minute for tempo-relative frequency scaling (30.0-260.0, default 120.0)
-    bool autodetectTempo; // Enable automatic tempo detection from RhythmDetector (default false)
+    size_t bandCount;
+    int frameCounter;
     
-    // Frequency bands for filterbank (in Hz)
-    static const std::vector<float> DEFAULT_FREQUENCIES;
-    static const std::vector<float> DEFAULT_BANDWIDTHS;
-    static const std::vector<float> DEFAULT_RESONANCES;
-    
-    void initializeFilterBank();
-    void processAudioBuffer();
-    void updateNeuronInputs();
-    void updateFilterBankForBPM(); // Update filter frequencies based on current BPM
+    // ========================= BAND CONFIGURATION PARAMETERS =========================
+    std::vector<float> bandFrequencies;      // Center frequencies (Hz)
+    std::vector<float> bandBandwidths;       // Frequency band widths (Hz)  
+    std::vector<float> bandScalings;         // Pre-amplification factors
+    std::vector<float> bandLimits;           // Maximum output levels
+    std::vector<float> qValues;              // Filter Q-factors (resonance)
 
-public:
-    RhythmInterpreter(NeuronNetwork* network, AudioManager* audioMgr, 
-                     size_t sampleRate = 44100, size_t bufferSize = 512);
-    ~RhythmInterpreter(); // Custom destructor declared here, defined in .cpp
+    // Tempo and beat detection parameters
+    float tempoSensitivity;
+    float detectedTempo;
+    std::vector<float> beatPositions;
     
-    // Main processing
-    void processAudioFrame(const std::vector<float>& audioData);
-    void update(); // Called each network tick
+    // Auto-tempo following parameters
+    bool autoTempoEnabled;
+    float baseTempoFrequency;             // Base frequency for 120 BPM
+    std::vector<float> defaultFrequencies; // Original band frequencies for scaling
+    float tempoSmoothingFactor;           // Smoothing for tempo changes
+    float lastStableTempo;                // Previously detected stable tempo
+
+    // ========================= USER CONTROLS =========================
+    std::vector<float> bandGains;            // User sensitivity settings
+    std::vector<float> filterGains;          // User output gain settings
+    float rhythmogramScale;                  // Global scaling multiplier for all bands
     
-    // Configuration
-    void setEnabled(bool enable) { enabled = enable; }
-    void setGlobalGain(float gain) { globalGain = gain; }
-    void setSampleRate(size_t rate) { sampleRate = rate; }
+    // ========================= RUNTIME STATE =========================  
+    std::vector<float> filterOutputs;        // Current output levels
+    std::vector<int> stuckCounters;          // Anti-stuck mechanism counters
+
+    //Gamma Tone Filter Array
+    GammaToneFilterBank GTFilterBank;
+
+    // ========================= CORE PROCESSING METHODS =========================
     
-    // Filter bank control
-    void setFilterFrequency(size_t filterIndex, float frequency);
-    void setFilterBandwidth(size_t filterIndex, float bandwidth);
-    void setFilterAdaptation(size_t filterIndex, float rate);
+    /**
+     * @brief Initialize all band parameters to default values
+     */
+    void initializeBands();
     
-    // Connection matrix control
-    void setConnectionWeight(size_t filterIndex, size_t neuronIndex, float weight);
-    void enableAdaptiveConnections(bool enable);
-    void randomizeConnections();
-    void updateNetworkSize(); // Update connection matrix size to match network
+    // Removed updateAdaptiveSensitivity and applyContrastEnhancement methods
     
-    // Analysis access
-    const RhythmDetector* getRhythmDetector() const { return rhythmDetector.get(); }
-    const ConnectionMatrix* getConnectionMatrix() const { return connectionMatrix.get(); }
-    ConnectionMatrix* getConnectionMatrix() { return connectionMatrix.get(); }
+    // ========================= SIGNAL PROCESSING METHODS =========================
     
-    // Filter gain control
-    void setFilterGain(size_t filterIndex, float gain);
-    float getFilterGain(size_t filterIndex) const;
+    /**
+     * @brief Apply bandpass filtering to audio data
+     * @param data Input audio samples
+     * @param freq Center frequency
+     * @param bw Bandwidth
+     * @return Filtered audio samples
+     */
+    std::vector<float> bandpassFilter(const std::vector<float>& data, float freq, float bw, float q);
     
-    // Filter solo/listen control
-    void setFilterSolo(size_t filterIndex, bool solo);
-    bool getFilterSolo(size_t filterIndex) const;
-    void clearAllSolos(); // Turn off all solo states
-    std::vector<float> getSoloedFilterOutput() const; // Get mixed output of only soloed filters
-    std::vector<float> getProcessedAudioOutput() const; // Get the processed audio suitable for playback
-    void setAudioOutputEnabled(bool enabled) { audioOutputEnabled = enabled; }
-    bool isAudioOutputEnabled() const { return audioOutputEnabled; }
+    /**
+     * @brief Zero-crossing based onset detection
+     * @param data Input audio samples  
+     * @param bandIndex Band index for parameter lookup
+     * @return Onset detection output
+     */
+    std::vector<float> zeroCrossingOnsetDetection(const std::vector<float>& data, int bandIndex);
     
-    // Filter resonance control
-    void setFilterResonance(size_t filterIndex, float resonance);
-    float getFilterResonance(size_t filterIndex) const;
+    /**
+     * @brief Envelope detection and smoothing
+     * @param data Input audio samples
+     * @param bandIndex Band index for parameter lookup  
+     * @return Smoothed envelope
+     */
+    std::vector<float> envelopeDetection(const std::vector<float>& data, int bandIndex);
     
-    // Rhythmogram scale control
-    void setRhythmogramScale(float scale);
-    float getRhythmogramScale() const { return rhythmogramScale; }
+    // ========================= UTILITY METHODS =========================
     
-    // BPM control (tempo-relative frequency scaling)
-    void setBPM(float beatsPerMinute);
-    float getBPM() const { return bpm; }
-    
-    // Autodetect tempo control
-    void setAutodetectTempo(bool enable);
-    bool getAutodetectTempo() const { return autodetectTempo; }
-    
-    // Getters
-    bool isEnabled() const { return enabled; }
-    float getGlobalGain() const { return globalGain; }
-    size_t getNumFilters() const { return filterBank.size(); }
-    std::vector<float> getFilterOutputs() const { return filterOutputs; }
-    std::vector<float> getCurrentNeuronInputs() const { return neuronInputs; }
-    
-    // Real-time status
-    bool isRhythmDetected() const;
-    float getCurrentTempo() const;
-    float getOverallRhythmStrength() const;
+    /**
+     * @brief Validate band index is within valid range
+     * @param bandIndex Index to validate
+     * @return True if valid
+     */
+    inline bool isValidBandIndex(size_t bandIndex) const {
+        return bandIndex < bandCount;
+    }
 };
