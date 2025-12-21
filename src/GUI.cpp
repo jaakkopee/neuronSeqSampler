@@ -2392,7 +2392,8 @@ void GUI::createConnectionMatrixPanel() {
             // Gain slider (only visible when connected)
             auto gainSlider = tgui::Slider::create(0.0f, 100.0f);
             gainSlider->setPosition(175 + c * 80, 90 + displayRow * 60); // Right of toggle button, reversed position
-            gainSlider->setSize(15, 20);
+            gainSlider->setSize(40, 16); // Longer slider for easier control
+            gainSlider->setStep(0.5f); // Denser step for finer adjustments
             // Initialize with a neutral default; do not reflect live weight
             gainSlider->setValue(30.0f);
             gainSlider->setVisible(false);
@@ -2421,7 +2422,7 @@ void GUI::createConnectionMatrixPanel() {
             
             // Connection gain value display (shows current connection weight)
             auto connectionGainDisplay = tgui::Label::create("0.0");
-            connectionGainDisplay->setPosition(195 + c * 80, 90 + displayRow * 60); // Right of the gain slider, reversed position
+            connectionGainDisplay->setPosition(220 + c * 80, 90 + displayRow * 60); // Right of the longer gain slider
             connectionGainDisplay->setSize(20, 20); // Small square label
             connectionGainDisplay->setTextSize(7);
             connectionGainDisplay->getRenderer()->setTextColor(tgui::Color(200, 200, 140));
