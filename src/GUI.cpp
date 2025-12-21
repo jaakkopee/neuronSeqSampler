@@ -316,9 +316,6 @@ void GUI::createNeuronSliders() {
     for (auto& valueLabel : neuronValueLabels) {
         slidersPanel->remove(valueLabel);
     }
-    for (auto& combo : activationFunctionCombos) {
-        slidersPanel->remove(combo);
-    }
     // Remove sample buttons if any
     for (auto& btn : neuronSampleButtons) {
         slidersPanel->remove(btn);
@@ -332,10 +329,19 @@ void GUI::createNeuronSliders() {
     neuronLeakLabels.clear();
     neuronLeakValueLabels.clear();
 
+    // Remove existing activation function radio groups (panels)
+    for (auto& panel : neuronActivationGroups) {
+        if (panel)
+            slidersPanel->remove(panel);
+    }
+    neuronActivationGroups.clear();
+    neuronActivationRadios.clear();
+    neuronActivationAbbrevLabels.clear();
+
     neuronSliders.clear();
     neuronLabels.clear();
     neuronValueLabels.clear();
-    activationFunctionCombos.clear();
+    // Activation function combos removed
     neuronSampleButtons.clear();
     
     const auto& neurons = network->getNeurons();
@@ -384,45 +390,7 @@ void GUI::createNeuronSliders() {
         
         yPos += 22.0f;
         
-        // Create activation function dropdown below the slider
-        auto funcCombo = tgui::ComboBox::create();
-        funcCombo->setPosition(40, yPos);
-        funcCombo->setSize(120, 16);
-        funcCombo->addItem("Linear");
-        funcCombo->addItem("Sigmoid");
-        funcCombo->addItem("ReLU");
-        funcCombo->addItem("Tanh");
-        
-        // Set current selection based on neuron's activation function
-        switch (neuron->getActivationFunction()) {
-            case ActivationFunction::Linear:
-                funcCombo->setSelectedItem("Linear");
-                break;
-            case ActivationFunction::Sigmoid:
-                funcCombo->setSelectedItem("Sigmoid");
-                break;
-            case ActivationFunction::ReLU:
-                funcCombo->setSelectedItem("ReLU");
-                break;
-            case ActivationFunction::Tanh:
-                funcCombo->setSelectedItem("Tanh");
-                break;
-        }
-        
-        // Connect to callback
-        funcCombo->onItemSelect([this, i](const tgui::String& item) {
-            this->onActivationFunctionChanged(i, item.toStdString());
-        });
-        
-        slidersPanel->add(funcCombo);
-        activationFunctionCombos.push_back(funcCombo);
-        
-        // Function label
-        auto funcLabel = tgui::Label::create("Func:");
-        funcLabel->setPosition(5, yPos);
-        funcLabel->setTextSize(9);
-        funcLabel->getRenderer()->setTextColor(tgui::Color::Green);
-        slidersPanel->add(funcLabel);
+        // Activation function control removed
 
         // Create sample selection button to the right of the function combo
         std::string sampleFile = neuron->getSampleFilePath();
@@ -443,12 +411,9 @@ void GUI::createNeuronSliders() {
         }
 
         auto sampleButton = tgui::Button::create(displayLabel);
-        // Position sample button to the right of the function combo but left of connection controls
-        // Func combo is at x=40 width=120 -> ends at 160. Connection column begins at ~215.
-        // Use a small button in the gap (x=165..215)
-        float sampleBtnX = 165.0f;
-        sampleButton->setPosition(sampleBtnX, yPos); // align with function combo row
-        sampleButton->setSize(50, 18);
+        // Position sample button on its own row under the neuron slider
+        sampleButton->setPosition(40, yPos);
+        sampleButton->setSize(120, 18);
         sampleButton->setTextSize(9);
         sampleButton->getRenderer()->setBackgroundColor(tgui::Color(70, 70, 70));
         sampleButton->getRenderer()->setTextColor(tgui::Color::White);
@@ -460,6 +425,9 @@ void GUI::createNeuronSliders() {
 
         slidersPanel->add(sampleButton);
         neuronSampleButtons.push_back(sampleButton);
+
+        // Move to next row for leak controls
+        yPos += 22.0f;
 
         // Leak rate slider row
         auto leakLabel = tgui::Label::create("Leak:");
@@ -499,10 +467,74 @@ void GUI::createNeuronSliders() {
         slidersPanel->add(leakValueLabel);
         neuronLeakValueLabels.push_back(leakValueLabel);
 
+        // Activation function radio buttons row (scoped per neuron via a child panel)
+        yPos += 22.0f;
+
+        auto actRow = tgui::Panel::create();
+        actRow->setPosition(0, yPos);
+        actRow->setSize({250, 20});
+        slidersPanel->add(actRow);
+        neuronActivationGroups.push_back(actRow);
+
+        auto actLabel = tgui::Label::create("Act:");
+        actLabel->setPosition(5, 2);
+        actLabel->setTextSize(9);
+        actLabel->getRenderer()->setTextColor(tgui::Color(160, 220, 160));
+        actRow->add(actLabel);
+
+        // Abbreviation label (shows short form of selected activation)
+        auto abbrLabel = tgui::Label::create("");
+        abbrLabel->setPosition(210, 2);
+        abbrLabel->setTextSize(9);
+        abbrLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+        actRow->add(abbrLabel);
+
+        std::array<tgui::RadioButton::Ptr, 4> radios;
+        const char* names[4] = {"Linear", "Sigmoid", "ReLU", "Tanh"};
+        const char* abbrs[4] = {"Lin", "Sig", "ReLU", "Tanh"};
+        float x = 40.0f;
+        for (int k = 0; k < 4; ++k) {
+            auto rb = tgui::RadioButton::create();
+            rb->setText(names[k]);
+            rb->setPosition(x, 2);
+            rb->setSize(16, 16);
+            rb->setTextSize(9);
+            // Apply activation function and update abbreviation on selection; exclusivity is scoped by actRow
+            rb->onCheck([this, i, k]() {
+                if (!network || i >= network->getNeuronCount()) return;
+                Neuron* n = network->getNeuron(i);
+                if (n) {
+                    ActivationFunction func = ActivationFunction::Linear;
+                    if (k == 1) func = ActivationFunction::Sigmoid;
+                    else if (k == 2) func = ActivationFunction::ReLU;
+                    else if (k == 3) func = ActivationFunction::Tanh;
+                    n->setActivationFunction(func);
+                }
+                if (i < neuronActivationAbbrevLabels.size() && neuronActivationAbbrevLabels[i]) {
+                    const char* abbrsLocal[4] = {"Lin", "Sig", "ReLU", "Tanh"};
+                    neuronActivationAbbrevLabels[i]->setText(abbrsLocal[k]);
+                }
+            });
+            actRow->add(rb);
+            radios[k] = rb;
+            x += 55.0f; // spacing between radios
+        }
+
+        // Initialize selection and abbreviation to current neuron activation function
+        switch (neuron->getActivationFunction()) {
+            case ActivationFunction::Linear:  radios[0]->setChecked(true); abbrLabel->setText("Lin"); break;
+            case ActivationFunction::Sigmoid: radios[1]->setChecked(true); abbrLabel->setText("Sig"); break;
+            case ActivationFunction::ReLU:    radios[2]->setChecked(true); abbrLabel->setText("ReLU"); break;
+            case ActivationFunction::Tanh:    radios[3]->setChecked(true); abbrLabel->setText("Tanh"); break;
+        }
+
+        neuronActivationRadios.push_back(radios);
+        neuronActivationAbbrevLabels.push_back(abbrLabel);
+
         yPos += 22.0f; // Extra spacing after each neuron's controls
     }
     
-    DEBUG_PRINT_STREAM("Created " << neuronSliders.size() << " neuron sliders and " << activationFunctionCombos.size() << " activation function dropdowns");
+    DEBUG_PRINT_STREAM("Created " << neuronSliders.size() << " neuron sliders");
 }
 
 void GUI::onNeuronSliderChanged(size_t neuronIndex, float value) {
@@ -520,27 +552,7 @@ void GUI::onNeuronSliderChanged(size_t neuronIndex, float value) {
     }
 }
 
-void GUI::onActivationFunctionChanged(size_t neuronIndex, const std::string& functionName) {
-    if (!network || neuronIndex >= network->getNeuronCount()) return;
-    
-    Neuron* neuron = network->getNeuron(neuronIndex);
-    if (neuron) {
-        ActivationFunction func = ActivationFunction::Linear; // default
-        
-        if (functionName == "Sigmoid") {
-            func = ActivationFunction::Sigmoid;
-        } else if (functionName == "ReLU") {
-            func = ActivationFunction::ReLU;
-        } else if (functionName == "Tanh") {
-            func = ActivationFunction::Tanh;
-        } else if (functionName == "Linear") {
-            func = ActivationFunction::Linear;
-        }
-        
-        neuron->setActivationFunction(func);
-        std::cout << "Updated neuron " << neuronIndex << " activation function to " << functionName << std::endl;
-    }
-}
+// Activation function change handler removed
 
 void GUI::onSliderChanged(size_t connectionIndex, float value) {
     if (!network || connectionIndex >= network->getConnectionCount()) return;

@@ -270,47 +270,42 @@ void NeuronNetwork::learnFromRhythm() {
         normOut[f] = filterOutputs[f] / std::max(eps, maxOut);
     }
 
-    // Compute predicted external input per neuron via connection mapping:
-    // p_n = sum_{c target=n} sum_f normOut[f] * w_{f,c}
-    std::vector<float> predicted(neurons.size(), 0.0f);
-    for (size_t c = 0; c < connections.size(); ++c) {
-        Connection* conn = connections[c].get();
-        Neuron* tgt = conn ? conn->getTarget() : nullptr;
-        if (!tgt) continue;
-        // Find target neuron index
-        size_t targetIndex = 0;
-        for (size_t i = 0; i < neurons.size(); ++i) {
-            if (neurons[i].get() == tgt) { targetIndex = i; break; }
-        }
-        float acc = 0.0f;
-        for (size_t f = 0; f < normOut.size(); ++f) {
-            acc += normOut[f] * rhythmConnectionMatrix[f][c];
-        }
-        acc *= mappingGain; // reflect actual applied scaling
-        predicted[targetIndex] += acc;
-    }
-
-    // Target activation per neuron: use assigned band energy
+    // Learning target: band energy per neuron; prediction: neuron's current activation
     for (size_t n = 0; n < neurons.size(); ++n) {
         size_t fb = assignedBandForNeuron(n);
         float target = (fb < normOut.size()) ? normOut[fb] : 0.0f;
-        float error = predicted[n] - target; // d/dw = error * x
-        
-        // Update weights for connections targeting this neuron: gradient descent on MSE + decay
+        float predicted = neurons[n]->getActivation(); // current processed activation
+        float error = predicted - target; // d/dw ∝ error * feature
+
+        // Update connection weights targeting this neuron
         for (size_t c = 0; c < connections.size(); ++c) {
             Connection* conn = connections[c].get();
             if (!conn || conn->getTarget() != neurons[n].get()) continue;
+
+            // Gate learning for this connection by rhythm mapping and band energy
+            float rhythmDrive = 0.0f;
             for (size_t f = 0; f < normOut.size(); ++f) {
-                // Only adjust weights for existing, user-enabled mappings.
-                if (rhythmConnectionMatrix[f][c] <= 0.0f) continue;
-                float x = normOut[f];
-                float dw = -learningRate * error * x;
-                // L2-style decay
-                dw -= weightDecay * rhythmConnectionMatrix[f][c];
-                rhythmConnectionMatrix[f][c] += dw;
-                // Clamp for stability
-                rhythmConnectionMatrix[f][c] = std::max(0.0f, std::min(maxWeight, rhythmConnectionMatrix[f][c]));
+                float map = (f < rhythmConnectionMatrix.size() && c < rhythmConnectionMatrix[f].size())
+                                ? rhythmConnectionMatrix[f][c]
+                                : 0.0f;
+                if (map > 0.0f) rhythmDrive += normOut[f] * map;
             }
+            rhythmDrive *= mappingGain; // reflect applied scaling
+
+            // Feature: source activation modulated by current rhythm drive for this connection
+            float srcAct = conn->getSource() ? conn->getSource()->getActivation() : 0.0f;
+            float x = srcAct * rhythmDrive;
+
+            if (x == 0.0f) continue; // nothing to learn this step
+
+            float w = conn->getWeight();
+            float dw = -learningRate * error * x;      // gradient step
+            dw -= weightDecay * w;                      // L2-like regularization on connection weight
+            w += dw;
+            // Clamp for stability (allow negative weights)
+            if (w >  maxWeight) w =  maxWeight;
+            if (w < -maxWeight) w = -maxWeight;
+            conn->setWeight(w);
         }
     }
 }

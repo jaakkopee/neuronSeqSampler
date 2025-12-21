@@ -8,6 +8,7 @@
 #include <TGUI/Widgets/ChildWindow.hpp>
 #include <TGUI/Widgets/Button.hpp>
 #include <TGUI/Widgets/ComboBox.hpp>
+#include <TGUI/Widgets/RadioButton.hpp>
 #include <TGUI/Widgets/SpinControl.hpp>
 #include <TGUI/Widgets/EditBox.hpp>
 #include <TGUI/Widgets/ListBox.hpp>
@@ -54,7 +55,9 @@ private:
     std::vector<tgui::Slider::Ptr> neuronLeakSliders;
     std::vector<tgui::Label::Ptr> neuronLeakLabels;
     std::vector<tgui::Label::Ptr> neuronLeakValueLabels;
-    std::vector<tgui::ComboBox::Ptr> activationFunctionCombos;
+    std::vector<std::array<tgui::RadioButton::Ptr, 4>> neuronActivationRadios; // Linear, Sigmoid, ReLU, Tanh per neuron
+    std::vector<tgui::Panel::Ptr> neuronActivationGroups; // Container panels to scope radio exclusivity per neuron
+    std::vector<tgui::Label::Ptr> neuronActivationAbbrevLabels; // Per-neuron abbreviation label (e.g., Lin/Sig/ReLU/Tanh)
     std::vector<tgui::Button::Ptr> neuronSampleButtons; // Button to change/select sample for each neuron
     tgui::Slider::Ptr activationIntervalSlider;
     tgui::Label::Ptr activationIntervalLabel;
@@ -180,7 +183,6 @@ private:
     // Event handlers
     void onSliderChanged(size_t connectionIndex, float value);
     void onNeuronSliderChanged(size_t neuronIndex, float value);
-    void onActivationFunctionChanged(size_t neuronIndex, const std::string& functionName);
     void showChangeSampleDialog(size_t neuronIndex);
 
 public:
