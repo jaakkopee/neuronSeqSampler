@@ -383,18 +383,8 @@ void Visualizer::handleMouseDrag(int mouseX, int mouseY) {
     calculateNeuronPositions();
 }
 
-void Visualizer::handleMouseScroll(int delta) {
-    // Zoom in/out with mouse scroll
-    if (delta > 0) {
-        // Zoom in
-        canvasSize.x *= 0.9f;
-        canvasSize.y *= 0.9f;
-    } else if (delta < 0) {
-        // Zoom out
-        canvasSize.x *= 1.1f;
-        canvasSize.y *= 1.1f;
-    }
-    calculateNeuronPositions();
+void Visualizer::handleMouseScroll(int /*delta*/) {
+    // Zoom disabled: no-op
 }
 
 void Visualizer::setViewMode(ViewMode mode) {

@@ -94,8 +94,8 @@ public:
         connectionColor = normal;
         highlightConnectionColor = highlight;
     }
-    void handleMouseDrag(int mouseX, int mouseY); // For panning and zooming
-    void handleMouseScroll(int delta); // For zooming
+    void handleMouseDrag(int mouseX, int mouseY); // For panning
+    void handleMouseScroll(int delta); // No-op (zoom removed)
     void handleMouseMove(int mouseX, int mouseY); // For tooltip hover detection
     
     // View mode controls

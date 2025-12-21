@@ -355,9 +355,8 @@ public:
     }
     */
 
-    void handleMouseScroll(int delta) {
-        //zoom with mouse scroll
-        visualizer.handleMouseScroll(delta);
+    void handleMouseScroll(int /*delta*/) {
+        // Zoom disabled in visualizer; ignore scroll
     }
 
     void handleMouseDrag(int mouseX, int mouseY) {

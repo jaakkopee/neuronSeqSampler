@@ -556,6 +556,10 @@ void GUI::onNeuronSliderChanged(size_t neuronIndex, float value) {
 
 void GUI::onSliderChanged(size_t connectionIndex, float value) {
     if (!network || connectionIndex >= network->getConnectionCount()) return;
+    if (isUpdatingConnectionSliders) {
+        // Suppress callback effects during programmatic updates
+        return;
+    }
     
     Connection* conn = network->getConnection(connectionIndex);
     if (conn) {
@@ -582,6 +586,25 @@ void GUI::update() {
             updateConnectionMatrix();
             matrixUpdateCounter = 0;
         }
+    }
+
+    // Reflect learned connection weight changes on sliders and value labels
+    if (network && !connectionSliders.empty()) {
+        size_t count = std::min(connectionSliders.size(), network->getConnectionCount());
+        isUpdatingConnectionSliders = true;
+        for (size_t i = 0; i < count; ++i) {
+            Connection* c = network->getConnection(i);
+            if (!c) continue;
+            float w = c->getWeight();
+            // Update slider only if different to minimize events
+            if (std::fabs(connectionSliders[i]->getValue() - w) > 1e-5f) {
+                connectionSliders[i]->setValue(w);
+            }
+            if (i < connectionValueLabels.size()) {
+                connectionValueLabels[i]->setText(std::to_string(w));
+            }
+        }
+        isUpdatingConnectionSliders = false;
     }
 }
 
