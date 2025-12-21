@@ -200,32 +200,35 @@ void NeuronNetwork::applyRhythmConnections() {
     // Get current filter outputs
     std::vector<float> filterOutputs = rhythmInterpreter->getFilterOutputs();
 
-    // Ensure matrix sized to current band/neuron counts
-    ensureMatrixSize(filterOutputs.size(), neurons.size());
+    // Ensure matrix sized to current band/connection counts
+    ensureMatrixSize(filterOutputs.size(), connections.size());
     
-    // Apply connections to neurons
+    // Apply rhythm inputs per connection to the target neurons
     for (size_t f = 0; f < filterOutputs.size() && f < rhythmConnectionMatrix.size(); ++f) {
-        for (size_t n = 0; n < rhythmConnectionMatrix[f].size() && n < neurons.size(); ++n) {
-            float connectionWeight = rhythmConnectionMatrix[f][n];
-            if (std::abs(connectionWeight) > 0.001f) {
-                // Apply rhythm filter output to neuron activation
-                float rhythmInput = filterOutputs[f] * connectionWeight;
-                neurons[n]->addExternalInput(rhythmInput);
+        for (size_t c = 0; c < rhythmConnectionMatrix[f].size() && c < connections.size(); ++c) {
+            float mapWeight = rhythmConnectionMatrix[f][c];
+            if (std::abs(mapWeight) > 0.001f) {
+                float rhythmInput = filterOutputs[f] * mapWeight;
+                Connection* conn = connections[c].get();
+                if (conn && conn->getTarget()) {
+                    conn->getTarget()->addExternalInput(rhythmInput);
+                }
             }
         }
     }
 }
 
-void NeuronNetwork::ensureMatrixSize(size_t bandCount, size_t neuronCount) {
+void NeuronNetwork::ensureMatrixSize(size_t bandCount, size_t connectionCount) {
     if (rhythmConnectionMatrix.size() < bandCount) {
         rhythmConnectionMatrix.resize(bandCount);
     }
     for (size_t f = 0; f < bandCount; ++f) {
-        if (rhythmConnectionMatrix[f].size() < neuronCount) {
-            rhythmConnectionMatrix[f].resize(neuronCount, 0.0f);
+        if (rhythmConnectionMatrix[f].size() < connectionCount) {
+            rhythmConnectionMatrix[f].resize(connectionCount, 0.0f);
         }
     }
-    // Ensure mapping vector sized and initialized
+    // Ensure neuron band map sized and initialized (per neuron)
+    size_t neuronCount = neurons.size();
     if (neuronBandMap.size() < neuronCount) {
         size_t start = neuronBandMap.size();
         neuronBandMap.resize(neuronCount);
@@ -247,7 +250,7 @@ size_t NeuronNetwork::assignedBandForNeuron(size_t neuronIndex) const {
 
 void NeuronNetwork::resetRhythmWeights(float value) {
     if (!rhythmInterpreter) return;
-    ensureMatrixSize(rhythmInterpreter->getBandCount(), neurons.size());
+    ensureMatrixSize(rhythmInterpreter->getBandCount(), connections.size());
     for (auto& row : rhythmConnectionMatrix) {
         std::fill(row.begin(), row.end(), value);
     }
@@ -256,7 +259,7 @@ void NeuronNetwork::resetRhythmWeights(float value) {
 void NeuronNetwork::learnFromRhythm() {
     if (!rhythmInterpreter || neurons.empty()) return;
     std::vector<float> filterOutputs = rhythmInterpreter->getFilterOutputs();
-    ensureMatrixSize(filterOutputs.size(), neurons.size());
+    ensureMatrixSize(filterOutputs.size(), connections.size());
 
     // Normalize filter outputs to [0,1]
     float maxOut = 0.0f;
@@ -267,14 +270,23 @@ void NeuronNetwork::learnFromRhythm() {
         normOut[f] = filterOutputs[f] / std::max(eps, maxOut);
     }
 
-    // Compute predicted external input per neuron: p_n = sum_f normOut[f] * w_{f,n}
+    // Compute predicted external input per neuron via connection mapping:
+    // p_n = sum_{c target=n} sum_f normOut[f] * w_{f,c}
     std::vector<float> predicted(neurons.size(), 0.0f);
-    for (size_t n = 0; n < neurons.size(); ++n) {
+    for (size_t c = 0; c < connections.size(); ++c) {
+        Connection* conn = connections[c].get();
+        Neuron* tgt = conn ? conn->getTarget() : nullptr;
+        if (!tgt) continue;
+        // Find target neuron index
+        size_t targetIndex = 0;
+        for (size_t i = 0; i < neurons.size(); ++i) {
+            if (neurons[i].get() == tgt) { targetIndex = i; break; }
+        }
         float acc = 0.0f;
         for (size_t f = 0; f < normOut.size(); ++f) {
-            acc += normOut[f] * rhythmConnectionMatrix[f][n];
+            acc += normOut[f] * rhythmConnectionMatrix[f][c];
         }
-        predicted[n] = acc;
+        predicted[targetIndex] += acc;
     }
 
     // Target activation per neuron: use assigned band energy
@@ -283,20 +295,21 @@ void NeuronNetwork::learnFromRhythm() {
         float target = (fb < normOut.size()) ? normOut[fb] : 0.0f;
         float error = predicted[n] - target; // d/dw = error * x
         
-        // Update weights: gradient descent on MSE + decay
-        for (size_t f = 0; f < normOut.size(); ++f) {
-            // Only adjust weights for existing, user-enabled connections.
-            // This prevents auto-creation of connections due to learning.
-            if (rhythmConnectionMatrix[f][n] <= 0.0f) {
-                continue;
+        // Update weights for connections targeting this neuron: gradient descent on MSE + decay
+        for (size_t c = 0; c < connections.size(); ++c) {
+            Connection* conn = connections[c].get();
+            if (!conn || conn->getTarget() != neurons[n].get()) continue;
+            for (size_t f = 0; f < normOut.size(); ++f) {
+                // Only adjust weights for existing, user-enabled mappings.
+                if (rhythmConnectionMatrix[f][c] <= 0.0f) continue;
+                float x = normOut[f];
+                float dw = -learningRate * error * x;
+                // L2-style decay
+                dw -= weightDecay * rhythmConnectionMatrix[f][c];
+                rhythmConnectionMatrix[f][c] += dw;
+                // Clamp for stability
+                rhythmConnectionMatrix[f][c] = std::max(0.0f, std::min(maxWeight, rhythmConnectionMatrix[f][c]));
             }
-            float x = normOut[f];
-            float dw = -learningRate * error * x;
-            // L2-style decay
-            dw -= weightDecay * rhythmConnectionMatrix[f][n];
-            rhythmConnectionMatrix[f][n] += dw;
-            // Clamp for stability
-            rhythmConnectionMatrix[f][n] = std::max(0.0f, std::min(maxWeight, rhythmConnectionMatrix[f][n]));
         }
     }
 }

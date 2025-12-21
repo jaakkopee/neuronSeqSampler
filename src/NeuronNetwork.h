@@ -16,7 +16,7 @@ private:
     AudioManager* audioManager;
     RhythmInterpreter* rhythmInterpreter; // Use raw pointer to avoid incomplete type issues
     
-    // Rhythm-to-neuron connection matrix (filterIndex -> neuronIndex -> weight)
+    // Rhythm-to-connection mapping matrix (filterIndex -> connectionIndex -> weight)
     std::vector<std::vector<float>> rhythmConnectionMatrix;
     
     Quantizer* quantizer; // Quantization system for musical timing
@@ -27,7 +27,7 @@ private:
     float weightDecay = 0.0005f; // small decay to prevent runaway growth
     float maxWeight = 1.0f;      // clamp weights for stability
     
-    void ensureMatrixSize(size_t bandCount, size_t neuronCount);
+    void ensureMatrixSize(size_t bandCount, size_t connectionCount);
     // Per-neuron rhythmogram band mapping (user configurable)
     std::vector<size_t> neuronBandMap; // size = neurons, values in [0, bandCount)
     size_t assignedBandForNeuron(size_t neuronIndex) const;
