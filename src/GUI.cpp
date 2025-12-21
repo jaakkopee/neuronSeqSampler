@@ -2242,19 +2242,18 @@ void GUI::createConnectionMatrixPanel() {
             combo->getRenderer()->setBorders(1);
 
             // Populate with band names
-            const std::vector<std::string> bandNames = {
-                "Phrase", "Whole", "Half", "Quarter", "Eighth", "16th", "32nd", "Onset"
-            };
-            for (size_t i = 0; i < bandNames.size(); ++i) {
-                combo->addItem(bandNames[i], std::to_string(i));
+            // Populate with dynamic band names based on current band count
+            for (size_t i = 0; i < numFilters; ++i) {
+                combo->addItem("Band " + std::to_string(i + 1), std::to_string(i));
             }
             // Initialize selection to current mapping
             size_t currentMap = network->getNeuronBandMapping(n);
             combo->setSelectedItemById(std::to_string(currentMap));
             // On change: update mapping in network
-            combo->onItemSelect([this, n](const tgui::String& id) {
+            combo->onItemSelect([this, n, combo](const tgui::String& /*item*/) {
                 if (!network) return;
-                size_t bandIndex = static_cast<size_t>(std::stoul(id.toStdString()));
+                int idx = combo->getSelectedItemIndex();
+                size_t bandIndex = (idx >= 0) ? static_cast<size_t>(idx) : 0;
                 network->setNeuronBandMapping(n, bandIndex);
             });
             connectionMatrixPanel->add(combo);
@@ -2473,9 +2472,14 @@ void GUI::createConnectionMatrixPanel() {
         channelsCombo->addItem(std::to_string(opt), std::to_string(opt));
     }
     channelsCombo->setSelectedItemById(std::to_string(static_cast<int>(numFilters)));
-    channelsCombo->onItemSelect([this](const tgui::String& id){
+    channelsCombo->onItemSelect([this, channelsCombo](const tgui::String& /*item*/){
         if (!network || !network->getRhythmInterpreter()) return;
-        size_t newCount = static_cast<size_t>(std::stoul(id.toStdString()));
+        // Map index to channel options {4,6,8,10,12,16}
+        const std::vector<int> channelOptions = {4, 6, 8, 10, 12, 16};
+        int idx = channelsCombo->getSelectedItemIndex();
+        size_t newCount = 8;
+        if (idx >= 0 && static_cast<size_t>(idx) < channelOptions.size())
+            newCount = static_cast<size_t>(channelOptions[idx]);
         network->getRhythmInterpreter()->setBandCount(newCount);
         // Recreate matrix panel to reflect new channel count
         createConnectionMatrixPanel();
