@@ -324,6 +324,14 @@ void GUI::createNeuronSliders() {
         slidersPanel->remove(btn);
     }
     
+    // Remove existing leak controls
+    for (auto& s : neuronLeakSliders) slidersPanel->remove(s);
+    for (auto& l : neuronLeakLabels) slidersPanel->remove(l);
+    for (auto& v : neuronLeakValueLabels) slidersPanel->remove(v);
+    neuronLeakSliders.clear();
+    neuronLeakLabels.clear();
+    neuronLeakValueLabels.clear();
+
     neuronSliders.clear();
     neuronLabels.clear();
     neuronValueLabels.clear();
@@ -452,6 +460,44 @@ void GUI::createNeuronSliders() {
 
         slidersPanel->add(sampleButton);
         neuronSampleButtons.push_back(sampleButton);
+
+        // Leak rate slider row
+        auto leakLabel = tgui::Label::create("Leak:");
+        leakLabel->setPosition(5, yPos);
+        leakLabel->setTextSize(9);
+        leakLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+        slidersPanel->add(leakLabel);
+        neuronLeakLabels.push_back(leakLabel);
+
+        auto leakSlider = tgui::Slider::create();
+        leakSlider->setPosition(40, yPos);
+        leakSlider->setSize(120, 16);
+        leakSlider->setMinimum(0.0f);
+        leakSlider->setMaximum(0.3f);
+        leakSlider->setStep(0.01f);
+        leakSlider->setValue(neuron->getLeakRate());
+        leakSlider->onValueChange([this, i, leakSlider](float value){
+            if (!network || i >= network->getNeuronCount()) return;
+            Neuron* n = network->getNeuron(i);
+            if (n) {
+                n->setLeakRate(value);
+                // Update the value label
+                if (i < neuronLeakValueLabels.size()) {
+                    neuronLeakValueLabels[i]->setText(std::to_string(value));
+                }
+            }
+            leakSlider->setFocused(false);
+            if (gui) gui->unfocusAllWidgets();
+        });
+        slidersPanel->add(leakSlider);
+        neuronLeakSliders.push_back(leakSlider);
+
+        auto leakValueLabel = tgui::Label::create(std::to_string(neuron->getLeakRate()));
+        leakValueLabel->setPosition(170, yPos);
+        leakValueLabel->setTextSize(9);
+        leakValueLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+        slidersPanel->add(leakValueLabel);
+        neuronLeakValueLabels.push_back(leakValueLabel);
 
         yPos += 22.0f; // Extra spacing after each neuron's controls
     }

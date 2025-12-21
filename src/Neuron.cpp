@@ -7,12 +7,13 @@
 #include <chrono>
 
 Neuron::Neuron(int sampleIndex, float initialActivation, float threshold, 
-               float decayRate, float activationIncreasePerIteration, ActivationFunction func,
+               float decayRate, float activationIncreasePerIteration, float leakRateParam, ActivationFunction func,
                const std::string& sampleFilePath)
     : sampleIndex(sampleIndex)
     , activation(initialActivation)
     , threshold(threshold)
     , decayRate(decayRate)
+    , leakRate(leakRateParam)
     , activationIncreasePerIteration(activationIncreasePerIteration)
     , externalInput(0.0f)
     , sampleFilePath(sampleFilePath)
@@ -24,6 +25,13 @@ Neuron::Neuron(int sampleIndex, float initialActivation, float threshold,
     activationHistory.reserve(maxHistoryLength);
     activationHistory.push_back(activation);
 }
+
+// Backward-compatible constructor delegating with default leakRate
+Neuron::Neuron(int sampleIndex, float initialActivation, float threshold,
+               float decayRate, float activationIncreasePerIteration,
+               ActivationFunction func, const std::string& sampleFilePath)
+    : Neuron(sampleIndex, initialActivation, threshold, decayRate,
+             activationIncreasePerIteration, 0.05f, func, sampleFilePath) {}
 
 void Neuron::setAudioManager(AudioManager* manager) {
     audioManager = manager;
@@ -70,6 +78,12 @@ void Neuron::update() {
     // Process accumulated external input (e.g., from rhythmogram)
     activation += externalInput;
     externalInput = 0.0f; // Reset external input after use
+
+    // Apply continuous leak towards zero to avoid saturation
+    // Exponential decay model: reduces both positive and negative activation towards 0
+    if (leakRate > 0.0f) {
+        activation -= activation * leakRate;
+    }
     
     // Use processed activation for threshold comparisons to affect self-oscillating behavior
     float processedActivation = applyActivationFunction(activation);

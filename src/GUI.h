@@ -50,6 +50,10 @@ private:
     std::vector<tgui::Slider::Ptr> neuronSliders;
     std::vector<tgui::Label::Ptr> neuronLabels;
     std::vector<tgui::Label::Ptr> neuronValueLabels;
+    // Leak controls per neuron
+    std::vector<tgui::Slider::Ptr> neuronLeakSliders;
+    std::vector<tgui::Label::Ptr> neuronLeakLabels;
+    std::vector<tgui::Label::Ptr> neuronLeakValueLabels;
     std::vector<tgui::ComboBox::Ptr> activationFunctionCombos;
     std::vector<tgui::Button::Ptr> neuronSampleButtons; // Button to change/select sample for each neuron
     tgui::Slider::Ptr activationIntervalSlider;

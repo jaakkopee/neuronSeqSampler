@@ -19,6 +19,7 @@ private:
     float activation;
     float threshold;
     float decayRate;
+    float leakRate; // Continuous leak towards zero per update
     float activationIncreasePerIteration;
     float externalInput; // Accumulates external inputs from rhythm interpreter
     int sampleIndex;
@@ -34,8 +35,16 @@ public:
     Neuron(int sampleIndex, float initialActivation = 0.0f, 
            float threshold = 1.0f, float decayRate = 1.0f, 
            float activationIncreasePerIteration = 0.0f,
+           float leakRate = 0.05f,
            ActivationFunction func = ActivationFunction::Linear,
            const std::string& sampleFilePath = "");
+
+        // Backward-compatible constructor (without leakRate parameter)
+        Neuron(int sampleIndex, float initialActivation,
+            float threshold, float decayRate,
+            float activationIncreasePerIteration,
+            ActivationFunction func,
+            const std::string& sampleFilePath);
     
     void setAudioManager(AudioManager* manager);
     void setQuantizer(Quantizer* quantizer);
@@ -51,6 +60,7 @@ public:
     float getRawActivation() const { return activation; } // Raw activation level for debugging
     float getThreshold() const { return threshold; }
     float getDecayRate() const { return decayRate; }
+    float getLeakRate() const { return leakRate; }
     float getActivationIncreasePerIteration() const { return activationIncreasePerIteration; }
     float getExternalInput() const { return externalInput; }
     ActivationFunction getActivationFunction() const { return activationFunc; }
@@ -63,6 +73,7 @@ public:
     void setActivation(float value) { activation = value; }
     void setThreshold(float value) { threshold = value; }
     void setDecayRate(float value) { decayRate = value; }
+    void setLeakRate(float value) { leakRate = value; }
     void setActivationIncreasePerIteration(float value) { activationIncreasePerIteration = value; }
     void setActivationFunction(ActivationFunction func) { activationFunc = func; }
     void setSampleFilePath(const std::string& filePath) { sampleFilePath = filePath; }
