@@ -2266,7 +2266,6 @@ void GUI::createConnectionMatrixPanel() {
     
     // Neuron column labels (horizontal) - only if we have neurons
     neuronColumnLabels.clear();
-    neuronBandCombos.clear();
     if (numNeurons > 0) {
         for (size_t n = 0; n < numNeurons; ++n) {
             auto label = tgui::Label::create("N" + std::to_string(n + 1));
@@ -2276,34 +2275,7 @@ void GUI::createConnectionMatrixPanel() {
             connectionMatrixPanel->add(label);
             neuronColumnLabels.push_back(label);
 
-            // Add band mapping ComboBox under the neuron label
-            auto combo = tgui::ComboBox::create();
-            combo->setPosition(150 + n * 80, 60);
-            combo->setSize(60, 18);
-            combo->setExpandDirection(tgui::ComboBox::ExpandDirection::Down);
-            combo->setTextSize(10);
-            combo->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
-            combo->getRenderer()->setTextColor(tgui::Color(220, 220, 220));
-            combo->getRenderer()->setBorderColor(tgui::Color(80, 80, 80));
-            combo->getRenderer()->setBorders(1);
-
-            // Populate with band names
-            // Populate with dynamic band names based on current band count
-            for (size_t i = 0; i < numFilters; ++i) {
-                combo->addItem("Band " + std::to_string(i + 1), std::to_string(i));
-            }
-            // Initialize selection to current mapping
-            size_t currentMap = network->getNeuronBandMapping(n);
-            combo->setSelectedItemById(std::to_string(currentMap));
-            // On change: update mapping in network
-            combo->onItemSelect([this, n, combo](const tgui::String& /*item*/) {
-                if (!network) return;
-                int idx = combo->getSelectedItemIndex();
-                size_t bandIndex = (idx >= 0) ? static_cast<size_t>(idx) : 0;
-                network->setNeuronBandMapping(n, bandIndex);
-            });
-            connectionMatrixPanel->add(combo);
-            neuronBandCombos.push_back(combo);
+            // Removed redundant band selection widget
         }
     }
     
@@ -2854,31 +2826,21 @@ void GUI::updateConnectionMatrix() {
         matrixTitleLabel->setText("🎛️ Rhythmogram Mapping (8×" + std::to_string(numNeurons) + ")");
     }
     
-    // Update button states and slider values
+    // Update slider values and displays without auto-changing toggle states
     for (size_t f = 0; f < std::min(numFilters, matrixToggleButtons.size()); ++f) {
         for (size_t n = 0; n < std::min(numNeurons, matrixToggleButtons[f].size()); ++n) {
             float weight = network->getRhythmConnection(f, n); // Get actual connection weight
-            bool isConnected = std::abs(weight) > 0.001f; // Connection exists if weight is non-zero
-            
-            // Update toggle button
-            if (isConnected) {
-                matrixToggleButtons[f][n]->setText("●");
-                matrixToggleButtons[f][n]->getRenderer()->setBackgroundColor(tgui::Color(60, 120, 60));
-                matrixToggleButtons[f][n]->getRenderer()->setTextColor(tgui::Color::White);
-            } else {
-                matrixToggleButtons[f][n]->setText("○");
-                matrixToggleButtons[f][n]->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
-                matrixToggleButtons[f][n]->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
-            }
+            // Respect current UI toggle state; do not auto-change it based on weight
+            bool uiConnected = (matrixToggleButtons[f][n]->getText() == "●");
             
             // Update gain slider
             matrixGainSliders[f][n]->setValue(std::abs(weight) * 100.0f);
-            matrixGainSliders[f][n]->setVisible(isConnected);
+            matrixGainSliders[f][n]->setVisible(uiConnected);
             
             // Update connection gain display
             if (f < matrixGainDisplays.size() && n < matrixGainDisplays[f].size()) {
                 matrixGainDisplays[f][n]->setText(std::to_string(static_cast<int>(std::abs(weight) * 100)));
-                matrixGainDisplays[f][n]->setVisible(isConnected);
+                matrixGainDisplays[f][n]->setVisible(uiConnected);
             }
         }
     }

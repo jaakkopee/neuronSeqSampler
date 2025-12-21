@@ -88,7 +88,6 @@ private:
     std::vector<std::vector<tgui::Label::Ptr>> matrixGainDisplays;   // [filter][neuron] - Connection gain value displays
     std::vector<tgui::Label::Ptr> filterLabels; // Labels for filter bands
     std::vector<tgui::Label::Ptr> neuronColumnLabels; // Labels for neuron columns
-    std::vector<tgui::ComboBox::Ptr> neuronBandCombos; // Mapping selector per neuron
     tgui::Slider::Ptr rhythmogramScaleSlider; // Vertical slider for rhythmogram scale control
     tgui::Label::Ptr rhythmogramScaleLabel; // Label showing current rhythmogram scale value
     tgui::Slider::Ptr bpmSlider; // Vertical slider for BPM control (tempo-relative frequencies)

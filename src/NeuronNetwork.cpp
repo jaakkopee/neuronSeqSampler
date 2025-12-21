@@ -285,6 +285,11 @@ void NeuronNetwork::learnFromRhythm() {
         
         // Update weights: gradient descent on MSE + decay
         for (size_t f = 0; f < normOut.size(); ++f) {
+            // Only adjust weights for existing, user-enabled connections.
+            // This prevents auto-creation of connections due to learning.
+            if (rhythmConnectionMatrix[f][n] <= 0.0f) {
+                continue;
+            }
             float x = normOut[f];
             float dw = -learningRate * error * x;
             // L2-style decay
