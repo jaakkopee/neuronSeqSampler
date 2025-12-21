@@ -143,6 +143,10 @@ void NeuronNetwork::processAudioForRhythm(const std::vector<float>& audioData) {
         rhythmInterpreter->processAudioFrame(audioData);
         // Apply rhythm filter outputs to connected neurons
         applyRhythmConnections();
+        // Update weights if learning is enabled
+        if (learningEnabled) {
+            learnFromRhythm();
+        }
     }
 }
 
@@ -195,6 +199,9 @@ void NeuronNetwork::applyRhythmConnections() {
     
     // Get current filter outputs
     std::vector<float> filterOutputs = rhythmInterpreter->getFilterOutputs();
+
+    // Ensure matrix sized to current band/neuron counts
+    ensureMatrixSize(filterOutputs.size(), neurons.size());
     
     // Apply connections to neurons
     for (size_t f = 0; f < filterOutputs.size() && f < rhythmConnectionMatrix.size(); ++f) {
@@ -207,4 +214,100 @@ void NeuronNetwork::applyRhythmConnections() {
             }
         }
     }
+}
+
+void NeuronNetwork::ensureMatrixSize(size_t bandCount, size_t neuronCount) {
+    if (rhythmConnectionMatrix.size() < bandCount) {
+        rhythmConnectionMatrix.resize(bandCount);
+    }
+    for (size_t f = 0; f < bandCount; ++f) {
+        if (rhythmConnectionMatrix[f].size() < neuronCount) {
+            rhythmConnectionMatrix[f].resize(neuronCount, 0.0f);
+        }
+    }
+    // Ensure mapping vector sized and initialized
+    if (neuronBandMap.size() < neuronCount) {
+        size_t start = neuronBandMap.size();
+        neuronBandMap.resize(neuronCount);
+        size_t bands = bandCount > 0 ? bandCount : 1;
+        for (size_t n = start; n < neuronCount; ++n) {
+            neuronBandMap[n] = n % bands; // default cyclic assignment
+        }
+    }
+}
+
+size_t NeuronNetwork::assignedBandForNeuron(size_t neuronIndex) const {
+    size_t bands = rhythmInterpreter ? rhythmInterpreter->getBandCount() : 1;
+    if (bands == 0) bands = 1;
+    if (neuronIndex < neuronBandMap.size()) {
+        return std::min(neuronBandMap[neuronIndex], bands - 1);
+    }
+    return neuronIndex % bands; // fallback cyclic assignment
+}
+
+void NeuronNetwork::resetRhythmWeights(float value) {
+    if (!rhythmInterpreter) return;
+    ensureMatrixSize(rhythmInterpreter->getBandCount(), neurons.size());
+    for (auto& row : rhythmConnectionMatrix) {
+        std::fill(row.begin(), row.end(), value);
+    }
+}
+
+void NeuronNetwork::learnFromRhythm() {
+    if (!rhythmInterpreter || neurons.empty()) return;
+    std::vector<float> filterOutputs = rhythmInterpreter->getFilterOutputs();
+    ensureMatrixSize(filterOutputs.size(), neurons.size());
+
+    // Normalize filter outputs to [0,1]
+    float maxOut = 0.0f;
+    for (float v : filterOutputs) maxOut = std::max(maxOut, v);
+    float eps = 1e-6f;
+    std::vector<float> normOut(filterOutputs.size(), 0.0f);
+    for (size_t f = 0; f < filterOutputs.size(); ++f) {
+        normOut[f] = filterOutputs[f] / std::max(eps, maxOut);
+    }
+
+    // Compute predicted external input per neuron: p_n = sum_f normOut[f] * w_{f,n}
+    std::vector<float> predicted(neurons.size(), 0.0f);
+    for (size_t n = 0; n < neurons.size(); ++n) {
+        float acc = 0.0f;
+        for (size_t f = 0; f < normOut.size(); ++f) {
+            acc += normOut[f] * rhythmConnectionMatrix[f][n];
+        }
+        predicted[n] = acc;
+    }
+
+    // Target activation per neuron: use assigned band energy
+    for (size_t n = 0; n < neurons.size(); ++n) {
+        size_t fb = assignedBandForNeuron(n);
+        float target = (fb < normOut.size()) ? normOut[fb] : 0.0f;
+        float error = predicted[n] - target; // d/dw = error * x
+        
+        // Update weights: gradient descent on MSE + decay
+        for (size_t f = 0; f < normOut.size(); ++f) {
+            float x = normOut[f];
+            float dw = -learningRate * error * x;
+            // L2-style decay
+            dw -= weightDecay * rhythmConnectionMatrix[f][n];
+            rhythmConnectionMatrix[f][n] += dw;
+            // Clamp for stability
+            rhythmConnectionMatrix[f][n] = std::max(0.0f, std::min(maxWeight, rhythmConnectionMatrix[f][n]));
+        }
+    }
+}
+
+void NeuronNetwork::setNeuronBandMapping(size_t neuronIndex, size_t bandIndex) {
+    size_t bands = rhythmInterpreter ? rhythmInterpreter->getBandCount() : 1;
+    if (neurons.empty()) return;
+    ensureMatrixSize(bands, neurons.size());
+    if (neuronIndex < neuronBandMap.size()) {
+        neuronBandMap[neuronIndex] = std::min(bandIndex, bands - 1);
+    }
+}
+
+size_t NeuronNetwork::getNeuronBandMapping(size_t neuronIndex) const {
+    if (neuronIndex < neuronBandMap.size()) {
+        return neuronBandMap[neuronIndex];
+    }
+    return assignedBandForNeuron(neuronIndex);
 }

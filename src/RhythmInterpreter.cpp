@@ -12,9 +12,9 @@
 #endif
 
 RhythmInterpreter::RhythmInterpreter(size_t sampleRate, size_t bufferSize)
-    : sampleRate(sampleRate), bufferSize(bufferSize), bandCount(8), frameCounter(0), 
-      GTFilterBank(sampleRate, 8) {
-    initializeBands();
+        : sampleRate(sampleRate), bufferSize(bufferSize), bandCount(DEFAULT_BAND_COUNT), frameCounter(0), 
+            GTFilterBank(sampleRate, DEFAULT_BAND_COUNT) {
+        initializeBands();
     // Initialize runtime vectors (don't override the parameter vectors set in initializeBands)
     filterOutputs.resize(bandCount, 0.0f);
     bandGains.resize(bandCount, 1.0f);
@@ -241,13 +241,42 @@ std::vector<float> RhythmInterpreter::getFilterOutputs() const {
 }
 
 void RhythmInterpreter::initializeBands() {
-    // Use proper frequency bands for audio processing (Hz)
-    bandFrequencies = {0.125f, 0.25f, 0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f};
-    bandBandwidths = {0.25f, 0.25f, 0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f};
-    bandScalings = {1.0f, 1.0f, 1.0f, 1.0f, 1.2f, 2.0f, 2.5f, 3.0f};
-    bandLimits = {2.0f, 2.0f, 1.8f, 1.6f, 1.4f, 1.2f, 1.0f, 0.8f}; // Increased limits for more dynamic range
-    // Lower Q-values for faster response and broader frequency capture
-    qValues = {4.0f, 4.0f, 3.5f, 3.0f, 2.5f, 2.0f, 1.8f, 1.5f}; // Much lower Q for faster envelope following
+    // Initialize bands with logarithmic spacing between 0.125 Hz and 16 Hz
+    initializeBandsLogarithmic(0.125f, 16.0f, bandCount);
+}
+void RhythmInterpreter::initializeBandsLogarithmic(float minFreq, float maxFreq, size_t count) {
+    bandCount = std::max<size_t>(1, count);
+    bandFrequencies.resize(bandCount);
+    bandBandwidths.resize(bandCount);
+    bandScalings.resize(bandCount);
+    bandLimits.resize(bandCount);
+    qValues.resize(bandCount);
+
+    // Logarithmic spacing across [minFreq, maxFreq]
+    float ratio = maxFreq / minFreq;
+    for (size_t i = 0; i < bandCount; ++i) {
+        float t = (bandCount == 1) ? 0.0f : static_cast<float>(i) / static_cast<float>(bandCount - 1);
+        float f = minFreq * std::pow(ratio, t);
+        bandFrequencies[i] = f;
+        // Bandwidth proportional to frequency (moderate band width)
+        bandBandwidths[i] = std::max(0.001f, f * 0.5f);
+        bandScalings[i] = 1.0f;
+        bandLimits[i] = 1.5f; // uniform dynamic range cap
+        qValues[i] = 2.0f;    // moderate Q for responsive envelope
+    }
+
+    // Resize runtime/user control vectors
+    bandGains.assign(bandCount, 1.0f);
+    filterGains.assign(bandCount, 1.0f);
+    filterOutputs.assign(bandCount, 0.0f);
+    stuckCounters.assign(bandCount, 0);
+    defaultFrequencies = bandFrequencies;
+}
+
+void RhythmInterpreter::setBandCount(size_t count) {
+    // Reinitialize rhythmic bands and dependent state with logarithmic spacing
+    initializeBandsLogarithmic(0.125f, 16.0f, count);
+    // Note: GammaToneFilterBank kept as-is since current pipeline uses time-domain bandpassFilter.
 }
 
 // Removed setSensitivity and getSensitivity methods - direct access to bandGains only

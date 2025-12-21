@@ -1934,6 +1934,13 @@ void GUI::createConnectionMatrixPanel() {
         bpmLabel = nullptr;
         autodetectTempoToggle = nullptr;
         detectedTempoLabel = nullptr;
+        // Learning controls
+        learningToggle = nullptr;
+        learningRateSlider = nullptr;
+        learningRateLabel = nullptr;
+        weightDecaySlider = nullptr;
+        weightDecayLabel = nullptr;
+        resetRhythmWeightsButton = nullptr;
         // BeatRoot controls
         beatRootToggle = nullptr;
         beatRootStatusLabel = nullptr;
@@ -1954,7 +1961,7 @@ void GUI::createConnectionMatrixPanel() {
     }
     
     auto rhythmInterpreter = network->getRhythmInterpreter();
-    size_t numFilters = 8; // Minimal RhythmInterpreter uses 8 frequency bands
+    size_t numFilters = rhythmInterpreter->getBandCount();
     size_t numNeurons = network->getNeuronCount();
     
     // Create panel even if no neurons yet - it will show as empty but ready
@@ -2123,21 +2130,22 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixPanel->add(connectAllButton);
     
     // Rhythmogram frequency bands (Todd, 1994) - Logarithmic distribution for rhythmic hierarchy
-    const std::vector<std::string> filterNames = {
-        "Phrase (0.125Hz)", "Whole (0.25Hz)", "Half (0.5Hz)", "Quarter (1Hz)",
-        "Eighth (2Hz)", "16th (4Hz)", "32nd (8Hz)", "Onset (16Hz)"
-    };
-    
-    const std::vector<std::string> filterTooltips = {
-        "Phrase Structure: 8-beat phrases, 2-measure groups, long-term rhythmic patterns",
-        "Whole Note Level: 4-beat units, measure-level rhythmic structure", 
-        "Half Note Level: 2-beat units, strong-weak beat patterns",
-        "Quarter Note Level: Basic beat, fundamental pulse, main tempo",
-        "Eighth Note Level: Sub-beat subdivisions, syncopation, groove",
-        "Sixteenth Note Level: Fast subdivisions, hi-hat patterns, shuffle",
-        "Thirty-Second Note Level: Very fast subdivisions, rolls, ornaments", 
-        "Onset Detection: Micro-timing, attack transients, rhythmic precision"
-    };
+    // Dynamic band names and tooltips
+    std::vector<std::string> filterNames(numFilters);
+    std::vector<std::string> filterTooltips(numFilters);
+    auto freqs = rhythmInterpreter->getBandFrequencies();
+    for (size_t i = 0; i < numFilters; ++i) {
+        float f = (i < freqs.size()) ? freqs[i] : 0.0f;
+        // Format frequency display
+        std::ostringstream fs;
+        if (f < 1.0f) {
+            fs << std::fixed << std::setprecision(3) << f;
+        } else {
+            fs << std::fixed << std::setprecision(1) << f;
+        }
+        filterNames[i] = "Band " + std::to_string(i+1) + " (" + fs.str() + "Hz)";
+        filterTooltips[i] = "Rhythm band " + std::to_string(i+1) + " at ~" + fs.str() + " Hz";
+    }
     
     filterLabels.clear();
     filterGainSliders.clear();
@@ -2212,6 +2220,7 @@ void GUI::createConnectionMatrixPanel() {
     
     // Neuron column labels (horizontal) - only if we have neurons
     neuronColumnLabels.clear();
+    neuronBandCombos.clear();
     if (numNeurons > 0) {
         for (size_t n = 0; n < numNeurons; ++n) {
             auto label = tgui::Label::create("N" + std::to_string(n + 1));
@@ -2220,6 +2229,36 @@ void GUI::createConnectionMatrixPanel() {
             label->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
             connectionMatrixPanel->add(label);
             neuronColumnLabels.push_back(label);
+
+            // Add band mapping ComboBox under the neuron label
+            auto combo = tgui::ComboBox::create();
+            combo->setPosition(150 + n * 80, 60);
+            combo->setSize(60, 18);
+            combo->setExpandDirection(tgui::ComboBox::ExpandDirection::Down);
+            combo->setTextSize(10);
+            combo->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+            combo->getRenderer()->setTextColor(tgui::Color(220, 220, 220));
+            combo->getRenderer()->setBorderColor(tgui::Color(80, 80, 80));
+            combo->getRenderer()->setBorders(1);
+
+            // Populate with band names
+            const std::vector<std::string> bandNames = {
+                "Phrase", "Whole", "Half", "Quarter", "Eighth", "16th", "32nd", "Onset"
+            };
+            for (size_t i = 0; i < bandNames.size(); ++i) {
+                combo->addItem(bandNames[i], std::to_string(i));
+            }
+            // Initialize selection to current mapping
+            size_t currentMap = network->getNeuronBandMapping(n);
+            combo->setSelectedItemById(std::to_string(currentMap));
+            // On change: update mapping in network
+            combo->onItemSelect([this, n](const tgui::String& id) {
+                if (!network) return;
+                size_t bandIndex = static_cast<size_t>(std::stoul(id.toStdString()));
+                network->setNeuronBandMapping(n, bandIndex);
+            });
+            connectionMatrixPanel->add(combo);
+            neuronBandCombos.push_back(combo);
         }
     }
     
@@ -2412,6 +2451,36 @@ void GUI::createConnectionMatrixPanel() {
     rhythmogramScaleLabel->setText(initStream.str());
     
     connectionMatrixPanel->add(rhythmogramScaleLabel);
+
+    // Channel count control label
+    auto channelsLabel = tgui::Label::create("Channels");
+    channelsLabel->setPosition(scaleSliderX - 10, 15);
+    channelsLabel->setTextSize(10);
+    channelsLabel->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+    connectionMatrixPanel->add(channelsLabel);
+
+    // Channels ComboBox (4-16)
+    auto channelsCombo = tgui::ComboBox::create();
+    channelsCombo->setPosition(scaleSliderX + 5, 15);
+    channelsCombo->setSize(60, 18);
+    channelsCombo->setTextSize(10);
+    channelsCombo->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+    channelsCombo->getRenderer()->setTextColor(tgui::Color(220, 220, 220));
+    channelsCombo->getRenderer()->setBorderColor(tgui::Color(80, 80, 80));
+    channelsCombo->getRenderer()->setBorders(1);
+    const std::vector<int> channelOptions = {4, 6, 8, 10, 12, 16};
+    for (int opt : channelOptions) {
+        channelsCombo->addItem(std::to_string(opt), std::to_string(opt));
+    }
+    channelsCombo->setSelectedItemById(std::to_string(static_cast<int>(numFilters)));
+    channelsCombo->onItemSelect([this](const tgui::String& id){
+        if (!network || !network->getRhythmInterpreter()) return;
+        size_t newCount = static_cast<size_t>(std::stoul(id.toStdString()));
+        network->getRhythmInterpreter()->setBandCount(newCount);
+        // Recreate matrix panel to reflect new channel count
+        createConnectionMatrixPanel();
+    });
+    connectionMatrixPanel->add(channelsCombo);
     
     // BPM control label - make more prominent with better spacing
     auto bpmLabelTitle = tgui::Label::create("BPM");
@@ -2529,6 +2598,175 @@ void GUI::createConnectionMatrixPanel() {
     detectedTempoLabel->getRenderer()->setBorderColor(tgui::Color(50, 50, 100));
     detectedTempoLabel->getRenderer()->setBorders(1);
     connectionMatrixPanel->add(detectedTempoLabel);
+
+    // =============================================================================
+    // Learning Controls
+    // =============================================================================
+    // Section label
+    auto learningSectionLabel = tgui::Label::create("LEARNING");
+    learningSectionLabel->setPosition(scaleSliderX - 55, 415);
+    learningSectionLabel->setTextSize(10);
+    learningSectionLabel->getRenderer()->setTextColor(tgui::Color(200, 150, 200));
+    connectionMatrixPanel->add(learningSectionLabel);
+
+    // Toggle button
+    bool learningInitiallyEnabled = network && network->isLearningEnabled();
+    learningToggle = tgui::Button::create(learningInitiallyEnabled ? "LEARN ON" : "LEARN OFF");
+    learningToggle->setPosition(scaleSliderX - 60, 440);
+    learningToggle->setSize(100, 30);
+    learningToggle->getRenderer()->setBackgroundColor(learningInitiallyEnabled ? tgui::Color(100, 80, 140) : tgui::Color(60, 60, 60));
+    learningToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
+    learningToggle->getRenderer()->setBorderColor(tgui::Color(120, 90, 160));
+    learningToggle->getRenderer()->setBorders(2);
+    learningToggle->onPress([this]() {
+        if (!network) return;
+        bool enabled = network->isLearningEnabled();
+        network->setLearningEnabled(!enabled);
+        bool nowEnabled = network->isLearningEnabled();
+        learningToggle->setText(nowEnabled ? "LEARN ON" : "LEARN OFF");
+        learningToggle->getRenderer()->setBackgroundColor(nowEnabled ? tgui::Color(100, 80, 140) : tgui::Color(60, 60, 60));
+    });
+    connectionMatrixPanel->add(learningToggle);
+
+    // Learning rate slider (0.0 - 0.1)
+    auto lrLabelTitle = tgui::Label::create("Rate");
+    lrLabelTitle->setPosition(scaleSliderX - 60, 480);
+    lrLabelTitle->setTextSize(10);
+    lrLabelTitle->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+    connectionMatrixPanel->add(lrLabelTitle);
+
+    learningRateSlider = tgui::Slider::create(0.0f, 0.1f);
+    learningRateSlider->setValue(network ? network->getLearningRate() : 0.02f);
+    learningRateSlider->setStep(0.001f);
+    learningRateSlider->setPosition(scaleSliderX - 60, 500);
+    learningRateSlider->setSize(100, 18);
+    learningRateSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
+    learningRateSlider->getRenderer()->setThumbColor(tgui::Color(180, 130, 200));
+    learningRateSlider->onValueChange([this](float value) {
+        if (!network) return;
+        network->setLearningRate(value);
+        std::ostringstream s;
+        s << std::fixed << std::setprecision(3) << value;
+        if (learningRateLabel) learningRateLabel->setText(s.str());
+    });
+    connectionMatrixPanel->add(learningRateSlider);
+
+    learningRateLabel = tgui::Label::create("0.020");
+    learningRateLabel->setPosition(scaleSliderX + 45, 497);
+    learningRateLabel->setSize(50, 22);
+    learningRateLabel->setTextSize(10);
+    learningRateLabel->getRenderer()->setTextColor(tgui::Color(230, 200, 255));
+    learningRateLabel->getRenderer()->setBackgroundColor(tgui::Color(25, 15, 25));
+    learningRateLabel->getRenderer()->setBorderColor(tgui::Color(100, 80, 140));
+    learningRateLabel->getRenderer()->setBorders(1);
+    {
+        float lr = network ? network->getLearningRate() : 0.02f;
+        std::ostringstream s; s << std::fixed << std::setprecision(3) << lr;
+        learningRateLabel->setText(s.str());
+    }
+    connectionMatrixPanel->add(learningRateLabel);
+
+    // Weight decay slider (0.0 - 0.01)
+    auto wdLabelTitle = tgui::Label::create("Decay");
+    wdLabelTitle->setPosition(scaleSliderX - 60, 525);
+    wdLabelTitle->setTextSize(10);
+    wdLabelTitle->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+    connectionMatrixPanel->add(wdLabelTitle);
+
+    weightDecaySlider = tgui::Slider::create(0.0f, 0.01f);
+    weightDecaySlider->setValue(network ? network->getWeightDecay() : 0.0005f);
+    weightDecaySlider->setStep(0.0001f);
+    weightDecaySlider->setPosition(scaleSliderX - 60, 545);
+    weightDecaySlider->setSize(100, 18);
+    weightDecaySlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
+    weightDecaySlider->getRenderer()->setThumbColor(tgui::Color(180, 130, 200));
+    weightDecaySlider->onValueChange([this](float value) {
+        if (!network) return;
+        network->setWeightDecay(value);
+        std::ostringstream s;
+        s << std::fixed << std::setprecision(4) << value;
+        if (weightDecayLabel) weightDecayLabel->setText(s.str());
+    });
+    connectionMatrixPanel->add(weightDecaySlider);
+
+    weightDecayLabel = tgui::Label::create("0.0005");
+    weightDecayLabel->setPosition(scaleSliderX + 45, 542);
+    weightDecayLabel->setSize(50, 22);
+    weightDecayLabel->setTextSize(10);
+    weightDecayLabel->getRenderer()->setTextColor(tgui::Color(230, 200, 255));
+    weightDecayLabel->getRenderer()->setBackgroundColor(tgui::Color(25, 15, 25));
+    weightDecayLabel->getRenderer()->setBorderColor(tgui::Color(100, 80, 140));
+    weightDecayLabel->getRenderer()->setBorders(1);
+    {
+        float wd = network ? network->getWeightDecay() : 0.0005f;
+        std::ostringstream s; s << std::fixed << std::setprecision(4) << wd;
+        weightDecayLabel->setText(s.str());
+    }
+    connectionMatrixPanel->add(weightDecayLabel);
+
+    // Reset weights button
+    resetRhythmWeightsButton = tgui::Button::create("Reset Weights");
+    resetRhythmWeightsButton->setPosition(scaleSliderX - 60, 570);
+    resetRhythmWeightsButton->setSize(100, 26);
+    resetRhythmWeightsButton->getRenderer()->setBackgroundColor(tgui::Color(80, 60, 60));
+    resetRhythmWeightsButton->getRenderer()->setBorderColor(tgui::Color(140, 100, 100));
+    resetRhythmWeightsButton->getRenderer()->setTextColor(tgui::Color::White);
+    resetRhythmWeightsButton->onPress([this]() {
+        if (!network) return;
+        network->resetRhythmWeights(0.0f);
+        // Force matrix UI refresh so sliders reflect zeros
+        forceMatrixUpdate();
+    });
+    connectionMatrixPanel->add(resetRhythmWeightsButton);
+
+    // =========================================================================
+    // Input Audio Playback Controls
+    // =========================================================================
+    audioControlsLabel = tgui::Label::create("AUDIO");
+    audioControlsLabel->setPosition(bpmSliderX - 45, 605);
+    audioControlsLabel->setTextSize(10);
+    audioControlsLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+    connectionMatrixPanel->add(audioControlsLabel);
+
+    // Play
+    inputPlayButton = tgui::Button::create("Play");
+    inputPlayButton->setPosition(bpmSliderX - 70, 625);
+    inputPlayButton->setSize(50, 24);
+    inputPlayButton->getRenderer()->setBackgroundColor(tgui::Color(60, 100, 60));
+    inputPlayButton->getRenderer()->setTextColor(tgui::Color::White);
+    inputPlayButton->onPress([this]() {
+        if (!audioManager) return;
+        if (!audioManager->hasInputFile()) {
+            openInputFileDialog();
+        } else {
+            audioManager->startInputPlayback();
+        }
+    });
+    connectionMatrixPanel->add(inputPlayButton);
+
+    // Pause
+    inputPauseButton = tgui::Button::create("Pause");
+    inputPauseButton->setPosition(bpmSliderX - 15, 625);
+    inputPauseButton->setSize(60, 24);
+    inputPauseButton->getRenderer()->setBackgroundColor(tgui::Color(100, 100, 60));
+    inputPauseButton->getRenderer()->setTextColor(tgui::Color::White);
+    inputPauseButton->onPress([this]() {
+        if (!audioManager) return;
+        audioManager->pauseInputPlayback();
+    });
+    connectionMatrixPanel->add(inputPauseButton);
+
+    // Stop
+    inputStopButton = tgui::Button::create("Stop");
+    inputStopButton->setPosition(bpmSliderX + 55, 625);
+    inputStopButton->setSize(50, 24);
+    inputStopButton->getRenderer()->setBackgroundColor(tgui::Color(120, 60, 60));
+    inputStopButton->getRenderer()->setTextColor(tgui::Color::White);
+    inputStopButton->onPress([this]() {
+        if (!audioManager) return;
+        audioManager->stopInputPlayback();
+    });
+    connectionMatrixPanel->add(inputStopButton);
     
     // ============================================================================
     // BeatRoot Controls - DISABLED BY DEFAULT
@@ -2558,7 +2796,7 @@ void GUI::updateConnectionMatrix() {
     isUpdatingMatrix = true; // Prevent recursive calls
     
     auto rhythmInterpreter = network->getRhythmInterpreter();
-    size_t numFilters = 8; // FFT-based gamma-tone filter bank uses 8 frequency bands
+    size_t numFilters = rhythmInterpreter->getBandCount();
     size_t numNeurons = network->getNeuronCount();
     
     // Update title
@@ -2612,10 +2850,9 @@ void GUI::updateConnectionMatrix() {
         
         // Debug: Log rhythmogram output levels occasionally  
         if (++guiDebugCounter % 50 == 0 && f < 8) { // Show all 8 rhythmogram bands
-            const std::vector<std::string> bandNames = {
-                "Phrase(0.125Hz)", "Whole(0.25Hz)", "Half(0.5Hz)", "Quarter(1Hz)", "Eighth(2Hz)", "16th(4Hz)", "32nd(8Hz)", "Micro(16Hz)"
-            };
-            std::string bandName = (f < bandNames.size()) ? bandNames[f] : "Band" + std::to_string(f);
+            std::ostringstream name;
+            name << "Band " << (f+1);
+            std::string bandName = name.str();
             DEBUG_PRINT_STREAM("🎛️  Rhythmogram " << f << " (" << bandName << ") level: " << filterOutputs[f] 
                       << " (clamped: " << outputLevel << ")");
         }
@@ -2793,45 +3030,18 @@ void GUI::updateFrequencyLabels() {
     if (!network || !network->getRhythmInterpreter()) {
         return;
     }
-    
-    // Get current BPM from slider and calculate scaling factor
     auto rhythmInterpreter = network->getRhythmInterpreter();
-    float currentBPM = bpmSlider ? bpmSlider->getValue() : 120.0f;
-    float tempoScale = currentBPM / 120.0f; // Scale relative to 120 BPM baseline
-    
-    // Update spectral display frequency labels too
-    if (spectralDisplay) {
-        spectralDisplay->setManualBPM(currentBPM);
+    auto freqs = rhythmInterpreter->getBandFrequencies();
+    // Update spectral display BPM indicator (manual)
+    if (spectralDisplay && bpmSlider) {
+        spectralDisplay->setManualBPM(bpmSlider->getValue());
     }
-    
-    // Base frequencies from Todd (1994) rhythmogram
-    const std::vector<float> baseFrequencies = {
-        0.125f, 0.25f, 0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f
-    };
-    
-    const std::vector<std::string> filterNames = {
-        "Phrase", "Whole", "Half", "Quarter", "Eighth", "16th", "32nd", "Onset"
-    };
-    
-    // Update each label with scaled frequency and update RhythmInterpreter filter frequencies
-    for (size_t i = 0; i < filterLabels.size() && i < baseFrequencies.size(); ++i) {
-        float scaledFrequency = baseFrequencies[i] * tempoScale;
-        
-        // Update the actual filter frequency in RhythmInterpreter
-        rhythmInterpreter->setBandFrequency(i, scaledFrequency);
-        
-        // Format frequency display (1 decimal place for small values, integer for large)
-        std::string freqText;
-        if (scaledFrequency < 1.0f) {
-            freqText = std::to_string(scaledFrequency);
-            // Remove trailing zeros
-            freqText = freqText.substr(0, freqText.find_last_not_of('0') + 1);
-            if (freqText.back() == '.') freqText.pop_back();
-        } else {
-            freqText = std::to_string(static_cast<int>(scaledFrequency + 0.5f));
-        }
-        
-        std::string labelText = filterNames[i] + " (" + freqText + "Hz)";
+    for (size_t i = 0; i < filterLabels.size(); ++i) {
+        float f = (i < freqs.size()) ? freqs[i] : 0.0f;
+        std::ostringstream fs;
+        if (f < 1.0f) fs << std::fixed << std::setprecision(3) << f;
+        else fs << std::fixed << std::setprecision(1) << f;
+        std::string labelText = std::string("Band ") + std::to_string(i+1) + " (" + fs.str() + "Hz)";
         filterLabels[i]->setText(labelText);
     }
 }

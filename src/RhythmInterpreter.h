@@ -88,6 +88,13 @@ public:
      * @return Vector of 8 filter output values (0.0-1.0 range)
      */
     std::vector<float> getFilterOutputs() const;
+
+    // ========================= BAND COUNT CONTROL =========================
+    /**
+     * @brief Set number of rhythmogram bands with logarithmic frequency spacing
+     * @param count Number of bands (e.g., 4-16)
+     */
+    void setBandCount(size_t count);
     
     // ========================= FILTER GAIN CONTROLS =========================
     
@@ -207,6 +214,7 @@ private:
      * @brief Initialize all band parameters to default values
      */
     void initializeBands();
+    void initializeBandsLogarithmic(float minFreq, float maxFreq, size_t count);
     
     // Removed updateAdaptiveSensitivity and applyContrastEnhancement methods
     

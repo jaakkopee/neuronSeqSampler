@@ -84,12 +84,27 @@ private:
     std::vector<std::vector<tgui::Label::Ptr>> matrixGainDisplays;   // [filter][neuron] - Connection gain value displays
     std::vector<tgui::Label::Ptr> filterLabels; // Labels for filter bands
     std::vector<tgui::Label::Ptr> neuronColumnLabels; // Labels for neuron columns
+    std::vector<tgui::ComboBox::Ptr> neuronBandCombos; // Mapping selector per neuron
     tgui::Slider::Ptr rhythmogramScaleSlider; // Vertical slider for rhythmogram scale control
     tgui::Label::Ptr rhythmogramScaleLabel; // Label showing current rhythmogram scale value
     tgui::Slider::Ptr bpmSlider; // Vertical slider for BPM control (tempo-relative frequencies)
     tgui::Label::Ptr bpmLabel; // Label showing current BPM value
     tgui::Button::Ptr autodetectTempoToggle; // Toggle for automatic tempo detection
     tgui::Label::Ptr detectedTempoLabel; // Label showing detected tempo when auto-tempo is enabled
+
+    // Learning controls
+    tgui::Button::Ptr learningToggle; // Enable/disable learning
+    tgui::Slider::Ptr learningRateSlider; // Learning rate control
+    tgui::Label::Ptr learningRateLabel; // Display current learning rate
+    tgui::Slider::Ptr weightDecaySlider; // Weight decay control
+    tgui::Label::Ptr weightDecayLabel; // Display current decay
+    tgui::Button::Ptr resetRhythmWeightsButton; // Reset rhythmogram mapping weights
+
+    // Input audio playback controls
+    tgui::Label::Ptr audioControlsLabel;
+    tgui::Button::Ptr inputPlayButton;
+    tgui::Button::Ptr inputPauseButton;
+    tgui::Button::Ptr inputStopButton;
     
     // BeatRoot controls
     tgui::Button::Ptr beatRootToggle; // Toggle for BeatRoot system

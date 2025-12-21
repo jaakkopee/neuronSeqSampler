@@ -237,6 +237,10 @@ public:
         // Enable adaptive filter mode by default for high-frequency filter processing
         audioManager.setAdaptiveFilterMode(true);
         ESSENTIAL_PRINT("🎛️ Adaptive Filter Mode ENABLED by default for high-frequency processing");
+        // Enable learning to adapt rhythm connections towards rhythmogram outputs
+        network.setLearningEnabled(true);
+        network.setLearningRate(0.02f);
+        ESSENTIAL_PRINT("🧠 Learning enabled: weights adapt to rhythmogram targets");
         
         // Start with an empty network - users can add neurons via the menu
         

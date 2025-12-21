@@ -70,6 +70,7 @@ public:
     // External input soundfile API
     bool loadInputFile(const std::string& fullPath);
     void startInputPlayback();
+    void pauseInputPlayback();
     void stopInputPlayback();
     bool hasInputFile() const { return inputBuffer != nullptr; }
     bool isInputStreaming() const { return inputStreaming; }

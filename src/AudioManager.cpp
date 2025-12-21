@@ -4,6 +4,7 @@
 #include "Debug.h"
 #include <iostream>
 #include <SFML/System/Time.hpp>
+#include <SFML/Audio.hpp>
 #include <cstdint>
 
 AudioManager::AudioManager(const std::string& samplesDir, bool loadDefaults) 
@@ -284,11 +285,21 @@ void AudioManager::startInputPlayback() {
     }
 }
 
+void AudioManager::pauseInputPlayback() {
+    inputStreaming = false;
+    if (inputSound) {
+        inputSound->pause();
+        std::cout << "⏸️ Paused input file playback" << std::endl;
+    }
+}
+
 void AudioManager::stopInputPlayback() {
     inputStreaming = false;
     if (inputSound) {
         inputSound->stop();
     }
+    inputCursor = 0;
+    std::cout << "⏹️ Stopped input file playback" << std::endl;
 }
 
 std::vector<float> AudioManager::getNextInputChunk(std::size_t chunkSize) {
@@ -302,6 +313,14 @@ std::vector<float> AudioManager::getNextInputChunk(std::size_t chunkSize) {
         float sample = inputSamples[inputCursor];
         chunk.push_back(sample);
         inputCursor = (inputCursor + 1) % inputSamples.size();
+    }
+
+    // Keep the input file audible: if playback stopped, restart from beginning
+    if (inputSound) {
+        if (inputSound->getStatus() != sf::SoundSource::Status::Playing) {
+            inputSound->setPlayingOffset(sf::Time::Zero);
+            inputSound->play();
+        }
     }
     return chunk;
 }

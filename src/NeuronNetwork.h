@@ -21,6 +21,17 @@ private:
     
     Quantizer* quantizer; // Quantization system for musical timing
 
+    // Learning state
+    bool learningEnabled = false;
+    float learningRate = 0.01f;
+    float weightDecay = 0.0005f; // small decay to prevent runaway growth
+    float maxWeight = 1.0f;      // clamp weights for stability
+    
+    void ensureMatrixSize(size_t bandCount, size_t neuronCount);
+    // Per-neuron rhythmogram band mapping (user configurable)
+    std::vector<size_t> neuronBandMap; // size = neurons, values in [0, bandCount)
+    size_t assignedBandForNeuron(size_t neuronIndex) const;
+
 public:
     NeuronNetwork();
     ~NeuronNetwork();
@@ -58,6 +69,20 @@ public:
     float getRhythmConnection(size_t filterIndex, size_t neuronIndex) const;
     void clearRhythmConnection(size_t filterIndex, size_t neuronIndex);
     void applyRhythmConnections(); // Apply rhythm filter outputs to connected neurons
+
+    // Learning controls
+    void setLearningEnabled(bool enabled) { learningEnabled = enabled; }
+    bool isLearningEnabled() const { return learningEnabled; }
+    void setLearningRate(float rate) { learningRate = std::max(0.0f, rate); }
+    float getLearningRate() const { return learningRate; }
+    void setWeightDecay(float decay) { weightDecay = std::max(0.0f, decay); }
+    float getWeightDecay() const { return weightDecay; }
+    void resetRhythmWeights(float value = 0.0f);
+    void learnFromRhythm();
+
+    // Mapping controls
+    void setNeuronBandMapping(size_t neuronIndex, size_t bandIndex);
+    size_t getNeuronBandMapping(size_t neuronIndex) const;
     
     // Getters
     const std::vector<std::unique_ptr<Neuron>>& getNeurons() const { return neurons; }
