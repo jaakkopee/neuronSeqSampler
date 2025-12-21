@@ -2346,7 +2346,7 @@ void GUI::createConnectionMatrixPanel() {
             tooltip->setTextSize(10);
             toggleButton->setToolTip(tooltip);
             
-            // Decouple initial UI state from current weights: always start disconnected
+            // Read current network mapping weight to initialize UI state
             float currentWeight = network->getRhythmConnection(f, c);
             
             // Toggle connection callback
@@ -2401,20 +2401,22 @@ void GUI::createConnectionMatrixPanel() {
             // Gain change callback
             gainSlider->onValueChange([this, f, c](float value) {
                 if (!network) return;
-                
+
                 float weight = value / 100.0f; // Convert from 0-100 to 0-1 range
-                
+
                 // Preserve sign if it was negative
                 float currentWeight = network->getRhythmConnection(f, c);
                 if (currentWeight < 0) {
                     weight = -weight;
                 }
-                
+
                 // Update the rhythm connection weight
                 network->setRhythmConnection(f, c, weight);
-                
-                // Update connection gain display
-                matrixGainDisplays[f][c]->setText(std::to_string(static_cast<int>(value)));
+
+                // Update connection gain display (guard indices until rows are registered)
+                if (f < matrixGainDisplays.size() && c < matrixGainDisplays[f].size() && matrixGainDisplays[f][c]) {
+                    matrixGainDisplays[f][c]->setText(std::to_string(static_cast<int>(value)));
+                }
             });
             
             connectionMatrixPanel->add(gainSlider);
@@ -2433,6 +2435,25 @@ void GUI::createConnectionMatrixPanel() {
             
             connectionMatrixPanel->add(connectionGainDisplay);
             displayRowVec.push_back(connectionGainDisplay);
+
+            // Initialize UI from current network state (preserve mapping on rebuild)
+            if (std::abs(currentWeight) > 0.001f) {
+                // Connected: show filled dot, green background, visible slider and display
+                toggleButton->setText("●");
+                toggleButton->getRenderer()->setBackgroundColor(tgui::Color(60, 120, 60));
+                toggleButton->getRenderer()->setTextColor(tgui::Color::White);
+                gainSlider->setValue(std::abs(currentWeight) * 100.0f);
+                gainSlider->setVisible(true);
+                connectionGainDisplay->setText(std::to_string(static_cast<int>(std::abs(currentWeight) * 100)));
+                connectionGainDisplay->setVisible(true);
+            } else {
+                // Disconnected: ensure default appearance and hidden controls
+                toggleButton->setText("○");
+                toggleButton->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
+                toggleButton->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
+                gainSlider->setVisible(false);
+                connectionGainDisplay->setVisible(false);
+            }
         }
         
             matrixToggleButtons.push_back(buttonRow);
