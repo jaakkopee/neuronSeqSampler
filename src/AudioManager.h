@@ -30,6 +30,13 @@ private:
     // Storage for filtered sound buffers (needed to keep them alive during playback)
     std::unordered_map<int, std::unique_ptr<sf::SoundBuffer>> filteredBuffers;
 
+    // External input soundfile support
+    std::unique_ptr<sf::SoundBuffer> inputBuffer;
+    std::unique_ptr<sf::Sound> inputSound;
+    std::vector<float> inputSamples;
+    std::size_t inputCursor = 0;
+    bool inputStreaming = false;
+
 public:
     AudioManager(const std::string& samplesDir = "samples/girliepop/", bool loadDefaults = false);
     ~AudioManager() = default;
@@ -59,4 +66,12 @@ public:
     void startInternalRecording();
     void stopInternalRecording();
     bool isRecordingOutput() const;
+
+    // External input soundfile API
+    bool loadInputFile(const std::string& fullPath);
+    void startInputPlayback();
+    void stopInputPlayback();
+    bool hasInputFile() const { return inputBuffer != nullptr; }
+    bool isInputStreaming() const { return inputStreaming; }
+    std::vector<float> getNextInputChunk(std::size_t chunkSize);
 };

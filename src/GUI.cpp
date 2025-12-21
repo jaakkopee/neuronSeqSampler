@@ -5,8 +5,8 @@
 #include "Visualizer.h"
 #include "Recorder.h"
 #include "RhythmInterpreter.h"
-#include "BeatRoot.h"
 #include "SimpleSpectralDisplay.h"
+#include <TGUI/Widgets/FileDialog.hpp>
 #include "Debug.h"
 #include <cmath>
 #include <iostream>
@@ -3066,6 +3066,25 @@ void GUI::loadFactoryDrumPattern() {
     } else {
         std::cout << "❌ Failed to load factory preset" << std::endl;
     }
+}
+
+void GUI::openInputFileDialog() {
+    if (!gui) return;
+    auto fileDialog = tgui::FileDialog::create("Select Audio File", "Open");
+    // Allow common audio formats
+    fileDialog->setFileTypeFilters({{tgui::String{"Audio (*.wav;*.flac;*.ogg)"}, {tgui::String{"*.wav"}, tgui::String{"*.flac"}, tgui::String{"*.ogg"}}}});
+    fileDialog->onFileSelect([this](const std::vector<tgui::Filesystem::Path>& paths){
+        if (!paths.empty() && audioManager) {
+            std::string path = paths[0].asString().toStdString();
+            if (audioManager->loadInputFile(path)) {
+                audioManager->startInputPlayback();
+                std::cout << "🎵 Input audio selected: " << path << std::endl;
+            } else {
+                std::cout << "❌ Failed to load input audio: " << path << std::endl;
+            }
+        }
+    });
+    gui->add(fileDialog);
 }
 
 void GUI::showPresetBrowser() {

@@ -233,17 +233,75 @@ void AudioManager::setFilterMode(bool enabled) {
 
 void AudioManager::setAdaptiveFilterMode(bool enabled) {
     if (enabled && rhythmInterpreter) {
-        // Set up adaptive filter callback to analyze audio with adaptation but play original
         setFilterCallback([this](const std::vector<float>& audioData) -> std::vector<float> {
-            // Process audio through rhythm interpreter with adaptive filtering for analysis
             rhythmInterpreter->processAudioFrame(audioData);
-            // Return original audio data for playback (not the filtered version)
-            return audioData; // Return original unfiltered audio
+            return audioData;
         });
         DEBUG_PRINT("🎛️  Adaptive Filter Mode ENABLED - analyzing through adaptive RhythmInterpreter, playing original audio");
     } else {
-        // Disable adaptive filter callback
         setFilterCallback(nullptr);
         DEBUG_PRINT("🎛️  Adaptive Filter Mode DISABLED - direct sample playback");
     }
+}
+
+// ========================= External Input Soundfile Support =========================
+
+bool AudioManager::loadInputFile(const std::string& fullPath) {
+    inputBuffer = std::make_unique<sf::SoundBuffer>();
+    if (!inputBuffer->loadFromFile(fullPath)) {
+        std::cerr << "Failed to load input audio file: " << fullPath << std::endl;
+        inputBuffer.reset();
+        inputSound.reset();
+        inputSamples.clear();
+        inputStreaming = false;
+        inputCursor = 0;
+        return false;
+    }
+
+    // Prepare playback sound
+    inputSound = std::make_unique<sf::Sound>(*inputBuffer);
+
+    // Convert samples to float for analysis
+    inputSamples.clear();
+    const std::int16_t* samples = reinterpret_cast<const std::int16_t*>(inputBuffer->getSamples());
+    std::size_t sampleCount = inputBuffer->getSampleCount();
+    inputSamples.reserve(sampleCount);
+    for (std::size_t i = 0; i < sampleCount; ++i) {
+        inputSamples.push_back(static_cast<float>(samples[i]) / 32767.0f);
+    }
+    inputCursor = 0;
+    std::cout << "🎵 Loaded input file for rhythmogram: " << fullPath << " (" << sampleCount << " samples)" << std::endl;
+    return true;
+}
+
+void AudioManager::startInputPlayback() {
+    if (inputSound) {
+        inputSound->stop();
+        inputSound->play();
+        inputStreaming = true;
+        inputCursor = 0;
+        std::cout << "▶️ Started input file playback" << std::endl;
+    }
+}
+
+void AudioManager::stopInputPlayback() {
+    inputStreaming = false;
+    if (inputSound) {
+        inputSound->stop();
+    }
+}
+
+std::vector<float> AudioManager::getNextInputChunk(std::size_t chunkSize) {
+    std::vector<float> chunk;
+    if (inputSamples.empty() || !inputStreaming) {
+        return chunk;
+    }
+    chunk.reserve(chunkSize);
+    for (std::size_t i = 0; i < chunkSize; ++i) {
+        // Loop over the buffer
+        float sample = inputSamples[inputCursor];
+        chunk.push_back(sample);
+        inputCursor = (inputCursor + 1) % inputSamples.size();
+    }
+    return chunk;
 }

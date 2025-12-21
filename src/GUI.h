@@ -186,6 +186,7 @@ public:
     
     // Matrix visibility control
     void toggleMatrixVisibility();
+    void openInputFileDialog();
     
     // Quantization control
     void toggleQuantizerVisibility();

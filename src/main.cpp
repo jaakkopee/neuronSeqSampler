@@ -451,6 +451,15 @@ public:
                     ESSENTIAL_PRINT("❌ Failed to load factory preset");
                 }
                 break;
+            case sf::Keyboard::Key::O:
+                // Open file dialog to select input audio for rhythmogram analysis
+#ifdef USE_TGUI
+                guiManager.openInputFileDialog();
+                ESSENTIAL_PRINT("📂 Opened audio file dialog for rhythmogram input");
+#else
+                ESSENTIAL_PRINT("📂 File dialog requires TGUI support");
+#endif
+                break;
             case sf::Keyboard::Key::Q:
                 // Toggle quantizer visibility
 #ifdef USE_TGUI
@@ -578,6 +587,14 @@ public:
 #ifdef USE_TGUI
     guiManager.update();
 #endif
+
+    // Stream external input file to rhythmogram when active
+    if (audioManager.isInputStreaming()) {
+        auto chunk = audioManager.getNextInputChunk(512);
+        if (!chunk.empty()) {
+            network.processAudioForRhythm(chunk);
+        }
+    }
     }
 
     void render() {
