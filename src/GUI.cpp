@@ -241,7 +241,7 @@ void GUI::createConnectionSliders() {
     
     // Remove old connection sliders and labels from the panel
     for (auto& slider : connectionSliders) {
-        slidersPanel->remove(slider);
+            slidersPanel->remove(slider);
     }
     for (auto& label : connectionLabels) {
         slidersPanel->remove(label);
@@ -2106,7 +2106,7 @@ void GUI::createConnectionMatrixPanel() {
                 
                 // Hide gain controls
                 if (f < matrixGainSliders.size() && c < matrixGainSliders[f].size()) {
-                    matrixGainSliders[f][c]->setValue(30.0f);
+                    matrixGainSliders[f][c]->setValue(0.30f);
                     matrixGainSliders[f][c]->setVisible(false);
                 }
                 if (f < matrixGainDisplays.size() && c < matrixGainDisplays[f].size()) {
@@ -2145,11 +2145,12 @@ void GUI::createConnectionMatrixPanel() {
                     
                     // Show and set gain controls
                     if (f < matrixGainSliders.size() && c < matrixGainSliders[f].size()) {
-                        matrixGainSliders[f][c]->setValue(randomGain * 100.0f);
+                        matrixGainSliders[f][c]->setValue(randomGain);
                         matrixGainSliders[f][c]->setVisible(true);
                     }
                     if (f < matrixGainDisplays.size() && c < matrixGainDisplays[f].size()) {
-                        matrixGainDisplays[f][c]->setText(std::to_string(static_cast<int>(randomGain * 100)));
+                        std::ostringstream oss; oss.setf(std::ios::fixed); oss.precision(2); oss << randomGain;
+                        matrixGainDisplays[f][c]->setText(oss.str());
                         matrixGainDisplays[f][c]->setVisible(true);
                     }
                 } else {
@@ -2163,7 +2164,7 @@ void GUI::createConnectionMatrixPanel() {
                     
                     // Hide gain controls
                     if (f < matrixGainSliders.size() && c < matrixGainSliders[f].size()) {
-                        matrixGainSliders[f][c]->setValue(30.0f);
+                        matrixGainSliders[f][c]->setValue(0.30f);
                         matrixGainSliders[f][c]->setVisible(false);
                     }
                     if (f < matrixGainDisplays.size() && c < matrixGainDisplays[f].size()) {
@@ -2198,11 +2199,12 @@ void GUI::createConnectionMatrixPanel() {
                 
                 // Show and set gain controls
                 if (f < matrixGainSliders.size() && c < matrixGainSliders[f].size()) {
-                    matrixGainSliders[f][c]->setValue(defaultGain * 100.0f);
+                    matrixGainSliders[f][c]->setValue(defaultGain);
                     matrixGainSliders[f][c]->setVisible(true);
                 }
                 if (f < matrixGainDisplays.size() && c < matrixGainDisplays[f].size()) {
-                    matrixGainDisplays[f][c]->setText(std::to_string(static_cast<int>(defaultGain * 100)));
+                    std::ostringstream oss; oss.setf(std::ios::fixed); oss.precision(2); oss << defaultGain;
+                    matrixGainDisplays[f][c]->setText(oss.str());
                     matrixGainDisplays[f][c]->setVisible(true);
                 }
             }
@@ -2364,7 +2366,7 @@ void GUI::createConnectionMatrixPanel() {
                     toggleButton->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
                     toggleButton->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
                     // Reset gain slider to default value and hide it
-                    matrixGainSliders[f][c]->setValue(30.0f); // Reset to default 30% (0.3 * 100)
+                    matrixGainSliders[f][c]->setValue(0.30f); // Reset to default 0.30
                     matrixGainSliders[f][c]->setVisible(false);
                     // Hide connection gain display
                     matrixGainDisplays[f][c]->setVisible(false);
@@ -2375,10 +2377,13 @@ void GUI::createConnectionMatrixPanel() {
                     toggleButton->setText("●");
                     toggleButton->getRenderer()->setBackgroundColor(tgui::Color(60, 120, 60));
                     toggleButton->getRenderer()->setTextColor(tgui::Color::White);
-                    matrixGainSliders[f][c]->setValue(defaultGain * 100.0f); // Convert to 0-100 range
+                    matrixGainSliders[f][c]->setValue(defaultGain);
                     matrixGainSliders[f][c]->setVisible(true);
                     // Show and update connection gain display
-                    matrixGainDisplays[f][c]->setText(std::to_string(static_cast<int>(defaultGain * 100)));
+                    {
+                        std::ostringstream oss; oss.setf(std::ios::fixed); oss.precision(2); oss << defaultGain;
+                        matrixGainDisplays[f][c]->setText(oss.str());
+                    }
                     matrixGainDisplays[f][c]->setVisible(true);
                 }
                 
@@ -2390,19 +2395,19 @@ void GUI::createConnectionMatrixPanel() {
             buttonRow.push_back(toggleButton);
             
             // Gain slider (only visible when connected)
-            auto gainSlider = tgui::Slider::create(0.0f, 100.0f);
+            auto gainSlider = tgui::Slider::create(0.0f, 1.0f);
             gainSlider->setPosition(175 + c * 80, 90 + displayRow * 60); // Right of toggle button, reversed position
             gainSlider->setSize(40, 16); // Longer slider for easier control
-            gainSlider->setStep(0.5f); // Denser step for finer adjustments
+            gainSlider->setStep(0.01f); // Finer adjustments
             // Initialize with a neutral default; do not reflect live weight
-            gainSlider->setValue(30.0f);
+            gainSlider->setValue(0.30f);
             gainSlider->setVisible(false);
             
             // Gain change callback
             gainSlider->onValueChange([this, f, c](float value) {
                 if (!network) return;
 
-                float weight = value / 100.0f; // Convert from 0-100 to 0-1 range
+                float weight = value; // Already in 0.00–1.00 range
 
                 // Preserve sign if it was negative
                 float currentWeight = network->getRhythmConnection(f, c);
@@ -2415,7 +2420,8 @@ void GUI::createConnectionMatrixPanel() {
 
                 // Update connection gain display (guard indices until rows are registered)
                 if (f < matrixGainDisplays.size() && c < matrixGainDisplays[f].size() && matrixGainDisplays[f][c]) {
-                    matrixGainDisplays[f][c]->setText(std::to_string(static_cast<int>(value)));
+                    std::ostringstream oss; oss.setf(std::ios::fixed); oss.precision(2); oss << value;
+                    matrixGainDisplays[f][c]->setText(oss.str());
                 }
             });
             
@@ -2442,9 +2448,12 @@ void GUI::createConnectionMatrixPanel() {
                 toggleButton->setText("●");
                 toggleButton->getRenderer()->setBackgroundColor(tgui::Color(60, 120, 60));
                 toggleButton->getRenderer()->setTextColor(tgui::Color::White);
-                gainSlider->setValue(std::abs(currentWeight) * 100.0f);
+                gainSlider->setValue(std::abs(currentWeight));
                 gainSlider->setVisible(true);
-                connectionGainDisplay->setText(std::to_string(static_cast<int>(std::abs(currentWeight) * 100)));
+                {
+                    std::ostringstream oss; oss.setf(std::ios::fixed); oss.precision(2); oss << std::abs(currentWeight);
+                    connectionGainDisplay->setText(oss.str());
+                }
                 connectionGainDisplay->setVisible(true);
             } else {
                 // Disconnected: ensure default appearance and hidden controls
@@ -2855,7 +2864,8 @@ void GUI::updateConnectionMatrix() {
             
             // Update connection gain display
             if (f < matrixGainDisplays.size() && c < matrixGainDisplays[f].size()) {
-                matrixGainDisplays[f][c]->setText(std::to_string(static_cast<int>(std::abs(weight) * 100)));
+                std::ostringstream oss; oss.setf(std::ios::fixed); oss.precision(2); oss << std::abs(weight);
+                matrixGainDisplays[f][c]->setText(oss.str());
                 matrixGainDisplays[f][c]->setVisible(uiConnected);
             }
         }
