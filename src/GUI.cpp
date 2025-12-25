@@ -2070,8 +2070,9 @@ void GUI::createConnectionMatrixPanel() {
     gui->add(connectionMatrixWindow, "ConnectionMatrixPanel");
 
     // Compute content size estimates (used for laying out controls inside the popover)
-    float contentWidth = std::max(350.0f, static_cast<float>(270 + numNeurons * 80 + 280)); // estimate
-    float contentHeight = std::max(550.0f, static_cast<float>(150 + numFilters * 60 + 150)); // estimate
+    // Layout: Band info (0-280) + Neuron matrix starts at 300, 70px per column
+    float contentWidth = std::max(800.0f, static_cast<float>(300 + numNeurons * 70 + 50));
+    float contentHeight = std::max(650.0f, static_cast<float>(200 + numFilters * 175 + 150)); // 175px row spacing
     
     // Set content size for scrollable panel now that we have computed the dimensions
     connectionMatrixPanel->setContentSize(tgui::Vector2f(contentWidth, contentHeight));
@@ -2085,9 +2086,9 @@ void GUI::createConnectionMatrixPanel() {
     matrixTitleLabel->getRenderer()->setTextColor(tgui::Color::White);
     connectionMatrixPanel->add(matrixTitleLabel);
     
-    // Add quick action buttons
+    // Add quick action buttons - First row
     auto clearAllButton = tgui::Button::create("Clear All");
-    clearAllButton->setPosition(5, matrixTitleLabel->getPosition().y + 20);
+    clearAllButton->setPosition(5, 30);
     clearAllButton->setSize(70, 20);
     clearAllButton->setTextSize(10);
     clearAllButton->getRenderer()->setBackgroundColor(tgui::Color(80, 40, 40));
@@ -2119,7 +2120,7 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixPanel->add(clearAllButton);
     
     auto randomizeButton = tgui::Button::create("Random");
-    randomizeButton->setPosition(80, matrixTitleLabel->getPosition().y + 20);
+    randomizeButton->setPosition(80, 30);
     randomizeButton->setSize(70, 20);
     randomizeButton->setTextSize(10);
     randomizeButton->getRenderer()->setBackgroundColor(tgui::Color(40, 80, 40));
@@ -2178,7 +2179,7 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixPanel->add(randomizeButton);
     
     auto connectAllButton = tgui::Button::create("Connect All");
-    connectAllButton->setPosition(155, matrixTitleLabel->getPosition().y + 20);
+    connectAllButton->setPosition(155, 30);
     connectAllButton->setSize(70, 20);
     connectAllButton->setTextSize(10);
     connectAllButton->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 80));
@@ -2213,23 +2214,23 @@ void GUI::createConnectionMatrixPanel() {
     });
     connectionMatrixPanel->add(connectAllButton);
     
-    // Onset Detection Controls
-    auto onsetLabel = tgui::Label::create("Onset Detection:");
-    onsetLabel->setPosition(235, matrixTitleLabel->getPosition().y + 20);
-    onsetLabel->setTextSize(10);
-    onsetLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
-    connectionMatrixPanel->add(onsetLabel);
+    // Onset Detection Controls - Second row
+    auto onsetSectionLabel = tgui::Label::create("─── Onset Detection ───");
+    onsetSectionLabel->setPosition(5, 60);
+    onsetSectionLabel->setTextSize(9);
+    onsetSectionLabel->getRenderer()->setTextColor(tgui::Color(150, 150, 150));
+    connectionMatrixPanel->add(onsetSectionLabel);
     
     // Onset threshold slider
     auto onsetThresholdLabel = tgui::Label::create("Threshold:");
-    onsetThresholdLabel->setPosition(340, matrixTitleLabel->getPosition().y + 20);
+    onsetThresholdLabel->setPosition(5, 80);
     onsetThresholdLabel->setTextSize(9);
     onsetThresholdLabel->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
     connectionMatrixPanel->add(onsetThresholdLabel);
     
     auto onsetThresholdSlider = tgui::Slider::create(0.0f, 0.5f);
-    onsetThresholdSlider->setPosition(405, matrixTitleLabel->getPosition().y + 22);
-    onsetThresholdSlider->setSize(60, 16);
+    onsetThresholdSlider->setPosition(70, 82);
+    onsetThresholdSlider->setSize(70, 16);
     onsetThresholdSlider->setStep(0.01f);
     onsetThresholdSlider->setValue(rhythmInterpreter->getOnsetThreshold());
     onsetThresholdSlider->onValueChange([this, rhythmInterpreter](float value) {
@@ -2248,21 +2249,21 @@ void GUI::createConnectionMatrixPanel() {
     std::ostringstream oss_thresh;
     oss_thresh << std::fixed << std::setprecision(2) << rhythmInterpreter->getOnsetThreshold();
     onsetThresholdDisplay->setText(oss_thresh.str());
-    onsetThresholdDisplay->setPosition(470, matrixTitleLabel->getPosition().y + 20);
+    onsetThresholdDisplay->setPosition(145, 80);
     onsetThresholdDisplay->setTextSize(9);
     onsetThresholdDisplay->getRenderer()->setTextColor(tgui::Color::White);
     connectionMatrixPanel->add(onsetThresholdDisplay, "OnsetThresholdDisplay");
     
     // Onset buffer size control
-    auto bufferSizeLabel = tgui::Label::create("Buffer:");
-    bufferSizeLabel->setPosition(510, matrixTitleLabel->getPosition().y + 20);
+    auto bufferSizeLabel = tgui::Label::create("Buffer Size:");
+    bufferSizeLabel->setPosition(190, 80);
     bufferSizeLabel->setTextSize(9);
     bufferSizeLabel->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
     connectionMatrixPanel->add(bufferSizeLabel);
     
     auto onsetBufferSlider = tgui::Slider::create(10.0f, 500.0f);
-    onsetBufferSlider->setPosition(555, matrixTitleLabel->getPosition().y + 22);
-    onsetBufferSlider->setSize(60, 16);
+    onsetBufferSlider->setPosition(270, 82);
+    onsetBufferSlider->setSize(70, 16);
     onsetBufferSlider->setStep(10.0f);
     onsetBufferSlider->setValue(static_cast<float>(rhythmInterpreter->getOnsetBufferSize()));
     onsetBufferSlider->onValueChange([this, rhythmInterpreter](float value) {
@@ -2276,15 +2277,15 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixPanel->add(onsetBufferSlider);
     
     auto onsetBufferDisplay = tgui::Label::create(std::to_string(rhythmInterpreter->getOnsetBufferSize()));
-    onsetBufferDisplay->setPosition(620, matrixTitleLabel->getPosition().y + 20);
+    onsetBufferDisplay->setPosition(345, 80);
     onsetBufferDisplay->setTextSize(9);
     onsetBufferDisplay->getRenderer()->setTextColor(tgui::Color::White);
     connectionMatrixPanel->add(onsetBufferDisplay, "OnsetBufferDisplay");
     
     // Clear onset history button
     auto clearOnsetsButton = tgui::Button::create("Clear Onsets");
-    clearOnsetsButton->setPosition(660, matrixTitleLabel->getPosition().y + 20);
-    clearOnsetsButton->setSize(80, 20);
+    clearOnsetsButton->setPosition(390, 78);
+    clearOnsetsButton->setSize(85, 20);
     clearOnsetsButton->setTextSize(9);
     clearOnsetsButton->getRenderer()->setBackgroundColor(tgui::Color(80, 60, 40));
     clearOnsetsButton->onPress([rhythmInterpreter]() {
@@ -2317,35 +2318,34 @@ void GUI::createConnectionMatrixPanel() {
     filterOutputDisplays.clear();
     filterOnsetIndicators.clear(); // New: onset indicators
     for (size_t f = 0; f < numFilters; ++f) {
-        // Reverse vertical order: Onset at top (f=7 -> y=90), Phrase at bottom (f=0 -> y=90+420)
+        // Reverse vertical order: Onset at top (f=7 -> y=120), Phrase at bottom (f=0 -> y=120+420)
         size_t displayRow = (numFilters - 1) - f;
         
+        // Band name label
         auto label = tgui::Label::create(filterNames[f]);
-        label->setPosition(5, 90 + displayRow * 60); // Reversed position: Onset top, Phrase bottom
-        label->setTextSize(10);
+        label->setPosition(10, 120 + displayRow * 175);
+        label->setSize(140, 25); // Increased height
+        label->setTextSize(9);
         label->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
-        
-        // Tooltip available via hover (handled elsewhere)
+        label->setAutoSize(false);
         
         connectionMatrixPanel->add(label);
         filterLabels.push_back(label);
         
-        // Add filter gain slider next to each frequency label
+        // Add filter gain slider below the label
         auto gainSlider = tgui::Slider::create(0.0f, 5.0f);
-        gainSlider->setValue(1.0f); // Default gain for minimal RhythmInterpreter
-        gainSlider->setStep(0.1f); // 0.1x step increments
-        gainSlider->setPosition(5, 105 + displayRow * 60); // Just below the label, reversed position
-        gainSlider->setSize(65, 15); // Small horizontal slider
+        gainSlider->setValue(1.0f);
+        gainSlider->setStep(0.1f);
+        gainSlider->setPosition(150, 120 + displayRow * 175);
+        gainSlider->setSize(60, 16); // Increased height
         gainSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
         gainSlider->getRenderer()->setThumbColor(tgui::Color(100, 140, 100));
-        // Filter gain control from 0.0x to 5.0x with 0.1x steps
         
         // Connect slider to filter gain control
         gainSlider->onValueChange([this, f](float value) {
             if (network && network->getRhythmInterpreter()) {
                 network->getRhythmInterpreter()->setFilterGain(f, value);
             }
-            // Update filter gain display with proper formatting (one decimal place)
             std::ostringstream stream;
             stream << std::fixed << std::setprecision(1) << value << "x";
             filterGainDisplays[f]->setText(stream.str());
@@ -2354,11 +2354,12 @@ void GUI::createConnectionMatrixPanel() {
         connectionMatrixPanel->add(gainSlider);
         filterGainSliders.push_back(gainSlider);
         
-        // Add filter gain value display (shows current gain setting)
+        // Add filter gain value display
         auto gainDisplay = tgui::Label::create("1.0x");
-        gainDisplay->setPosition(75, 105 + displayRow * 60); // Right of the gain slider, reversed position
-        gainDisplay->setSize(25, 15); // Small label
-        gainDisplay->setTextSize(8);
+        gainDisplay->setPosition(150, 155 + displayRow * 175);
+        gainDisplay->setSize(80, 15); // Increased height and spacing
+        gainDisplay->setTextSize(7);
+        gainDisplay->setAutoSize(false);
         gainDisplay->getRenderer()->setTextColor(tgui::Color(140, 140, 200));
         gainDisplay->getRenderer()->setBackgroundColor(tgui::Color(15, 15, 25));
         gainDisplay->getRenderer()->setBorderColor(tgui::Color(40, 40, 60));
@@ -2367,11 +2368,12 @@ void GUI::createConnectionMatrixPanel() {
         connectionMatrixPanel->add(gainDisplay);
         filterGainDisplays.push_back(gainDisplay);
         
-        // Add filter output display (label showing current output level)
+        // Add filter output display (right column)
         auto outputDisplay = tgui::Label::create("0.0");
-        outputDisplay->setPosition(105, 95 + displayRow * 60); // Per decamille displays, reversed position
-        outputDisplay->setSize(40, 15); // Small label
+        outputDisplay->setPosition(150, 190 + displayRow * 175);
+        outputDisplay->setSize(80, 15); // Increased height and spacing
         outputDisplay->setTextSize(8);
+        outputDisplay->setAutoSize(false);
         outputDisplay->getRenderer()->setTextColor(tgui::Color(100, 200, 100));
         outputDisplay->getRenderer()->setBackgroundColor(tgui::Color(20, 20, 20));
         outputDisplay->getRenderer()->setBorderColor(tgui::Color(60, 60, 60));
@@ -2380,11 +2382,12 @@ void GUI::createConnectionMatrixPanel() {
         connectionMatrixPanel->add(outputDisplay);
         filterOutputDisplays.push_back(outputDisplay);
         
-        // Add onset indicator (shows when onset detected in this band)
+        // Add onset indicator below output display
         auto onsetIndicator = tgui::Label::create("○");
-        onsetIndicator->setPosition(150, 95 + displayRow * 60);
-        onsetIndicator->setSize(20, 15);
-        onsetIndicator->setTextSize(12);
+        onsetIndicator->setPosition(150, 225 + displayRow * 175);
+        onsetIndicator->setSize(80, 20); // Increased height and spacing
+        onsetIndicator->setTextSize(9);
+        onsetIndicator->setAutoSize(false);
         onsetIndicator->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
         onsetIndicator->getRenderer()->setBackgroundColor(tgui::Color(20, 20, 20));
         onsetIndicator->getRenderer()->setBorderColor(tgui::Color(40, 40, 40));
@@ -2401,7 +2404,7 @@ void GUI::createConnectionMatrixPanel() {
     if (numNeurons > 0) {
         for (size_t n = 0; n < numNeurons; ++n) {
             auto label = tgui::Label::create("N" + std::to_string(n + 1));
-            label->setPosition(150 + n * 80, 40); // Increased spacing to 80px for wider gaps between neurons
+            label->setPosition(300 + n * 70, 105); // Start matrix at X=300, 70px spacing
             label->setTextSize(10);
             label->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
             connectionMatrixPanel->add(label);
@@ -2418,7 +2421,7 @@ void GUI::createConnectionMatrixPanel() {
     
     if (numNeurons > 0) {
         for (size_t f = 0; f < numFilters; ++f) {
-            // Reverse vertical order: Onset at top (f=7 -> y=90), Phrase at bottom (f=0 -> y=90+420)
+            // Reverse vertical order: Onset at top (f=7 -> y=120), Phrase at bottom (f=0 -> y=120+420)
             size_t displayRow = (numFilters - 1) - f;
             
             std::vector<tgui::Button::Ptr> buttonRow;
@@ -2428,7 +2431,7 @@ void GUI::createConnectionMatrixPanel() {
             for (size_t n = 0; n < numNeurons; ++n) {
             // Toggle button
             auto toggleButton = tgui::Button::create("○");
-            toggleButton->setPosition(150 + n * 80, 90 + displayRow * 60); // Aligned with neuron column labels, reversed position
+            toggleButton->setPosition(300 + n * 70, 125 + displayRow * 175); // Aligned with neuron column labels
             toggleButton->setSize(20, 20);
             toggleButton->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
             toggleButton->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
@@ -2490,8 +2493,8 @@ void GUI::createConnectionMatrixPanel() {
             
             // Gain slider (only visible when connected)
             auto gainSlider = tgui::Slider::create(0.0f, 1.0f);
-            gainSlider->setPosition(175 + n * 80, 90 + displayRow * 60); // Right of toggle button, reversed position
-            gainSlider->setSize(40, 16); // Longer slider for easier control
+            gainSlider->setPosition(325 + n * 70, 127 + displayRow * 175); // Right of toggle button
+            gainSlider->setSize(50, 16);
             gainSlider->setStep(0.01f); // Finer adjustments
             // Initialize with a neutral default; do not reflect live weight
             gainSlider->setValue(0.30f);
@@ -2524,9 +2527,9 @@ void GUI::createConnectionMatrixPanel() {
             
             // Connection gain value display (shows current connection weight)
             auto connectionGainDisplay = tgui::Label::create("0.0");
-            connectionGainDisplay->setPosition(220 + n * 80, 90 + displayRow * 60); // Right of the longer gain slider
-            connectionGainDisplay->setSize(20, 20); // Small square label
-            connectionGainDisplay->setTextSize(7);
+            connectionGainDisplay->setPosition(325 + n * 70, 147 + displayRow * 175); // Below gain slider
+            connectionGainDisplay->setSize(30, 12);
+            connectionGainDisplay->setTextSize(8);
             connectionGainDisplay->getRenderer()->setTextColor(tgui::Color(200, 200, 140));
             connectionGainDisplay->getRenderer()->setBackgroundColor(tgui::Color(25, 25, 15));
             connectionGainDisplay->getRenderer()->setBorderColor(tgui::Color(60, 60, 40));

@@ -1,0 +1,6 @@
+This is the rebuilt createConnectionMatrixPanel() function.
+Replace lines 2001-2682 in src/GUI.cpp with this clean version.
+
+The function starts after the cleanup section (lines 2001-2039) and should replace everything up to the closing brace before "void GUI::updateConnectionMatrix()".
+
+Search for "void GUI::createConnectionMatrixPanel() {" and replace the entire function body.
