@@ -206,7 +206,7 @@ public:
         , audioManager("samples/girliepop/", true)  // Load default samples
         , network()
         , visualizer(&window, &network)
-        , spectralDisplay(network.getRhythmInterpreter())  // Initialize with rhythm interpreter
+        , spectralDisplay(network.getRhythmInterpreter(), &network)  // Initialize with rhythm interpreter and network
 #ifdef USE_TGUI
         , guiManager(&gui, &window, &network, &visualizer, &recorder, &audioManager, &spectralDisplay, &activationInterval)
 #endif
@@ -256,6 +256,7 @@ public:
 #endif
         // Update rhythm interpreter reference after network initialization
         spectralDisplay.setRhythmInterpreter(network.getRhythmInterpreter());
+        spectralDisplay.setNeuronNetwork(&network);
         
         DEBUG_PRINT("\nAll changes to code by GitHub Copilot. The prompts were either feature additions or bug fixes for most cases.");
         
@@ -425,6 +426,7 @@ public:
             case sf::Keyboard::Key::L:
                 // Notify spectral display before loading (which calls clearNetwork)
                 spectralDisplay.setRhythmInterpreter(nullptr);
+                spectralDisplay.setNeuronNetwork(nullptr);
                 
                 // Load factory drum pattern preset
                 if (PresetManager::loadFactoryPreset(network, "drum_pattern")) {
@@ -441,6 +443,7 @@ public:
                     
                     // Update spectral display with new rhythm interpreter
                     spectralDisplay.setRhythmInterpreter(network.getRhythmInterpreter());
+                    spectralDisplay.setNeuronNetwork(&network);
                     
                     // Refresh visualizer to show the loaded network
                     visualizer.refreshLayout();

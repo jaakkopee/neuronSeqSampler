@@ -8,10 +8,12 @@
 
 // Forward declarations
 class RhythmInterpreter;
+class NeuronNetwork;
 
 /**
  * SpectralRhythmogramDisplay - Basic spectral rhythmogram visualization
  * Real-time display showing frequency band outputs over time
+ * Shows weighted activity: filter output * sum of connection weights
  */
 
 struct SimpleDisplayConfig {
@@ -29,11 +31,12 @@ struct SimpleDisplayConfig {
 
 class SimpleSpectralDisplay {
 public:
-    SimpleSpectralDisplay(RhythmInterpreter* rhythmInterp);
+    SimpleSpectralDisplay(RhythmInterpreter* rhythmInterp, NeuronNetwork* network = nullptr);
     
     void setPosition(float x, float y);
     void setSize(float width, float height);
     void setRhythmInterpreter(RhythmInterpreter* rhythmInterp);
+    void setNeuronNetwork(NeuronNetwork* network);
     void setOpacity(float opacity);  // Set opacity in range 0-100%
     void setContrast(float contrast); // Set contrast multiplier in range 0.1-10.0
     void setManualBPM(float bpm);    // Set manual BPM for frequency label updates
@@ -46,6 +49,7 @@ public:
     
 private:
     RhythmInterpreter* rhythmInterpreter;
+    NeuronNetwork* neuronNetwork;
     SimpleDisplayConfig config;
     
     sf::Vector2f position;
@@ -68,6 +72,9 @@ private:
     // Time history of filter outputs
     std::deque<std::vector<float>> amplitudeHistory;
     
+    // Track onset events for each band (synchronized with amplitudeHistory)
+    std::deque<std::vector<bool>> onsetHistory;
+    
     // Track BPM for dynamic frequency labels
     float lastKnownBPM;
     
@@ -78,7 +85,7 @@ private:
     void initializeSpectrogram();
     size_t getCurrentBandCount() const;
     void ensureSpectrogramSize();
-    void addDataPoint(const std::vector<float>& filterOutputs);
+    void addDataPoint(const std::vector<float>& filterOutputs, const std::vector<bool>& onsets = {});
     void updateSpectrogramImage();
     sf::Color amplitudeToColor(float amplitude, size_t bandIndex);
     void drawBackground(sf::RenderWindow& window);

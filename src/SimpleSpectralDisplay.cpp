@@ -1,13 +1,15 @@
 #include "SimpleSpectralDisplay.h"
 #include "RhythmInterpreter.h"
+#include "NeuronNetwork.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <string>
 #include <cstdio>
 
-SimpleSpectralDisplay::SimpleSpectralDisplay(RhythmInterpreter* rhythmInterp)
+SimpleSpectralDisplay::SimpleSpectralDisplay(RhythmInterpreter* rhythmInterp, NeuronNetwork* network)
     : rhythmInterpreter(rhythmInterp)
+    , neuronNetwork(network)
     , position(0, 0)
     , size(400, 300)
     , fontLoaded(false)
@@ -134,6 +136,10 @@ void SimpleSpectralDisplay::setRhythmInterpreter(RhythmInterpreter* rhythmInterp
     }
 }
 
+void SimpleSpectralDisplay::setNeuronNetwork(NeuronNetwork* network) {
+    neuronNetwork = network;
+}
+
 void SimpleSpectralDisplay::setOpacity(float opacity) {
     config.opacity = std::clamp(opacity, 0.0f, 100.0f);
 }
@@ -174,14 +180,51 @@ void SimpleSpectralDisplay::update() {
             return;
         }
         
-        // Safely get current filter outputs and add to history
+        // Calculate rhythmogram activity: filter output * sum of connection weights per band
         try {
             auto filterOutputs = rhythmInterpreter->getFilterOutputs();
             if (!filterOutputs.empty()) {
-                addDataPoint(filterOutputs);
+                std::vector<float> rhythmActivity(filterOutputs.size(), 0.0f);
+                std::vector<bool> onsets(filterOutputs.size(), false);
+                
+                // Get onset events from rhythm interpreter
+                auto allOnsets = rhythmInterpreter->getAllOnsets();
+                float currentTime = updateClock.getElapsedTime().asSeconds();
+                
+                // Mark bands that have very recent onsets (within last frame)
+                for (const auto& onset : allOnsets) {
+                    if (onset.bandIndex < onsets.size()) {
+                        // Check if onset is very recent (within last update interval)
+                        if (std::abs(currentTime - onset.timestamp) < updateInterval * 2.0f) {
+                            onsets[onset.bandIndex] = true;
+                        }
+                    }
+                }
+                
+                // If neuronNetwork available, calculate weighted activity
+                if (neuronNetwork) {
+                    size_t neuronCount = neuronNetwork->getNeurons().size();
+                    
+                    for (size_t band = 0; band < filterOutputs.size(); ++band) {
+                        float connectionSum = 0.0f;
+                        
+                        // Sum all connection weights for this band
+                        for (size_t neuron = 0; neuron < neuronCount; ++neuron) {
+                            connectionSum += std::abs(neuronNetwork->getRhythmConnection(band, neuron));
+                        }
+                        
+                        // Weighted activity = filter output * total connection strength
+                        rhythmActivity[band] = filterOutputs[band] * connectionSum;
+                    }
+                } else {
+                    // Fallback: use raw filter outputs if network not available
+                    rhythmActivity = filterOutputs;
+                }
+                
+                addDataPoint(rhythmActivity, onsets);
             }
         } catch (const std::exception& e) {
-            std::cerr << "⚠️  SimpleSpectralDisplay: Error getting filter outputs: " << e.what() << std::endl;
+            std::cerr << "⚠️  SimpleSpectralDisplay: Error calculating rhythm activity: " << e.what() << std::endl;
             // Reset rhythm interpreter reference to prevent further crashes
             rhythmInterpreter = nullptr;
         }
@@ -291,6 +334,7 @@ void SimpleSpectralDisplay::drawLabels(sf::RenderWindow& window) {
 
 void SimpleSpectralDisplay::clear() {
     amplitudeHistory.clear();
+    onsetHistory.clear();
     initializeSpectrogram();
 }
 
@@ -330,19 +374,27 @@ void SimpleSpectralDisplay::initializeSpectrogram() {
     needsTextureUpdate = true;
 }
 
-void SimpleSpectralDisplay::addDataPoint(const std::vector<float>& filterOutputs) {
+void SimpleSpectralDisplay::addDataPoint(const std::vector<float>& filterOutputs, const std::vector<bool>& onsets) {
     // Store the new data point
     size_t bands = getCurrentBandCount();
     std::vector<float> amplitudes(bands, 0.0f);
+    std::vector<bool> onsetFlags(bands, false);
+    
     for (size_t i = 0; i < std::min(filterOutputs.size(), amplitudes.size()); ++i) {
         amplitudes[i] = std::abs(filterOutputs[i]);
     }
     
+    for (size_t i = 0; i < std::min(onsets.size(), onsetFlags.size()); ++i) {
+        onsetFlags[i] = onsets[i];
+    }
+    
     amplitudeHistory.push_back(amplitudes);
+    onsetHistory.push_back(onsetFlags);
     
     // Maintain window size
     if (amplitudeHistory.size() > config.timeWindowSamples) {
         amplitudeHistory.pop_front();
+        onsetHistory.pop_front();
     }
     
     needsTextureUpdate = true;
@@ -371,6 +423,32 @@ void SimpleSpectralDisplay::updateSpectrogramImage() {
             
             sf::Color pixelColor = amplitudeToColor(amplitude, freqIdx);
             spectrogramImage.setPixel(sf::Vector2u(xPixel, yPixel), pixelColor);
+        }
+    }
+    
+    // Overlay onset markers: narrow white line with black borders
+    for (size_t timeIdx = 0; timeIdx < onsetHistory.size() && timeIdx < amplitudeHistory.size(); ++timeIdx) {
+        const auto& onsets = onsetHistory[timeIdx];
+        size_t xPixel = amplitudeHistory.size() - 1 - timeIdx;
+        
+        for (size_t freqIdx = 0; freqIdx < onsets.size() && freqIdx < bands; ++freqIdx) {
+            if (onsets[freqIdx]) {
+                size_t yPixel = (bands - 1) - freqIdx;
+                
+                // Draw onset marker: black-white-black pattern
+                // Left black border (if space available)
+                if (xPixel > 0) {
+                    spectrogramImage.setPixel(sf::Vector2u(xPixel - 1, yPixel), sf::Color::Black);
+                }
+                
+                // White onset line
+                spectrogramImage.setPixel(sf::Vector2u(xPixel, yPixel), sf::Color::White);
+                
+                // Right black border (if space available)
+                if (xPixel + 1 < config.timeWindowSamples) {
+                    spectrogramImage.setPixel(sf::Vector2u(xPixel + 1, yPixel), sf::Color::Black);
+                }
+            }
         }
     }
     

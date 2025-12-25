@@ -3363,6 +3363,7 @@ void GUI::showLoadPresetDialog() {
                 // Notify spectral display before loading (which calls clearNetwork)
                 if (spectralDisplay) {
                     spectralDisplay->setRhythmInterpreter(nullptr);
+                    spectralDisplay->setNeuronNetwork(nullptr);
                 }
                 
                 if (PresetManager::loadPreset(*network, filename)) {
@@ -3378,9 +3379,10 @@ void GUI::showLoadPresetDialog() {
                         std::cout << "🔄 AudioManager updated after preset load" << std::endl;
                     }
                     
-                    // Update spectral display with new rhythm interpreter
+                    // Update spectral display with new rhythm interpreter and network
                     if (spectralDisplay) {
                         spectralDisplay->setRhythmInterpreter(network->getRhythmInterpreter());
+                        spectralDisplay->setNeuronNetwork(network);
                     }
                     
                     visualizer->refreshLayout();  // Refresh visualizer layout
@@ -3411,6 +3413,7 @@ void GUI::loadFactoryDrumPattern() {
     // Notify spectral display before loading (which calls clearNetwork)
     if (spectralDisplay) {
         spectralDisplay->setRhythmInterpreter(nullptr);
+        spectralDisplay->setNeuronNetwork(nullptr);
     }
     
     if (PresetManager::loadFactoryPreset(*network, "drum_pattern")) {
@@ -3426,9 +3429,10 @@ void GUI::loadFactoryDrumPattern() {
             std::cout << "🔄 AudioManager updated after preset load" << std::endl;
         }
         
-        // Update spectral display with new rhythm interpreter
+        // Update spectral display with new rhythm interpreter and network
         if (spectralDisplay) {
             spectralDisplay->setRhythmInterpreter(network->getRhythmInterpreter());
+            spectralDisplay->setNeuronNetwork(network);
         }
         
         visualizer->refreshLayout();  // Refresh visualizer layout
