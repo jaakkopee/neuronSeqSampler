@@ -46,6 +46,10 @@ private:
     sf::Vector2f canvasSize;
     ViewMode currentViewMode;
     
+    // Zoom and pan
+    float zoomLevel;
+    sf::Vector2f panOffset;
+    
     // Visual elements
     std::vector<sf::Vector2f> neuronPositions;
     
@@ -97,6 +101,7 @@ public:
     void handleMouseDrag(int mouseX, int mouseY); // For panning
     void handleMouseScroll(int delta); // No-op (zoom removed)
     void handleMouseMove(int mouseX, int mouseY); // For tooltip hover detection
+    void handleKeyPress(sf::Keyboard::Key key); // For zoom and pan
     
     // View mode controls
     void setViewMode(ViewMode mode);

@@ -477,6 +477,15 @@ public:
                 // Toggle fullscreen mode
                 toggleFullscreen();
                 break;
+            case sf::Keyboard::Key::Z:
+            case sf::Keyboard::Key::X:
+            case sf::Keyboard::Key::Left:
+            case sf::Keyboard::Key::Right:
+            case sf::Keyboard::Key::Up:
+            case sf::Keyboard::Key::Down:
+                // Forward zoom and pan keys to visualizer
+                visualizer.handleKeyPress(key);
+                break;
             default:
                 // Forward key to spectral display for its controls
                 spectralDisplay.handleKeyPress(key);

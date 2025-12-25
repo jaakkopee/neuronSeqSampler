@@ -20,6 +20,8 @@ Visualizer::Visualizer(sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetw
     , canvasOffset(50.0f, 50.0f)
     , canvasSize(500.0f, 400.0f)
     , currentViewMode(ViewMode::Grid)
+    , zoomLevel(1.0f)
+    , panOffset(0.0f, 0.0f)
     , hoveredNeuronIndex(-1)
     , mousePosition(0.0f, 0.0f)
     , showTooltip(false)
@@ -70,12 +72,20 @@ void Visualizer::calculateGridPositions() {
     float spacingX = canvasSize.x / (cols + 1);
     float spacingY = canvasSize.y / (rows + 1);
     
+    // Calculate center for zoom
+    float centerX = canvasOffset.x + canvasSize.x / 2.0f;
+    float centerY = canvasOffset.y + canvasSize.y / 2.0f;
+    
     for (size_t i = 0; i < neuronCount; ++i) {
         int row = i / cols;
         int col = i % cols;
         
         float x = canvasOffset.x + spacingX * (col + 1);
         float y = canvasOffset.y + spacingY * (row + 1);
+        
+        // Apply zoom and pan
+        x = centerX + (x - centerX) * zoomLevel + panOffset.x;
+        y = centerY + (y - centerY) * zoomLevel + panOffset.y;
         
         neuronPositions.push_back(sf::Vector2f(x, y));
     }
@@ -99,6 +109,10 @@ void Visualizer::calculateCircularPositions() {
         // Convert to Cartesian coordinates
         float x = centerX + radius * std::cos(angle);
         float y = centerY + radius * std::sin(angle);
+        
+        // Apply zoom and pan
+        x = centerX + (x - centerX) * zoomLevel + panOffset.x;
+        y = centerY + (y - centerY) * zoomLevel + panOffset.y;
         
         neuronPositions.push_back(sf::Vector2f(x, y));
     }
@@ -839,5 +853,59 @@ void Visualizer::drawSelfConnection(const Connection* connection, const sf::Vect
         arrowHead[3].position = endPoint;
         arrowHead[3].color = activityColor;
         window->draw(arrowHead, 4, sf::PrimitiveType::TriangleStrip);
+    }
+}
+
+void Visualizer::handleKeyPress(sf::Keyboard::Key key) {
+    const float zoomStep = 0.1f;
+    const float panStep = 20.0f;
+    
+    bool needsRefresh = false;
+    
+    switch (key) {
+        case sf::Keyboard::Key::Z:
+            // Zoom out
+            zoomLevel = std::max(0.1f, zoomLevel - zoomStep);
+            needsRefresh = true;
+            std::cout << "🔍 Zoom out: " << zoomLevel << "x" << std::endl;
+            break;
+            
+        case sf::Keyboard::Key::X:
+            // Zoom in
+            zoomLevel = std::min(5.0f, zoomLevel + zoomStep);
+            needsRefresh = true;
+            std::cout << "🔍 Zoom in: " << zoomLevel << "x" << std::endl;
+            break;
+            
+        case sf::Keyboard::Key::Left:
+            // Pan left
+            panOffset.x -= panStep;
+            needsRefresh = true;
+            break;
+            
+        case sf::Keyboard::Key::Right:
+            // Pan right
+            panOffset.x += panStep;
+            needsRefresh = true;
+            break;
+            
+        case sf::Keyboard::Key::Up:
+            // Pan up
+            panOffset.y -= panStep;
+            needsRefresh = true;
+            break;
+            
+        case sf::Keyboard::Key::Down:
+            // Pan down
+            panOffset.y += panStep;
+            needsRefresh = true;
+            break;
+            
+        default:
+            break;
+    }
+    
+    if (needsRefresh) {
+        refreshLayout();
     }
 }
