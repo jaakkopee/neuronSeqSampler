@@ -21,62 +21,53 @@ SimpleSpectralDisplay::SimpleSpectralDisplay(RhythmInterpreter* rhythmInterp)
 }
 
 void SimpleSpectralDisplay::initializeFrequencyBands() {
-    // Todd (1994) 8-band frequency structure
-    frequencyBandNames = {
-        "Phrase (0.125Hz)",   // Long-term musical structure
-        "Whole (0.25Hz)",     // 4-beat units
-        "Half (0.5Hz)",       // 2-beat units  
-        "Quarter (1Hz)",      // Basic beat
-        "Eighth (2Hz)",       // Sub-beat subdivisions
-        "16th (4Hz)",         // Fast subdivisions
-        "32nd (8Hz)",         // Very fast subdivisions
-        "Onset (16Hz)"        // Attack transients
-    };
+    frequencyBandNames.clear();
+    if (rhythmInterpreter) {
+        auto freqs = rhythmInterpreter->getBandFrequencies();
+        for (size_t i = 0; i < freqs.size(); ++i) {
+            float f = freqs[i];
+            char buf[24];
+            if (f < 1.0f)
+                std::snprintf(buf, sizeof(buf), "%.3fHz", f);
+            else if (f < 10.0f)
+                std::snprintf(buf, sizeof(buf), "%.1fHz", f);
+            else
+                std::snprintf(buf, sizeof(buf), "%.0fHz", f);
+            frequencyBandNames.push_back(std::string("Band ") + std::to_string(i+1) + " (" + buf + ")");
+        }
+        lastBandCount = freqs.size();
+    }
+    if (frequencyBandNames.empty()) {
+        // Fallback to default Todd (1994) names
+        frequencyBandNames = {
+            "Phrase (0.125Hz)",
+            "Whole (0.25Hz)",
+            "Half (0.5Hz)",
+            "Quarter (1Hz)",
+            "Eighth (2Hz)",
+            "16th (4Hz)",
+            "32nd (8Hz)",
+            "Onset (16Hz)"
+        };
+        lastBandCount = 8;
+    }
 }
 
 void SimpleSpectralDisplay::updateFrequencyBands() {
     if (!rhythmInterpreter) return;
-    
-    // Use the stored BPM (set by setManualBPM or defaults to 120.0f)
-    float currentBPM = lastKnownBPM;
-    
-    // Calculate tempo scaling factor (same as RhythmInterpreter)
-    float tempoScale = currentBPM / 120.0f;
-    
-    // Base frequencies at 120 BPM (Todd 1994)
-    const std::vector<float> baseFrequencies = {
-        0.125f, 0.25f, 0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f
-    };
-    
-    const std::vector<std::string> baseNames = {
-        "Phrase", "Whole", "Half", "Quarter", "Eighth", "16th", "32nd", "Onset"
-    };
-    
-    // Update frequency band names with current tempo-scaled frequencies
     frequencyBandNames.clear();
-    for (size_t i = 0; i < baseFrequencies.size(); ++i) {
-        float scaledFreq = baseFrequencies[i] * tempoScale;
-        
-        // Format frequency with appropriate precision
-        std::string freqStr;
-        if (scaledFreq < 1.0f) {
-            // For frequencies < 1Hz, show 3 decimal places
-            char buffer[16];
-            snprintf(buffer, sizeof(buffer), "%.3fHz", scaledFreq);
-            freqStr = buffer;
-        } else if (scaledFreq < 10.0f) {
-            // For 1-10Hz, show 1 decimal place
-            char buffer[16]; 
-            snprintf(buffer, sizeof(buffer), "%.1fHz", scaledFreq);
-            freqStr = buffer;
-        } else {
-            // For >= 10Hz, show as integer
-            char buffer[16];
-            snprintf(buffer, sizeof(buffer), "%.0fHz", scaledFreq);
-            freqStr = buffer;
-        }
-        
-        frequencyBandNames.push_back(baseNames[i] + " (" + freqStr + ")");
+    auto freqs = rhythmInterpreter->getBandFrequencies();
+    lastBandCount = freqs.size();
+    for (size_t i = 0; i < freqs.size(); ++i) {
+        float f = freqs[i];
+        char buf[24];
+        if (f < 1.0f)
+            std::snprintf(buf, sizeof(buf), "%.3fHz", f);
+        else if (f < 10.0f)
+            std::snprintf(buf, sizeof(buf), "%.1fHz", f);
+        else
+            std::snprintf(buf, sizeof(buf), "%.0fHz", f);
+        frequencyBandNames.push_back(std::string("Band ") + std::to_string(i+1) + " (" + buf + ")");
     }
 }
 
@@ -136,6 +127,7 @@ void SimpleSpectralDisplay::setRhythmInterpreter(RhythmInterpreter* rhythmInterp
         
         // Reinitialize frequency bands for the new interpreter
         updateFrequencyBands();
+        ensureSpectrogramSize();
         
         // Mark for texture update
         needsTextureUpdate = true;
@@ -168,6 +160,7 @@ void SimpleSpectralDisplay::update() {
     
     // Update frequency band labels if BPM changed
     updateFrequencyBands();
+    ensureSpectrogramSize();
     
     // Check if it's time for an update
     float timeSinceLastUpdate = updateClock.getElapsedTime().asSeconds();
@@ -235,7 +228,7 @@ void SimpleSpectralDisplay::drawSpectrogram(sf::RenderWindow& window) {
     
     // Scale to fit display area
     float scaleX = displayWidth / config.timeWindowSamples;
-    float scaleY = displayHeight / 8; // 8 frequency bands
+    float scaleY = displayHeight / static_cast<float>(getCurrentBandCount());
     spectrogramSprite->setScale(sf::Vector2f(scaleX, scaleY));
     
     // Draw the scrolling spectrogram
@@ -249,8 +242,9 @@ void SimpleSpectralDisplay::drawGrid(sf::RenderWindow& window) {
     float displayY = position.y + 10;
     
     // Horizontal grid lines (frequency bands)
-    for (int i = 0; i <= 8; ++i) {
-        float yPos = displayY + i * displayHeight / 8;
+    size_t bands = getCurrentBandCount();
+    for (size_t i = 0; i <= bands; ++i) {
+        float yPos = displayY + static_cast<float>(i) * (displayHeight / static_cast<float>(bands));
         
         sf::RectangleShape line(sf::Vector2f(displayWidth, 1));
         line.setPosition(sf::Vector2f(displayX, yPos));
@@ -274,14 +268,15 @@ void SimpleSpectralDisplay::drawLabels(sf::RenderWindow& window) {
     
     float displayHeight = size.y - 20;
     float displayY = position.y + 10;
-    float barHeight = displayHeight / 8;
+    size_t bands = getCurrentBandCount();
+    float barHeight = displayHeight / static_cast<float>(bands);
     
     // Draw frequency band labels
     for (size_t i = 0; i < frequencyBandNames.size(); ++i) {
         sf::Text label(font, frequencyBandNames[i], 12);
         label.setFillColor(config.textColor);
         
-        float yPos = displayY + (7 - i) * barHeight + barHeight / 2 - 6; // Center vertically
+        float yPos = displayY + (static_cast<float>(bands - 1 - i)) * barHeight + barHeight / 2 - 6; // Center vertically
         label.setPosition(sf::Vector2f(position.x + 5, yPos));
         
         window.draw(label);
@@ -324,7 +319,7 @@ void SimpleSpectralDisplay::handleKeyPress(sf::Keyboard::Key key) {
 
 void SimpleSpectralDisplay::initializeSpectrogram() {
     // Create image for spectrogram (width = time samples, height = 8 frequency bands)
-    spectrogramImage = sf::Image(sf::Vector2u(config.timeWindowSamples, 8), sf::Color::Black);
+    spectrogramImage = sf::Image(sf::Vector2u(config.timeWindowSamples, static_cast<unsigned>(getCurrentBandCount())), sf::Color::Black);
     
     if (!spectrogramTexture.loadFromImage(spectrogramImage)) {
         std::cerr << "Failed to load spectrogram texture" << std::endl;
@@ -337,7 +332,8 @@ void SimpleSpectralDisplay::initializeSpectrogram() {
 
 void SimpleSpectralDisplay::addDataPoint(const std::vector<float>& filterOutputs) {
     // Store the new data point
-    std::vector<float> amplitudes(8, 0.0f);
+    size_t bands = getCurrentBandCount();
+    std::vector<float> amplitudes(bands, 0.0f);
     for (size_t i = 0; i < std::min(filterOutputs.size(), amplitudes.size()); ++i) {
         amplitudes[i] = std::abs(filterOutputs[i]);
     }
@@ -356,7 +352,8 @@ void SimpleSpectralDisplay::updateSpectrogramImage() {
     if (amplitudeHistory.empty()) return;
     
     // Clear the image
-    spectrogramImage = sf::Image(sf::Vector2u(config.timeWindowSamples, 8), sf::Color::Black);
+    size_t bands = getCurrentBandCount();
+    spectrogramImage = sf::Image(sf::Vector2u(config.timeWindowSamples, static_cast<unsigned>(bands)), sf::Color::Black);
     
     // Fill the image with amplitude history - new data on left, travels right
     for (size_t timeIdx = 0; timeIdx < amplitudeHistory.size(); ++timeIdx) {
@@ -366,10 +363,11 @@ void SimpleSpectralDisplay::updateSpectrogramImage() {
         // Older data appears further right
         size_t xPixel = amplitudeHistory.size() - 1 - timeIdx;
         
-        for (size_t freqIdx = 0; freqIdx < 8; ++freqIdx) {
+        // Draw only up to current band count; clamp older rows safely
+        for (size_t freqIdx = 0; freqIdx < bands; ++freqIdx) {
             // Invert Y axis (lower frequencies at bottom)
-            size_t yPixel = 7 - freqIdx;
-            float amplitude = amplitudes[freqIdx];
+            size_t yPixel = (bands - 1) - freqIdx;
+            float amplitude = (freqIdx < amplitudes.size()) ? amplitudes[freqIdx] : 0.0f;
             
             sf::Color pixelColor = amplitudeToColor(amplitude, freqIdx);
             spectrogramImage.setPixel(sf::Vector2u(xPixel, yPixel), pixelColor);
@@ -382,6 +380,19 @@ void SimpleSpectralDisplay::updateSpectrogramImage() {
         spectrogramSprite->setTexture(spectrogramTexture);
     }
     needsTextureUpdate = false;
+}
+
+size_t SimpleSpectralDisplay::getCurrentBandCount() const {
+    if (rhythmInterpreter) return rhythmInterpreter->getBandCount();
+    return lastBandCount;
+}
+
+void SimpleSpectralDisplay::ensureSpectrogramSize() {
+    size_t current = getCurrentBandCount();
+    if (current != lastBandCount) {
+        lastBandCount = current;
+        initializeSpectrogram();
+    }
 }
 
 sf::Color SimpleSpectralDisplay::amplitudeToColor(float amplitude, size_t bandIndex) {

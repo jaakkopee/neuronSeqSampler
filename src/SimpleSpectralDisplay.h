@@ -55,6 +55,7 @@ private:
     
     std::vector<std::string> frequencyBandNames;
     std::vector<sf::Color> bandColors;
+    size_t lastBandCount = 8;
     
     sf::Clock updateClock;
     
@@ -75,6 +76,8 @@ private:
     void initializeColorMap();
     void loadFont();
     void initializeSpectrogram();
+    size_t getCurrentBandCount() const;
+    void ensureSpectrogramSize();
     void addDataPoint(const std::vector<float>& filterOutputs);
     void updateSpectrogramImage();
     sf::Color amplitudeToColor(float amplitude, size_t bandIndex);
