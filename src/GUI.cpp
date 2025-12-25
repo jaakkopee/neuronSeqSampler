@@ -2333,9 +2333,9 @@ void GUI::createConnectionMatrixPanel() {
         filterLabels.push_back(label);
         
         // Add filter gain slider below the label
-        auto gainSlider = tgui::Slider::create(0.0f, 5.0f);
+        auto gainSlider = tgui::Slider::create(0.0f, 1.2f);
         gainSlider->setValue(1.0f);
-        gainSlider->setStep(0.1f);
+        gainSlider->setStep(0.01f);
         gainSlider->setPosition(150, 120 + displayRow * 175);
         gainSlider->setSize(60, 16); // Increased height
         gainSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
@@ -2347,7 +2347,7 @@ void GUI::createConnectionMatrixPanel() {
                 network->getRhythmInterpreter()->setFilterGain(f, value);
             }
             std::ostringstream stream;
-            stream << std::fixed << std::setprecision(1) << value << "x";
+            stream << std::fixed << std::setprecision(2) << value << "x";
             filterGainDisplays[f]->setText(stream.str());
         });
         
@@ -2528,8 +2528,9 @@ void GUI::createConnectionMatrixPanel() {
             // Connection gain value display (shows current connection weight)
             auto connectionGainDisplay = tgui::Label::create("0.0");
             connectionGainDisplay->setPosition(325 + n * 70, 147 + displayRow * 175); // Below gain slider
-            connectionGainDisplay->setSize(30, 12);
+            connectionGainDisplay->setSize(50, 15);
             connectionGainDisplay->setTextSize(8);
+            connectionGainDisplay->setAutoSize(false);
             connectionGainDisplay->getRenderer()->setTextColor(tgui::Color(200, 200, 140));
             connectionGainDisplay->getRenderer()->setBackgroundColor(tgui::Color(25, 25, 15));
             connectionGainDisplay->getRenderer()->setBorderColor(tgui::Color(60, 60, 40));
