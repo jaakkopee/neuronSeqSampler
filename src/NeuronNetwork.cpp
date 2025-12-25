@@ -267,6 +267,22 @@ void NeuronNetwork::learnFromRhythm() {
     for (size_t f = 0; f < filterOutputs.size(); ++f) {
         normOut[f] = filterOutputs[f] / std::max(eps, maxOut);
     }
+    
+    // Get recent onsets for temporal gating
+    // Recent onsets boost learning rate when rhythmic events are detected
+    std::vector<std::vector<RhythmInterpreter::OnsetEvent>> recentOnsets(filterOutputs.size());
+    const float onsetWindow = 0.1f; // Consider onsets within last 100ms
+    float currentTime = rhythmInterpreter->getAllOnsets().empty() ? 0.0f 
+                       : rhythmInterpreter->getAllOnsets().back().timestamp;
+    
+    for (size_t f = 0; f < filterOutputs.size(); ++f) {
+        std::vector<RhythmInterpreter::OnsetEvent> bandOnsets = rhythmInterpreter->getOnsetHistory(f);
+        for (const auto& onset : bandOnsets) {
+            if (currentTime - onset.timestamp < onsetWindow) {
+                recentOnsets[f].push_back(onset);
+            }
+        }
+    }
 
     // Learning target: band energy per neuron; prediction: neuron's current activation
     for (size_t n = 0; n < neurons.size(); ++n) {
@@ -277,13 +293,33 @@ void NeuronNetwork::learnFromRhythm() {
 
         // Compute rhythm drive for this neuron based on all mapped bands
         float rhythmDrive = 0.0f;
+        float onsetBoost = 1.0f; // Multiplicative boost from detected onsets
+        
         for (size_t f = 0; f < normOut.size(); ++f) {
             float map = (f < rhythmConnectionMatrix.size() && n < rhythmConnectionMatrix[f].size())
                             ? rhythmConnectionMatrix[f][n]
                             : 0.0f;
-            if (map > 0.0f) rhythmDrive += normOut[f] * map;
+            if (map > 0.0f) {
+                rhythmDrive += normOut[f] * map;
+                
+                // Boost learning when onsets are detected in mapped bands
+                if (!recentOnsets[f].empty()) {
+                    // Average onset strength from recent onsets
+                    float avgOnsetStrength = 0.0f;
+                    for (const auto& onset : recentOnsets[f]) {
+                        avgOnsetStrength += onset.strength;
+                    }
+                    avgOnsetStrength /= recentOnsets[f].size();
+                    
+                    // Scale onset boost by mapping weight and onset strength
+                    onsetBoost += map * avgOnsetStrength * 2.0f; // 2x multiplier for onset emphasis
+                }
+            }
         }
         rhythmDrive *= mappingGain; // reflect applied scaling
+        
+        // Clamp onset boost to reasonable range
+        onsetBoost = std::min(5.0f, std::max(1.0f, onsetBoost));
 
         // Update connection weights targeting this neuron
         for (size_t c = 0; c < connections.size(); ++c) {
@@ -297,8 +333,10 @@ void NeuronNetwork::learnFromRhythm() {
             if (x == 0.0f) continue; // nothing to learn this step
 
             float w = conn->getWeight();
-            float dw = -learningRate * error * x;      // gradient step
-            dw -= weightDecay * w;                      // L2-like regularization on connection weight
+            // Apply onset-modulated learning rate
+            float effectiveLearningRate = learningRate * onsetBoost;
+            float dw = -effectiveLearningRate * error * x;      // gradient step with onset boost
+            dw -= weightDecay * w;                               // L2-like regularization on connection weight
             w += dw;
             // Clamp for stability (allow negative weights)
             if (w >  maxWeight) w =  maxWeight;

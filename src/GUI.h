@@ -80,6 +80,7 @@ private:
     std::vector<tgui::Button::Ptr> filterListenButtons; // Solo/listen buttons for each filter band
     std::vector<tgui::Label::Ptr> filterOutputDisplays; // Real-time output level displays for each filter
     std::vector<tgui::Label::Ptr> filterGainDisplays; // Display labels showing filter gain values
+    std::vector<tgui::Label::Ptr> filterOnsetIndicators; // Visual indicators for onset detection per band
     // Frequency response visualization temporarily removed due to TGUI limitations
     
     // Connection matrix GUI (8 filters × N neurons)

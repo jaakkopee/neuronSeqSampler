@@ -23,6 +23,13 @@ RhythmInterpreter::RhythmInterpreter(size_t sampleRate, size_t bufferSize)
     stuckCounters.resize(bandCount, 0);
     // qValues is already initialized in initializeBands() - don't override it
     
+    // Initialize onset detection
+    onsetHistory.resize(bandCount);
+    previousOutputs.resize(bandCount, 0.0f);
+    onsetThreshold = 0.1f;            // Default: detect 10% increase as onset
+    onsetBufferSize = 100;            // Keep last 100 onsets per band
+    currentTime = 0.0f;
+    
     // Initialize auto-tempo parameters
     autoTempoEnabled = false;
     baseTempoFrequency = 2.0f;        // 2 Hz corresponds to 120 BPM (120/60 = 2)
@@ -189,6 +196,12 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         filterOutputs[bandIndex] = std::max(0.0f, filterOutputs[bandIndex]); // Ensure non-negative
     }
     
+    // Detect onsets based on output changes
+    detectOnsets();
+    
+    // Update current time
+    currentTime += static_cast<float>(audioData.size()) / static_cast<float>(sampleRate);
+    
     // Auto-tempo detection and frequency adjustment
     if (autoTempoEnabled) {
         // Detect tempo based on rhythmic activity patterns every few frames
@@ -276,6 +289,11 @@ void RhythmInterpreter::initializeBandsLogarithmic(float minFreq, float maxFreq,
 void RhythmInterpreter::setBandCount(size_t count) {
     // Reinitialize rhythmic bands and dependent state with logarithmic spacing
     initializeBandsLogarithmic(0.125f, 16.0f, count);
+    
+    // Resize onset detection buffers
+    onsetHistory.resize(count);
+    previousOutputs.resize(count, 0.0f);
+    
     // Note: GammaToneFilterBank kept as-is since current pipeline uses time-domain bandpassFilter.
 }
 
@@ -623,4 +641,79 @@ std::vector<float> GammaToneFilterBank::FFTProcess(const std::vector<float>& inp
 std::vector<float> GammaToneFilterBank::process(const std::vector<float>& input) {
     // Use FFT processing as the primary method
     return FFTProcess(input);
+}
+
+// ========================= ONSET DETECTION METHODS =========================
+
+void RhythmInterpreter::detectOnsets() {
+    for (size_t bandIndex = 0; bandIndex < bandCount; ++bandIndex) {
+        float currentOutput = filterOutputs[bandIndex];
+        float previousOutput = previousOutputs[bandIndex];
+        
+        // Detect onset if current output exceeds previous by threshold
+        float outputChange = currentOutput - previousOutput;
+        
+        if (outputChange > onsetThreshold && currentOutput > 0.05f) {
+            // Onset detected - add to history
+            OnsetEvent onset(currentTime, outputChange, bandIndex);
+            onsetHistory[bandIndex].push_back(onset);
+            
+            // Maintain buffer size limit - remove oldest if exceeded
+            if (onsetHistory[bandIndex].size() > onsetBufferSize) {
+                onsetHistory[bandIndex].erase(onsetHistory[bandIndex].begin());
+            }
+        }
+        
+        // Update previous output for next frame
+        previousOutputs[bandIndex] = currentOutput;
+    }
+}
+
+std::vector<RhythmInterpreter::OnsetEvent> RhythmInterpreter::getOnsetHistory(size_t bandIndex) const {
+    if (!isValidBandIndex(bandIndex)) {
+        return std::vector<OnsetEvent>();
+    }
+    return onsetHistory[bandIndex];
+}
+
+std::vector<RhythmInterpreter::OnsetEvent> RhythmInterpreter::getAllOnsets() const {
+    std::vector<OnsetEvent> allOnsets;
+    for (size_t i = 0; i < bandCount; ++i) {
+        allOnsets.insert(allOnsets.end(), onsetHistory[i].begin(), onsetHistory[i].end());
+    }
+    
+    // Sort by timestamp
+    std::sort(allOnsets.begin(), allOnsets.end(), 
+        [](const OnsetEvent& a, const OnsetEvent& b) { return a.timestamp < b.timestamp; });
+    
+    return allOnsets;
+}
+
+void RhythmInterpreter::setOnsetThreshold(float threshold) {
+    onsetThreshold = std::max(0.0f, std::min(1.0f, threshold));
+}
+
+float RhythmInterpreter::getOnsetThreshold() const {
+    return onsetThreshold;
+}
+
+void RhythmInterpreter::setOnsetBufferSize(size_t size) {
+    onsetBufferSize = size;
+    
+    // Trim existing buffers if needed
+    for (auto& history : onsetHistory) {
+        if (history.size() > size) {
+            history.erase(history.begin(), history.begin() + (history.size() - size));
+        }
+    }
+}
+
+size_t RhythmInterpreter::getOnsetBufferSize() const {
+    return onsetBufferSize;
+}
+
+void RhythmInterpreter::clearOnsetHistory() {
+    for (auto& history : onsetHistory) {
+        history.clear();
+    }
 }

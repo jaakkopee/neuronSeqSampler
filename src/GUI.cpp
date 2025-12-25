@@ -2213,6 +2213,86 @@ void GUI::createConnectionMatrixPanel() {
     });
     connectionMatrixPanel->add(connectAllButton);
     
+    // Onset Detection Controls
+    auto onsetLabel = tgui::Label::create("Onset Detection:");
+    onsetLabel->setPosition(235, matrixTitleLabel->getPosition().y + 20);
+    onsetLabel->setTextSize(10);
+    onsetLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+    connectionMatrixPanel->add(onsetLabel);
+    
+    // Onset threshold slider
+    auto onsetThresholdLabel = tgui::Label::create("Threshold:");
+    onsetThresholdLabel->setPosition(340, matrixTitleLabel->getPosition().y + 20);
+    onsetThresholdLabel->setTextSize(9);
+    onsetThresholdLabel->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+    connectionMatrixPanel->add(onsetThresholdLabel);
+    
+    auto onsetThresholdSlider = tgui::Slider::create(0.0f, 0.5f);
+    onsetThresholdSlider->setPosition(405, matrixTitleLabel->getPosition().y + 22);
+    onsetThresholdSlider->setSize(60, 16);
+    onsetThresholdSlider->setStep(0.01f);
+    onsetThresholdSlider->setValue(rhythmInterpreter->getOnsetThreshold());
+    onsetThresholdSlider->onValueChange([this, rhythmInterpreter](float value) {
+        rhythmInterpreter->setOnsetThreshold(value);
+        // Update display
+        auto display = connectionMatrixPanel->get<tgui::Label>("OnsetThresholdDisplay");
+        if (display) {
+            std::ostringstream oss;
+            oss << std::fixed << std::setprecision(2) << value;
+            display->setText(oss.str());
+        }
+    });
+    connectionMatrixPanel->add(onsetThresholdSlider);
+    
+    auto onsetThresholdDisplay = tgui::Label::create();
+    std::ostringstream oss_thresh;
+    oss_thresh << std::fixed << std::setprecision(2) << rhythmInterpreter->getOnsetThreshold();
+    onsetThresholdDisplay->setText(oss_thresh.str());
+    onsetThresholdDisplay->setPosition(470, matrixTitleLabel->getPosition().y + 20);
+    onsetThresholdDisplay->setTextSize(9);
+    onsetThresholdDisplay->getRenderer()->setTextColor(tgui::Color::White);
+    connectionMatrixPanel->add(onsetThresholdDisplay, "OnsetThresholdDisplay");
+    
+    // Onset buffer size control
+    auto bufferSizeLabel = tgui::Label::create("Buffer:");
+    bufferSizeLabel->setPosition(510, matrixTitleLabel->getPosition().y + 20);
+    bufferSizeLabel->setTextSize(9);
+    bufferSizeLabel->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+    connectionMatrixPanel->add(bufferSizeLabel);
+    
+    auto onsetBufferSlider = tgui::Slider::create(10.0f, 500.0f);
+    onsetBufferSlider->setPosition(555, matrixTitleLabel->getPosition().y + 22);
+    onsetBufferSlider->setSize(60, 16);
+    onsetBufferSlider->setStep(10.0f);
+    onsetBufferSlider->setValue(static_cast<float>(rhythmInterpreter->getOnsetBufferSize()));
+    onsetBufferSlider->onValueChange([this, rhythmInterpreter](float value) {
+        rhythmInterpreter->setOnsetBufferSize(static_cast<size_t>(value));
+        // Update display
+        auto display = connectionMatrixPanel->get<tgui::Label>("OnsetBufferDisplay");
+        if (display) {
+            display->setText(std::to_string(static_cast<int>(value)));
+        }
+    });
+    connectionMatrixPanel->add(onsetBufferSlider);
+    
+    auto onsetBufferDisplay = tgui::Label::create(std::to_string(rhythmInterpreter->getOnsetBufferSize()));
+    onsetBufferDisplay->setPosition(620, matrixTitleLabel->getPosition().y + 20);
+    onsetBufferDisplay->setTextSize(9);
+    onsetBufferDisplay->getRenderer()->setTextColor(tgui::Color::White);
+    connectionMatrixPanel->add(onsetBufferDisplay, "OnsetBufferDisplay");
+    
+    // Clear onset history button
+    auto clearOnsetsButton = tgui::Button::create("Clear Onsets");
+    clearOnsetsButton->setPosition(660, matrixTitleLabel->getPosition().y + 20);
+    clearOnsetsButton->setSize(80, 20);
+    clearOnsetsButton->setTextSize(9);
+    clearOnsetsButton->getRenderer()->setBackgroundColor(tgui::Color(80, 60, 40));
+    clearOnsetsButton->onPress([rhythmInterpreter]() {
+        rhythmInterpreter->clearOnsetHistory();
+        std::cout << "🔄 Cleared onset history" << std::endl;
+    });
+    connectionMatrixPanel->add(clearOnsetsButton);
+    
     // Rhythmogram frequency bands (Todd, 1994) - Logarithmic distribution for rhythmic hierarchy
     // Dynamic band names and tooltips
     std::vector<std::string> filterNames(numFilters);
@@ -2235,6 +2315,7 @@ void GUI::createConnectionMatrixPanel() {
     filterGainSliders.clear();
     filterGainDisplays.clear();
     filterOutputDisplays.clear();
+    filterOnsetIndicators.clear(); // New: onset indicators
     for (size_t f = 0; f < numFilters; ++f) {
         // Reverse vertical order: Onset at top (f=7 -> y=90), Phrase at bottom (f=0 -> y=90+420)
         size_t displayRow = (numFilters - 1) - f;
@@ -2298,6 +2379,19 @@ void GUI::createConnectionMatrixPanel() {
         
         connectionMatrixPanel->add(outputDisplay);
         filterOutputDisplays.push_back(outputDisplay);
+        
+        // Add onset indicator (shows when onset detected in this band)
+        auto onsetIndicator = tgui::Label::create("○");
+        onsetIndicator->setPosition(150, 95 + displayRow * 60);
+        onsetIndicator->setSize(20, 15);
+        onsetIndicator->setTextSize(12);
+        onsetIndicator->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
+        onsetIndicator->getRenderer()->setBackgroundColor(tgui::Color(20, 20, 20));
+        onsetIndicator->getRenderer()->setBorderColor(tgui::Color(40, 40, 40));
+        onsetIndicator->getRenderer()->setBorders(1);
+        
+        connectionMatrixPanel->add(onsetIndicator);
+        filterOnsetIndicators.push_back(onsetIndicator);
         
 
     }
@@ -2915,6 +3009,38 @@ void GUI::updateConnectionMatrix() {
             filterOutputDisplays[f]->getRenderer()->setTextColor(tgui::Color(200, 200, 100));
         } else {
             filterOutputDisplays[f]->getRenderer()->setTextColor(tgui::Color(200, 100, 100));
+        }
+        
+        // Update onset indicator
+        if (f < filterOnsetIndicators.size() && rhythmInterpreter) {
+            auto onsetHistory = rhythmInterpreter->getOnsetHistory(f);
+            const float onsetDisplayWindow = 0.15f; // Show onset indicator for 150ms
+            
+            bool recentOnset = false;
+            if (!onsetHistory.empty()) {
+                // Get current time from most recent onset across all bands
+                auto allOnsets = rhythmInterpreter->getAllOnsets();
+                float currentTime = allOnsets.empty() ? 0.0f : allOnsets.back().timestamp;
+                
+                // Check if there's a recent onset in this band
+                for (const auto& onset : onsetHistory) {
+                    if (currentTime - onset.timestamp < onsetDisplayWindow) {
+                        recentOnset = true;
+                        break;
+                    }
+                }
+            }
+            
+            // Animate indicator based on onset state
+            if (recentOnset) {
+                filterOnsetIndicators[f]->setText("●");
+                filterOnsetIndicators[f]->getRenderer()->setTextColor(tgui::Color(255, 200, 50)); // Bright yellow/orange
+                filterOnsetIndicators[f]->getRenderer()->setBackgroundColor(tgui::Color(60, 40, 0));
+            } else {
+                filterOnsetIndicators[f]->setText("○");
+                filterOnsetIndicators[f]->getRenderer()->setTextColor(tgui::Color(100, 100, 100)); // Dim gray
+                filterOnsetIndicators[f]->getRenderer()->setBackgroundColor(tgui::Color(20, 20, 20));
+            }
         }
     }
     

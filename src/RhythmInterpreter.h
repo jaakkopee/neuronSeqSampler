@@ -159,6 +159,51 @@ public:
     void setBaseTempoFrequency(float frequency);
     float getBaseTempoFrequency() const;
 
+    // ========================= ONSET DETECTION AND PREDICTION =========================
+    
+    /**
+     * @brief Onset detection data structure
+     */
+    struct OnsetEvent {
+        float timestamp;      // Time in seconds when onset occurred
+        float strength;       // Onset strength (0.0-1.0)
+        size_t bandIndex;     // Which frequency band detected the onset
+        
+        OnsetEvent(float t, float s, size_t b) : timestamp(t), strength(s), bandIndex(b) {}
+    };
+    
+    /**
+     * @brief Get onset history for a specific band
+     * @param bandIndex Band index (0-bandCount)
+     * @return Vector of recent onset events for that band
+     */
+    std::vector<OnsetEvent> getOnsetHistory(size_t bandIndex) const;
+    
+    /**
+     * @brief Get all recent onsets across all bands
+     * @return Vector of all recent onset events
+     */
+    std::vector<OnsetEvent> getAllOnsets() const;
+    
+    /**
+     * @brief Set the onset detection threshold
+     * @param threshold Minimum change to trigger onset detection (0.0-1.0)
+     */
+    void setOnsetThreshold(float threshold);
+    float getOnsetThreshold() const;
+    
+    /**
+     * @brief Set maximum onset buffer size (number of onsets to keep)
+     * @param size Maximum number of onsets to store per band
+     */
+    void setOnsetBufferSize(size_t size);
+    size_t getOnsetBufferSize() const;
+    
+    /**
+     * @brief Clear all onset history
+     */
+    void clearOnsetHistory();
+
     // ========================= UTILITY METHODS =========================
     
     /**
@@ -204,6 +249,13 @@ private:
     // ========================= RUNTIME STATE =========================  
     std::vector<float> filterOutputs;        // Current output levels
     std::vector<int> stuckCounters;          // Anti-stuck mechanism counters
+    
+    // Onset detection state
+    std::vector<std::vector<OnsetEvent>> onsetHistory;  // Per-band onset buffers
+    std::vector<float> previousOutputs;                  // Previous frame outputs for onset detection
+    float onsetThreshold;                                // Threshold for onset detection
+    size_t onsetBufferSize;                              // Max onsets to keep per band
+    float currentTime;                                   // Current time in seconds
 
     //Gamma Tone Filter Array
     GammaToneFilterBank GTFilterBank;
@@ -215,6 +267,11 @@ private:
      */
     void initializeBands();
     void initializeBandsLogarithmic(float minFreq, float maxFreq, size_t count);
+    
+    /**
+     * @brief Detect onsets in current frame and update onset history
+     */
+    void detectOnsets();
     
     // Removed updateAdaptiveSensitivity and applyContrastEnhancement methods
     
