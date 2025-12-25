@@ -668,18 +668,18 @@ void GUI::refreshConnectionMatrix() {
         return;
     }
     
-    // Only recreate the panel if it doesn't exist or if the number of connections changed
+    // Only recreate the panel if it doesn't exist or if the number of neurons changed
     if (!connectionMatrixWindow || !network || !network->getRhythmInterpreter()) {
         createConnectionMatrixPanel();
         return;
     }
     
-    // Check if connection count changed, which requires panel recreation
-    size_t currentConnections = network->getConnectionCount();
+    // Check if neuron count changed, which requires panel recreation
+    size_t currentNeurons = network->getNeuronCount();
     size_t expectedButtons = matrixToggleButtons.empty() ? 0 : matrixToggleButtons[0].size();
     
-    if (currentConnections != expectedButtons) {
-        // Connection count changed, need to recreate
+    if (currentNeurons != expectedButtons) {
+        // Neuron count changed, need to recreate
         createConnectionMatrixPanel();
     } else {
         // Network structure unchanged, force one matrix update
@@ -2044,7 +2044,7 @@ void GUI::createConnectionMatrixPanel() {
     
     auto rhythmInterpreter = network->getRhythmInterpreter();
     size_t numFilters = rhythmInterpreter->getBandCount();
-    size_t numConnections = network->getConnectionCount();
+    size_t numNeurons = network->getNeuronCount();
     
     // Create panel even if no neurons yet - it will show as empty but ready
     
@@ -2070,15 +2070,15 @@ void GUI::createConnectionMatrixPanel() {
     gui->add(connectionMatrixWindow, "ConnectionMatrixPanel");
 
     // Compute content size estimates (used for laying out controls inside the popover)
-    float contentWidth = std::max(350.0f, static_cast<float>(270 + numConnections * 80 + 280)); // estimate
+    float contentWidth = std::max(350.0f, static_cast<float>(270 + numNeurons * 80 + 280)); // estimate
     float contentHeight = std::max(550.0f, static_cast<float>(150 + numFilters * 60 + 150)); // estimate
     
     // Set content size for scrollable panel now that we have computed the dimensions
     connectionMatrixPanel->setContentSize(tgui::Vector2f(contentWidth, contentHeight));
     
     // Title label
-    std::string title = numConnections == 0 ? "🎛️ Rhythmogram Mapping (" + std::to_string(numFilters) + "×0) - Add connections first" : 
-                                             "🎛️ Rhythmogram Mapping (" + std::to_string(numFilters) + "×" + std::to_string(numConnections) + ")";
+    std::string title = numNeurons == 0 ? "🎛️ Rhythmogram Mapping (" + std::to_string(numFilters) + "×0) - Add neurons first" : 
+                                             "🎛️ Rhythmogram Mapping (" + std::to_string(numFilters) + "×" + std::to_string(numNeurons) + ")";
     matrixTitleLabel = tgui::Label::create(title);
     matrixTitleLabel->setPosition(5, 5);
     matrixTitleLabel->setTextSize(14);
@@ -2304,10 +2304,10 @@ void GUI::createConnectionMatrixPanel() {
     
     // Neuron column labels (horizontal) - only if we have neurons
     neuronColumnLabels.clear();
-    if (numConnections > 0) {
-        for (size_t c = 0; c < numConnections; ++c) {
-            auto label = tgui::Label::create("C" + std::to_string(c + 1));
-            label->setPosition(150 + c * 80, 40); // Increased spacing to 80px for wider gaps between connections
+    if (numNeurons > 0) {
+        for (size_t n = 0; n < numNeurons; ++n) {
+            auto label = tgui::Label::create("N" + std::to_string(n + 1));
+            label->setPosition(150 + n * 80, 40); // Increased spacing to 80px for wider gaps between neurons
             label->setTextSize(10);
             label->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
             connectionMatrixPanel->add(label);
@@ -2322,7 +2322,7 @@ void GUI::createConnectionMatrixPanel() {
     matrixGainSliders.clear();
     matrixGainDisplays.clear();
     
-    if (numConnections > 0) {
+    if (numNeurons > 0) {
         for (size_t f = 0; f < numFilters; ++f) {
             // Reverse vertical order: Onset at top (f=7 -> y=90), Phrase at bottom (f=0 -> y=90+420)
             size_t displayRow = (numFilters - 1) - f;
@@ -2331,10 +2331,10 @@ void GUI::createConnectionMatrixPanel() {
             std::vector<tgui::Slider::Ptr> sliderRow;
             std::vector<tgui::Label::Ptr> displayRowVec;
             
-            for (size_t c = 0; c < numConnections; ++c) {
+            for (size_t n = 0; n < numNeurons; ++n) {
             // Toggle button
             auto toggleButton = tgui::Button::create("○");
-            toggleButton->setPosition(150 + c * 80, 90 + displayRow * 60); // Aligned with connection column labels, reversed position
+            toggleButton->setPosition(150 + n * 80, 90 + displayRow * 60); // Aligned with neuron column labels, reversed position
             toggleButton->setSize(20, 20);
             toggleButton->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
             toggleButton->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
@@ -2342,49 +2342,49 @@ void GUI::createConnectionMatrixPanel() {
             toggleButton->getRenderer()->setBorders(1);
             
             // Add tooltip with filter description
-            auto tooltip = tgui::Label::create(filterTooltips[f] + "\n→ Connection " + std::to_string(c + 1));
+            auto tooltip = tgui::Label::create(filterTooltips[f] + "\n→ Neuron " + std::to_string(n + 1));
             tooltip->getRenderer()->setBackgroundColor(tgui::Color(0, 0, 0, 200));
             tooltip->getRenderer()->setTextColor(tgui::Color::White);
             tooltip->setTextSize(10);
             toggleButton->setToolTip(tooltip);
             
             // Read current network mapping weight to initialize UI state
-            float currentWeight = network->getRhythmConnection(f, c);
+            float currentWeight = network->getRhythmConnection(f, n);
             
             // Toggle connection callback
-            toggleButton->onPress([this, f, c, toggleButton]() {
+            toggleButton->onPress([this, f, n, toggleButton]() {
                 if (!network) return;
                 
                 // Get current connection state
-                float currentWeight = network->getRhythmConnection(f, c);
+                float currentWeight = network->getRhythmConnection(f, n);
                 bool wasConnected = std::abs(currentWeight) > 0.001f;
                 
                 if (wasConnected) {
                     // Deactivate: Clear connection and reset gain
-                    network->clearRhythmConnection(f, c);
+                    network->clearRhythmConnection(f, n);
                     toggleButton->setText("○");
                     toggleButton->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
                     toggleButton->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
                     // Reset gain slider to default value and hide it
-                    matrixGainSliders[f][c]->setValue(0.30f); // Reset to default 0.30
-                    matrixGainSliders[f][c]->setVisible(false);
+                    matrixGainSliders[f][n]->setValue(0.30f); // Reset to default 0.30
+                    matrixGainSliders[f][n]->setVisible(false);
                     // Hide connection gain display
-                    matrixGainDisplays[f][c]->setVisible(false);
+                    matrixGainDisplays[f][n]->setVisible(false);
                 } else {
                     // Connect with default gain
                     float defaultGain = 0.3f;
-                    network->setRhythmConnection(f, c, defaultGain);
+                    network->setRhythmConnection(f, n, defaultGain);
                     toggleButton->setText("●");
                     toggleButton->getRenderer()->setBackgroundColor(tgui::Color(60, 120, 60));
                     toggleButton->getRenderer()->setTextColor(tgui::Color::White);
-                    matrixGainSliders[f][c]->setValue(defaultGain);
-                    matrixGainSliders[f][c]->setVisible(true);
+                    matrixGainSliders[f][n]->setValue(defaultGain);
+                    matrixGainSliders[f][n]->setVisible(true);
                     // Show and update connection gain display
                     {
                         std::ostringstream oss; oss.setf(std::ios::fixed); oss.precision(2); oss << defaultGain;
-                        matrixGainDisplays[f][c]->setText(oss.str());
+                        matrixGainDisplays[f][n]->setText(oss.str());
                     }
-                    matrixGainDisplays[f][c]->setVisible(true);
+                    matrixGainDisplays[f][n]->setVisible(true);
                 }
                 
                 // Block matrix updates for several frames after toggle interaction
@@ -2396,7 +2396,7 @@ void GUI::createConnectionMatrixPanel() {
             
             // Gain slider (only visible when connected)
             auto gainSlider = tgui::Slider::create(0.0f, 1.0f);
-            gainSlider->setPosition(175 + c * 80, 90 + displayRow * 60); // Right of toggle button, reversed position
+            gainSlider->setPosition(175 + n * 80, 90 + displayRow * 60); // Right of toggle button, reversed position
             gainSlider->setSize(40, 16); // Longer slider for easier control
             gainSlider->setStep(0.01f); // Finer adjustments
             // Initialize with a neutral default; do not reflect live weight
@@ -2404,24 +2404,24 @@ void GUI::createConnectionMatrixPanel() {
             gainSlider->setVisible(false);
             
             // Gain change callback
-            gainSlider->onValueChange([this, f, c](float value) {
+            gainSlider->onValueChange([this, f, n](float value) {
                 if (!network) return;
 
                 float weight = value; // Already in 0.00–1.00 range
 
                 // Preserve sign if it was negative
-                float currentWeight = network->getRhythmConnection(f, c);
+                float currentWeight = network->getRhythmConnection(f, n);
                 if (currentWeight < 0) {
                     weight = -weight;
                 }
 
                 // Update the rhythm connection weight
-                network->setRhythmConnection(f, c, weight);
+                network->setRhythmConnection(f, n, weight);
 
                 // Update connection gain display (guard indices until rows are registered)
-                if (f < matrixGainDisplays.size() && c < matrixGainDisplays[f].size() && matrixGainDisplays[f][c]) {
+                if (f < matrixGainDisplays.size() && n < matrixGainDisplays[f].size() && matrixGainDisplays[f][n]) {
                     std::ostringstream oss; oss.setf(std::ios::fixed); oss.precision(2); oss << value;
-                    matrixGainDisplays[f][c]->setText(oss.str());
+                    matrixGainDisplays[f][n]->setText(oss.str());
                 }
             });
             
@@ -2430,7 +2430,7 @@ void GUI::createConnectionMatrixPanel() {
             
             // Connection gain value display (shows current connection weight)
             auto connectionGainDisplay = tgui::Label::create("0.0");
-            connectionGainDisplay->setPosition(220 + c * 80, 90 + displayRow * 60); // Right of the longer gain slider
+            connectionGainDisplay->setPosition(220 + n * 80, 90 + displayRow * 60); // Right of the longer gain slider
             connectionGainDisplay->setSize(20, 20); // Small square label
             connectionGainDisplay->setTextSize(7);
             connectionGainDisplay->getRenderer()->setTextColor(tgui::Color(200, 200, 140));
@@ -2845,28 +2845,28 @@ void GUI::updateConnectionMatrix() {
     
     auto rhythmInterpreter = network->getRhythmInterpreter();
     size_t numFilters = rhythmInterpreter->getBandCount();
-    size_t numConnections = network->getConnectionCount();
+    size_t numNeurons = network->getNeuronCount();
     
     // Update title
     if (matrixTitleLabel) {
-        matrixTitleLabel->setText("🎛️ Rhythmogram Mapping (" + std::to_string(numFilters) + "×" + std::to_string(numConnections) + ")");
+        matrixTitleLabel->setText("🎛️ Rhythmogram Mapping (" + std::to_string(numFilters) + "×" + std::to_string(numNeurons) + ")");
     }
     
     // Update slider values and displays without auto-changing toggle states
     for (size_t f = 0; f < std::min(numFilters, matrixToggleButtons.size()); ++f) {
-        for (size_t c = 0; c < std::min(numConnections, matrixToggleButtons[f].size()); ++c) {
-            float weight = network->getRhythmConnection(f, c); // Get actual mapping weight
+        for (size_t n = 0; n < std::min(numNeurons, matrixToggleButtons[f].size()); ++n) {
+            float weight = network->getRhythmConnection(f, n); // Get actual mapping weight
             // Respect current UI toggle state; do not auto-change it based on weight
-            bool uiConnected = (matrixToggleButtons[f][c]->getText() == "●");
+            bool uiConnected = (matrixToggleButtons[f][n]->getText() == "●");
             
             // Do not change gain slider value automatically; preserve user input
-            matrixGainSliders[f][c]->setVisible(uiConnected);
+            matrixGainSliders[f][n]->setVisible(uiConnected);
             
             // Update connection gain display
-            if (f < matrixGainDisplays.size() && c < matrixGainDisplays[f].size()) {
+            if (f < matrixGainDisplays.size() && n < matrixGainDisplays[f].size()) {
                 std::ostringstream oss; oss.setf(std::ios::fixed); oss.precision(2); oss << std::abs(weight);
-                matrixGainDisplays[f][c]->setText(oss.str());
-                matrixGainDisplays[f][c]->setVisible(uiConnected);
+                matrixGainDisplays[f][n]->setText(oss.str());
+                matrixGainDisplays[f][n]->setVisible(uiConnected);
             }
         }
     }

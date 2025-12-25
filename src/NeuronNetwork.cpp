@@ -141,7 +141,7 @@ void NeuronNetwork::initializeRhythmInterpreter() {
 void NeuronNetwork::processAudioForRhythm(const std::vector<float>& audioData) {
     if (rhythmInterpreter) {
         rhythmInterpreter->processAudioFrame(audioData);
-        // Apply rhythm filter outputs to connected neurons
+        // Apply rhythm filter outputs to neurons
         applyRhythmConnections();
         // Update weights if learning is enabled
         if (learningEnabled) {
@@ -196,39 +196,37 @@ void NeuronNetwork::clearRhythmConnection(size_t filterIndex, size_t neuronIndex
 
 void NeuronNetwork::applyRhythmConnections() {
     if (!rhythmInterpreter) return;
-    
+
     // Get current filter outputs
     std::vector<float> filterOutputs = rhythmInterpreter->getFilterOutputs();
 
-    // Ensure matrix sized to current band/connection counts
-    ensureMatrixSize(filterOutputs.size(), connections.size());
+    // Ensure matrix sized to current band/neuron counts
+    ensureMatrixSize(filterOutputs.size(), neurons.size());
     
-    // Apply rhythm inputs per connection to the target neurons
+    // Apply rhythm inputs directly to neurons
     for (size_t f = 0; f < filterOutputs.size() && f < rhythmConnectionMatrix.size(); ++f) {
-        for (size_t c = 0; c < rhythmConnectionMatrix[f].size() && c < connections.size(); ++c) {
-            float mapWeight = rhythmConnectionMatrix[f][c];
+        for (size_t n = 0; n < rhythmConnectionMatrix[f].size() && n < neurons.size(); ++n) {
+            float mapWeight = rhythmConnectionMatrix[f][n];
             if (std::abs(mapWeight) > 0.001f) {
                 float rhythmInput = filterOutputs[f] * mapWeight * mappingGain;
-                Connection* conn = connections[c].get();
-                if (conn && conn->getTarget()) {
-                    conn->getTarget()->addExternalInput(rhythmInput);
+                if (neurons[n]) {
+                    neurons[n]->addExternalInput(rhythmInput);
                 }
             }
         }
     }
 }
 
-void NeuronNetwork::ensureMatrixSize(size_t bandCount, size_t connectionCount) {
+void NeuronNetwork::ensureMatrixSize(size_t bandCount, size_t neuronCount) {
     if (rhythmConnectionMatrix.size() < bandCount) {
         rhythmConnectionMatrix.resize(bandCount);
     }
     for (size_t f = 0; f < bandCount; ++f) {
-        if (rhythmConnectionMatrix[f].size() < connectionCount) {
-            rhythmConnectionMatrix[f].resize(connectionCount, 0.0f);
+        if (rhythmConnectionMatrix[f].size() < neuronCount) {
+            rhythmConnectionMatrix[f].resize(neuronCount, 0.0f);
         }
     }
     // Ensure neuron band map sized and initialized (per neuron)
-    size_t neuronCount = neurons.size();
     if (neuronBandMap.size() < neuronCount) {
         size_t start = neuronBandMap.size();
         neuronBandMap.resize(neuronCount);
@@ -250,7 +248,7 @@ size_t NeuronNetwork::assignedBandForNeuron(size_t neuronIndex) const {
 
 void NeuronNetwork::resetRhythmWeights(float value) {
     if (!rhythmInterpreter) return;
-    ensureMatrixSize(rhythmInterpreter->getBandCount(), connections.size());
+    ensureMatrixSize(rhythmInterpreter->getBandCount(), neurons.size());
     for (auto& row : rhythmConnectionMatrix) {
         std::fill(row.begin(), row.end(), value);
     }
@@ -259,7 +257,7 @@ void NeuronNetwork::resetRhythmWeights(float value) {
 void NeuronNetwork::learnFromRhythm() {
     if (!rhythmInterpreter || neurons.empty()) return;
     std::vector<float> filterOutputs = rhythmInterpreter->getFilterOutputs();
-    ensureMatrixSize(filterOutputs.size(), connections.size());
+    ensureMatrixSize(filterOutputs.size(), neurons.size());
 
     // Normalize filter outputs to [0,1]
     float maxOut = 0.0f;
@@ -277,22 +275,22 @@ void NeuronNetwork::learnFromRhythm() {
         float predicted = neurons[n]->getActivation(); // current processed activation
         float error = predicted - target; // d/dw ∝ error * feature
 
+        // Compute rhythm drive for this neuron based on all mapped bands
+        float rhythmDrive = 0.0f;
+        for (size_t f = 0; f < normOut.size(); ++f) {
+            float map = (f < rhythmConnectionMatrix.size() && n < rhythmConnectionMatrix[f].size())
+                            ? rhythmConnectionMatrix[f][n]
+                            : 0.0f;
+            if (map > 0.0f) rhythmDrive += normOut[f] * map;
+        }
+        rhythmDrive *= mappingGain; // reflect applied scaling
+
         // Update connection weights targeting this neuron
         for (size_t c = 0; c < connections.size(); ++c) {
             Connection* conn = connections[c].get();
             if (!conn || conn->getTarget() != neurons[n].get()) continue;
 
-            // Gate learning for this connection by rhythm mapping and band energy
-            float rhythmDrive = 0.0f;
-            for (size_t f = 0; f < normOut.size(); ++f) {
-                float map = (f < rhythmConnectionMatrix.size() && c < rhythmConnectionMatrix[f].size())
-                                ? rhythmConnectionMatrix[f][c]
-                                : 0.0f;
-                if (map > 0.0f) rhythmDrive += normOut[f] * map;
-            }
-            rhythmDrive *= mappingGain; // reflect applied scaling
-
-            // Feature: source activation modulated by current rhythm drive for this connection
+            // Feature: source activation modulated by neuron's rhythm drive
             float srcAct = conn->getSource() ? conn->getSource()->getActivation() : 0.0f;
             float x = srcAct * rhythmDrive;
 
