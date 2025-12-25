@@ -58,9 +58,35 @@ bool PresetManager::savePreset(const NeuronNetwork& network, const std::string& 
         auto* rhythmInterpreter = network.getRhythmInterpreter();
         if (rhythmInterpreter) {
             preset["rhythmogram_matrix"] = rhythmogramMatrixToJson(rhythmInterpreter);
+            
+            // Save rhythm connection matrix (band-to-neuron mappings)
+            size_t bandCount = rhythmInterpreter->getBandCount();
+            size_t neuronCount = network.getNeuronCount();
+            preset["rhythm_connections"] = json::array();
+            for (size_t b = 0; b < bandCount; ++b) {
+                for (size_t n = 0; n < neuronCount; ++n) {
+                    float weight = network.getRhythmConnection(b, n);
+                    if (std::abs(weight) > 0.001f) { // Only save non-zero connections
+                        preset["rhythm_connections"].push_back({
+                            {"band_index", b},
+                            {"neuron_index", n},
+                            {"weight", weight}
+                        });
+                    }
+                }
+            }
         } else {
             preset["rhythmogram_matrix"] = {{"enabled", false}};
+            preset["rhythm_connections"] = json::array();
         }
+        
+        // Serialize learning parameters
+        preset["learning"] = {
+            {"enabled", network.isLearningEnabled()},
+            {"learning_rate", network.getLearningRate()},
+            {"weight_decay", network.getWeightDecay()},
+            {"mapping_gain", network.getMappingGain()}
+        };
         
         // Serialize quantization settings if available
         auto* quantizer = network.getQuantizer();
@@ -145,6 +171,27 @@ bool PresetManager::loadPreset(NeuronNetwork& network, const std::string& filena
                 std::cout << "🔄 Loading rhythmogram matrix..." << std::endl;
                 applyRhythmogramMatrixFromJson(rhythmInterpreter, preset["rhythmogram_matrix"]);
             }
+        }
+        
+        // Load rhythm connections (band-to-neuron mappings)
+        if (preset.contains("rhythm_connections")) {
+            std::cout << "🔄 Loading rhythm connections..." << std::endl;
+            for (const auto& conn : preset["rhythm_connections"]) {
+                size_t bandIndex = conn.value("band_index", 0);
+                size_t neuronIndex = conn.value("neuron_index", 0);
+                float weight = conn.value("weight", 0.0f);
+                network.setRhythmConnection(bandIndex, neuronIndex, weight);
+            }
+        }
+        
+        // Load learning parameters
+        if (preset.contains("learning")) {
+            std::cout << "🔄 Loading learning parameters..." << std::endl;
+            const auto& learning = preset["learning"];
+            network.setLearningEnabled(learning.value("enabled", false));
+            network.setLearningRate(learning.value("learning_rate", 0.01f));
+            network.setWeightDecay(learning.value("weight_decay", 0.0001f));
+            network.setMappingGain(learning.value("mapping_gain", 0.5f));
         }
         
         // Load quantization settings if available
@@ -611,13 +658,28 @@ json PresetManager::connectionToJson(const Connection* connection, const std::ve
 }
 
 json PresetManager::rhythmogramMatrixToJson(const RhythmInterpreter* rhythmInterpreter) {
-    // This is a placeholder - you'll need to implement access to rhythm interpreter internals
-    // For now, return basic structure
-    return json{
-        {"enabled", true},
-        {"scale", 5.0},
-        {"filter_gains", {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0}}
+    if (!rhythmInterpreter) {
+        return json{{"enabled", false}};
+    }
+    
+    json data;
+    data["enabled"] = true;
+    
+    // Save filter gains
+    size_t bandCount = rhythmInterpreter->getBandCount();
+    data["band_count"] = bandCount;
+    data["filter_gains"] = json::array();
+    for (size_t i = 0; i < bandCount; ++i) {
+        data["filter_gains"].push_back(rhythmInterpreter->getFilterGain(i));
+    }
+    
+    // Save onset detection settings
+    data["onset_detection"] = {
+        {"threshold", rhythmInterpreter->getOnsetThreshold()},
+        {"buffer_size", rhythmInterpreter->getOnsetBufferSize()}
     };
+    
+    return data;
 }
 
 json PresetManager::quantizationToJson(const Quantizer* quantizer) {
@@ -749,13 +811,32 @@ bool PresetManager::createConnectionFromJson(NeuronNetwork& network, const json&
 }
 
 bool PresetManager::applyRhythmogramMatrixFromJson(RhythmInterpreter* rhythmInterpreter, const json& matrixData) {
-    // Placeholder implementation - you'll need to add methods to RhythmInterpreter
-    // to set matrix connections and filter gains
+    if (!rhythmInterpreter) {
+        return false;
+    }
+    
     try {
-        if (matrixData.contains("filter_gains")) {
-            // Apply filter gains if the rhythm interpreter supports it
-            std::cout << "🔄 Rhythmogram matrix settings loaded" << std::endl;
+        // Apply filter gains
+        if (matrixData.contains("filter_gains") && matrixData["filter_gains"].is_array()) {
+            const auto& gains = matrixData["filter_gains"];
+            for (size_t i = 0; i < gains.size() && i < rhythmInterpreter->getBandCount(); ++i) {
+                rhythmInterpreter->setFilterGain(i, gains[i].get<float>());
+            }
+            std::cout << "   ✓ Loaded " << gains.size() << " filter gains" << std::endl;
         }
+        
+        // Apply onset detection settings
+        if (matrixData.contains("onset_detection")) {
+            const auto& onset = matrixData["onset_detection"];
+            if (onset.contains("threshold")) {
+                rhythmInterpreter->setOnsetThreshold(onset["threshold"].get<float>());
+            }
+            if (onset.contains("buffer_size")) {
+                rhythmInterpreter->setOnsetBufferSize(onset["buffer_size"].get<size_t>());
+            }
+            std::cout << "   ✓ Loaded onset detection settings" << std::endl;
+        }
+        
         return true;
     } catch (const std::exception& e) {
         std::cerr << "❌ Error applying rhythmogram matrix: " << e.what() << std::endl;
