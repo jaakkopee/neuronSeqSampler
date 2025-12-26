@@ -140,11 +140,13 @@ private:
                 }
             } else if (event.is<sf::Event::KeyPressed>()) {
                 if (const auto* e = event.getIf<sf::Event::KeyPressed>()) {
-                    // Check if text input is currently active (EditBox has focus)
+                    // Check if text input is currently active (EditBox has focus) or any dialog is open
 #ifdef USE_TGUI
                     bool textInputActive = guiManager.isTextInputActive();
+                    bool dialogOpen = guiManager.isDialogOpen();
 #else
                     bool textInputActive = false;
+                    bool dialogOpen = false;
 #endif
                     
                     // Forward only application-level global shortcuts even if GUI consumed the event.
@@ -157,8 +159,8 @@ private:
                                             (code == sf::Keyboard::Key::S) || (code == sf::Keyboard::Key::L) ||
                                             (code == sf::Keyboard::Key::Equal) || (code == sf::Keyboard::Key::Add);
 
-                    // Don't process keyboard shortcuts when text input is active
-                    if (!textInputActive && (!eventConsumedByGUI || isGlobalShortcut)) {
+                    // Don't process keyboard shortcuts when text input is active or a dialog is open
+                    if (!textInputActive && !dialogOpen && (!eventConsumedByGUI || isGlobalShortcut)) {
                         handleKeyPress(code);
                     }
                 }

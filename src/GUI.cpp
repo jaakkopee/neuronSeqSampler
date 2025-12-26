@@ -3219,6 +3219,21 @@ bool GUI::isTextInputActive() const {
     return checkWidgetTreeForFocusedEditBox(gui->getContainer());
 }
 
+bool GUI::isDialogOpen() const {
+    if (!gui) {
+        return false;
+    }
+    
+    // Check if any ChildWindow (dialog) is currently open
+    for (auto& widget : gui->getWidgets()) {
+        auto childWindow = std::dynamic_pointer_cast<tgui::ChildWindow>(widget);
+        if (childWindow) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool GUI::checkWidgetTreeForFocusedEditBox(tgui::Container::Ptr container) const {
     for (auto& widget : container->getWidgets()) {
         // Check if this widget is an EditBox and has focus

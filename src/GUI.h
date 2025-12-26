@@ -221,5 +221,6 @@ public:
     
     // Text input detection for keyboard handling
     bool isTextInputActive() const;
+    bool isDialogOpen() const;
     bool checkWidgetTreeForFocusedEditBox(tgui::Container::Ptr container) const;
 };
