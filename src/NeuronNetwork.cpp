@@ -311,15 +311,19 @@ void NeuronNetwork::learnFromRhythm() {
                     }
                     avgOnsetStrength /= recentOnsets[f].size();
                     
-                    // Scale onset boost by mapping weight and onset strength
-                    onsetBoost += map * avgOnsetStrength * 2.0f; // 2x multiplier for onset emphasis
+                    // Scale onset boost by mapping weight, onset strength, and onset bias
+                    onsetBoost += map * avgOnsetStrength * 2.0f * onsetBias; // onset emphasis scaled by bias
                 }
             }
         }
+        
+        // Apply onset bias: blend between pure filter output and onset-boosted learning
+        // At onsetBias=0: pure filter output, onsetBias=1: full onset boost
+        float effectiveOnsetBoost = 1.0f + (onsetBoost - 1.0f) * onsetBias;
         rhythmDrive *= mappingGain; // reflect applied scaling
         
-        // Clamp onset boost to reasonable range
-        onsetBoost = std::min(5.0f, std::max(1.0f, onsetBoost));
+        // Clamp effective onset boost to reasonable range
+        effectiveOnsetBoost = std::min(5.0f, std::max(1.0f, effectiveOnsetBoost));
 
         // Update connection weights targeting this neuron
         for (size_t c = 0; c < connections.size(); ++c) {
@@ -334,9 +338,9 @@ void NeuronNetwork::learnFromRhythm() {
 
             float w = conn->getWeight();
             // Apply onset-modulated learning rate
-            float effectiveLearningRate = learningRate * onsetBoost;
-            float dw = -effectiveLearningRate * error * x;      // gradient step with onset boost
-            dw -= weightDecay * w;                               // L2-like regularization on connection weight
+            float adaptiveLR = learningRate * effectiveOnsetBoost;
+            float dw = -adaptiveLR * error * x;      // gradient step with onset boost
+            dw -= weightDecay * w;                   // L2-like regularization on connection weight
             w += dw;
             // Clamp for stability (allow negative weights)
             if (w >  maxWeight) w =  maxWeight;

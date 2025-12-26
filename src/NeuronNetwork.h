@@ -27,6 +27,7 @@ private:
     float weightDecay = 0.0005f; // small decay to prevent runaway growth
     float maxWeight = 1.0f;      // clamp weights for stability
     float mappingGain = 0.2f;    // global scaling for rhythm mapping strength
+    float onsetBias = 0.5f;      // 0.0 = filter output only, 1.0 = onset only, 0.5 = balanced
     
     void ensureMatrixSize(size_t bandCount, size_t neuronCount);
     // Per-neuron rhythmogram band mapping (user configurable)
@@ -83,6 +84,9 @@ public:
     // Global mapping gain
     void setMappingGain(float gain) { mappingGain = std::max(0.0f, std::min(gain, 1.0f)); }
     float getMappingGain() const { return mappingGain; }
+    // Onset bias (balance between onset and filter output learning)
+    void setOnsetBias(float bias) { onsetBias = std::max(0.0f, std::min(bias, 1.0f)); }
+    float getOnsetBias() const { return onsetBias; }
 
     // Mapping controls
     void setNeuronBandMapping(size_t neuronIndex, size_t bandIndex);

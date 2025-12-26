@@ -85,7 +85,8 @@ bool PresetManager::savePreset(const NeuronNetwork& network, const std::string& 
             {"enabled", network.isLearningEnabled()},
             {"learning_rate", network.getLearningRate()},
             {"weight_decay", network.getWeightDecay()},
-            {"mapping_gain", network.getMappingGain()}
+            {"mapping_gain", network.getMappingGain()},
+            {"onset_bias", network.getOnsetBias()}
         };
         
         // Serialize quantization settings if available
@@ -192,6 +193,7 @@ bool PresetManager::loadPreset(NeuronNetwork& network, const std::string& filena
             network.setLearningRate(learning.value("learning_rate", 0.01f));
             network.setWeightDecay(learning.value("weight_decay", 0.0001f));
             network.setMappingGain(learning.value("mapping_gain", 0.5f));
+            network.setOnsetBias(learning.value("onset_bias", 0.5f));
         }
         
         // Load quantization settings if available

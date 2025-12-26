@@ -2850,9 +2850,49 @@ void GUI::createConnectionMatrixPanel() {
     });
     connectionMatrixPanel->add(mappingGainSlider);
 
+    // Onset bias slider (0.0 - 1.0)
+    auto obLabelTitle = tgui::Label::create("OnsetBias");
+    obLabelTitle->setPosition(scaleSliderX - 60, 640);
+    obLabelTitle->setTextSize(10);
+    obLabelTitle->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+    connectionMatrixPanel->add(obLabelTitle);
+
+    auto onsetBiasSlider = tgui::Slider::create(0.0f, 1.0f);
+    onsetBiasSlider->setValue(network ? network->getOnsetBias() : 0.5f);
+    onsetBiasSlider->setStep(0.01f);
+    onsetBiasSlider->setPosition(scaleSliderX - 60, 660);
+    onsetBiasSlider->setSize(100, 18);
+    onsetBiasSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
+    onsetBiasSlider->getRenderer()->setThumbColor(tgui::Color(180, 130, 200));
+    onsetBiasSlider->onValueChange([this](float value) {
+        if (!network) return;
+        network->setOnsetBias(value);
+    });
+    connectionMatrixPanel->add(onsetBiasSlider);
+
+    auto onsetBiasLabel = tgui::Label::create("0.50");
+    onsetBiasLabel->setPosition(scaleSliderX + 45, 657);
+    onsetBiasLabel->setSize(50, 22);
+    onsetBiasLabel->setTextSize(10);
+    onsetBiasLabel->getRenderer()->setTextColor(tgui::Color(230, 200, 255));
+    onsetBiasLabel->getRenderer()->setBackgroundColor(tgui::Color(25, 15, 25));
+    onsetBiasLabel->getRenderer()->setBorderColor(tgui::Color(100, 80, 140));
+    onsetBiasLabel->getRenderer()->setBorders(1);
+    {
+        float ob = network ? network->getOnsetBias() : 0.5f;
+        std::ostringstream s; s << std::fixed << std::setprecision(2) << ob;
+        onsetBiasLabel->setText(s.str());
+    }
+    onsetBiasSlider->onValueChange([onsetBiasLabel](float value) {
+        std::ostringstream s;
+        s << std::fixed << std::setprecision(2) << value;
+        onsetBiasLabel->setText(s.str());
+    });
+    connectionMatrixPanel->add(onsetBiasLabel);
+
     // Reset weights button
     resetRhythmWeightsButton = tgui::Button::create("Reset Weights");
-    resetRhythmWeightsButton->setPosition(scaleSliderX - 60, 570);
+    resetRhythmWeightsButton->setPosition(scaleSliderX - 60, 685);
     resetRhythmWeightsButton->setSize(100, 26);
     resetRhythmWeightsButton->getRenderer()->setBackgroundColor(tgui::Color(80, 60, 60));
     resetRhythmWeightsButton->getRenderer()->setBorderColor(tgui::Color(140, 100, 100));
@@ -2869,14 +2909,14 @@ void GUI::createConnectionMatrixPanel() {
     // Input Audio Playback Controls
     // =========================================================================
     audioControlsLabel = tgui::Label::create("AUDIO");
-    audioControlsLabel->setPosition(bpmSliderX - 45, 605);
+    audioControlsLabel->setPosition(scaleSliderX - 60, 750);
     audioControlsLabel->setTextSize(10);
     audioControlsLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
     connectionMatrixPanel->add(audioControlsLabel);
 
     // Play
     inputPlayButton = tgui::Button::create("Play");
-    inputPlayButton->setPosition(bpmSliderX - 70, 625);
+    inputPlayButton->setPosition(scaleSliderX - 60, 770);
     inputPlayButton->setSize(50, 24);
     inputPlayButton->getRenderer()->setBackgroundColor(tgui::Color(60, 100, 60));
     inputPlayButton->getRenderer()->setTextColor(tgui::Color::White);
@@ -2892,8 +2932,8 @@ void GUI::createConnectionMatrixPanel() {
 
     // Pause
     inputPauseButton = tgui::Button::create("Pause");
-    inputPauseButton->setPosition(bpmSliderX - 15, 625);
-    inputPauseButton->setSize(60, 24);
+    inputPauseButton->setPosition(scaleSliderX - 5, 770);
+    inputPauseButton->setSize(50, 24);
     inputPauseButton->getRenderer()->setBackgroundColor(tgui::Color(100, 100, 60));
     inputPauseButton->getRenderer()->setTextColor(tgui::Color::White);
     inputPauseButton->onPress([this]() {
@@ -2904,7 +2944,7 @@ void GUI::createConnectionMatrixPanel() {
 
     // Stop
     inputStopButton = tgui::Button::create("Stop");
-    inputStopButton->setPosition(bpmSliderX + 55, 625);
+    inputStopButton->setPosition(scaleSliderX + 50, 770);
     inputStopButton->setSize(50, 24);
     inputStopButton->getRenderer()->setBackgroundColor(tgui::Color(120, 60, 60));
     inputStopButton->getRenderer()->setTextColor(tgui::Color::White);
@@ -3224,10 +3264,18 @@ bool GUI::isDialogOpen() const {
         return false;
     }
     
-    // Check if any ChildWindow (dialog) is currently open
+    // Check if any modal dialog ChildWindow is currently open
+    // Exclude permanent windows like "Rhythmogram Mapping" and "Quantization"
     for (auto& widget : gui->getWidgets()) {
         auto childWindow = std::dynamic_pointer_cast<tgui::ChildWindow>(widget);
         if (childWindow) {
+            auto title = childWindow->getTitle().toStdString();
+            
+            // Skip permanent panels/windows
+            if (title == "Rhythmogram Mapping" || title == "Quantization") {
+                continue;
+            }
+            // This is a modal dialog
             return true;
         }
     }
@@ -3257,7 +3305,7 @@ bool GUI::checkWidgetTreeForFocusedEditBox(tgui::Container::Ptr container) const
 
 void GUI::showSavePresetDialog() {
     auto dialog = tgui::ChildWindow::create("Save Preset");
-    dialog->setSize(400, 250);
+    dialog->setSize(400, 450);
     dialog->setPosition("50%", "50%");
     dialog->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
     dialog->getRenderer()->setBorderColor(tgui::Color::White);
@@ -3274,27 +3322,66 @@ void GUI::showSavePresetDialog() {
     nameInput->setText("My Preset");
     dialog->add(nameInput);
     
+    // Version input
+    auto versionLabel = tgui::Label::create("Version:");
+    versionLabel->setPosition(20, 95);
+    versionLabel->getRenderer()->setTextColor(tgui::Color::White);
+    dialog->add(versionLabel);
+    
+    auto versionInput = tgui::EditBox::create();
+    versionInput->setSize(300, 30);
+    versionInput->setPosition(20, 120);
+    versionInput->setText("1.0");
+    dialog->add(versionInput);
+    
+    // Author input
+    auto authorLabel = tgui::Label::create("Author:");
+    authorLabel->setPosition(20, 160);
+    authorLabel->getRenderer()->setTextColor(tgui::Color::White);
+    dialog->add(authorLabel);
+    
+    auto authorInput = tgui::EditBox::create();
+    authorInput->setSize(300, 30);
+    authorInput->setPosition(20, 185);
+    authorInput->setText("User");
+    dialog->add(authorInput);
+    
+    // Tags input
+    auto tagsLabel = tgui::Label::create("Tags:");
+    tagsLabel->setPosition(20, 225);
+    tagsLabel->getRenderer()->setTextColor(tgui::Color::White);
+    dialog->add(tagsLabel);
+    
+    auto tagsInput = tgui::EditBox::create();
+    tagsInput->setSize(300, 30);
+    tagsInput->setPosition(20, 250);
+    tagsInput->setText("");
+    tagsInput->setDefaultText("drum, rhythm, experimental...");
+    dialog->add(tagsInput);
+    
     // Description input
     auto descLabel = tgui::Label::create("Description:");
-    descLabel->setPosition(20, 95);
+    descLabel->setPosition(20, 290);
     descLabel->getRenderer()->setTextColor(tgui::Color::White);
     dialog->add(descLabel);
     
     auto descInput = tgui::EditBox::create();
     descInput->setSize(300, 30);
-    descInput->setPosition(20, 120);
+    descInput->setPosition(20, 315);
     descInput->setText("Custom neural network preset");
     dialog->add(descInput);
     
     // Buttons
     auto saveButton = tgui::Button::create("Save");
-    saveButton->setPosition(80, 180);
+    saveButton->setPosition(80, 380);
     saveButton->setSize(100, 30);
     saveButton->onPress([=]() {
         PresetManager::PresetInfo info;
         info.name = nameInput->getText().toStdString();
+        info.version = versionInput->getText().toStdString();
+        info.author = authorInput->getText().toStdString();
+        info.tags = tagsInput->getText().toStdString();
         info.description = descInput->getText().toStdString();
-        info.author = "User";
         
         std::string filename = "presets/user/" + info.name + ".json";
         
@@ -3309,7 +3396,7 @@ void GUI::showSavePresetDialog() {
     dialog->add(saveButton);
     
     auto cancelButton = tgui::Button::create("Cancel");
-    cancelButton->setPosition(220, 180);
+    cancelButton->setPosition(220, 380);
     cancelButton->setSize(100, 30);
     cancelButton->onPress([=]() {
         dialog->close();
