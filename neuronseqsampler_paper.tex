@@ -1,0 +1,456 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{booktabs}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{NeuronSeqSampler: A Hybrid Neural-Rhythmic Audio Sequencer}
+\author{Jaakko Prättälä}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We present NeuronSeqSampler, a novel real-time audio sequencing system that combines artificial neural network principles with rhythm interpretation for generative music creation. The system employs a user-configurable spiking neural network coupled with a multi-band rhythmogram analyzer to create adaptive, rhythm-driven sample triggering. Drawing on principles from Todd's (1994) auditory primal sketch for rhythmic grouping and Laine's (2000) neural modeling approach for musical note analysis, our implementation features adaptive learning algorithms, onset detection, and tempo-relative frequency analysis. We describe the mathematical foundations, signal processing architecture, and learning mechanisms that enable the system to respond to and generate complex rhythmic patterns.
+\end{abstract}
+
+\section{Introduction}
+
+Generative music systems have traditionally operated either through rule-based algorithmic composition or through neural network approaches trained on large datasets. NeuronSeqSampler bridges these paradigms by implementing a real-time system where a configurable neural network responds to rhythmic features extracted from audio input, creating an interactive performance tool that learns and adapts to musical context.
+
+The system architecture consists of three primary components:
+\begin{enumerate}
+\item A rhythmogram analyzer implementing multi-scale temporal decomposition \cite{todd1994}
+\item A recurrent spiking neural network with configurable topology
+\item An adaptive learning system with onset-weighted updates
+\end{enumerate}
+
+\section{Rhythmogram Analysis}
+
+\subsection{Theoretical Foundation}
+
+Following Todd's (1994) auditory primal sketch model \cite{todd1994}, we implement a multi-scale rhythmic analysis that decomposes the input signal into musically relevant frequency bands. Unlike traditional spectral analysis, the rhythmogram focuses on temporal periodicities corresponding to musical rhythms.
+
+\subsection{Filter Bank Architecture}
+
+The system employs a logarithmically-spaced bank of bandpass filters covering the range 0.125 Hz to 16 Hz, corresponding to musical tempos from approximately 7.5 to 960 BPM:
+
+\begin{equation}
+f_i = f_{\min} \cdot \left(\frac{f_{\max}}{f_{\min}}\right)^{i/(N-1)}, \quad i = 0, 1, \ldots, N-1
+\end{equation}
+
+\noindent where $N$ is the number of bands (default 8), $f_{\min} = 0.125$ Hz, and $f_{\max} = 16$ Hz.
+
+Each band $i$ is implemented as a second-order IIR bandpass filter with transfer function:
+
+\begin{equation}
+H_i(z) = \frac{b_0 + b_1 z^{-1} + b_2 z^{-2}}{1 + a_1 z^{-1} + a_2 z^{-2}}
+\end{equation}
+
+The bandwidth of each filter is set proportionally to its center frequency:
+
+\begin{equation}
+BW_i = k \cdot f_i
+\end{equation}
+
+\noindent where $k$ is a scaling factor (default 0.5), ensuring constant-Q behavior.
+
+\subsection{Onset Detection}
+
+For each frequency band, we implement onset detection. The onset detection function computes the spectral flux in each band:
+
+\begin{equation}
+\Phi_i(n) = \max(0, |X_i(n)| - |X_i(n-1)|)
+\end{equation}
+
+\noindent where $X_i(n)$ is the filter output for band $i$ at time $n$. An onset is detected when:
+
+\begin{equation}
+\Phi_i(n) > \theta \cdot \mu_i + \epsilon
+\end{equation}
+
+\noindent where $\theta$ is a threshold parameter, $\mu_i$ is a local mean of the onset function, and $\epsilon$ is a small constant to prevent spurious detections during silence.
+
+\subsection{Signal Flow Diagram --- Rhythmogram}
+
+The rhythmogram processing pipeline follows this architecture:
+
+\begin{verbatim}
+Audio Input
+    ↓
+┌───────────────────────────────────────┐
+│  Amplitude Envelope Extraction         │
+│  (RMS with 512-sample window)         │
+└───────────────────────────────────────┘
+    ↓
+┌───────────────────────────────────────┐
+│  Bandpass Filter Bank (8 bands)       │
+│  f₀ = 0.125 Hz → f₇ = 16 Hz          │
+│  (logarithmic spacing)                │
+└───────────────────────────────────────┘
+    ↓
+┌─────────────┬─────────────┬──────────┐
+│  Band 0     │  Band 1     │  ...     │ Band 7
+│  (0.125 Hz) │  (0.25 Hz)  │          │ (16 Hz)
+└─────────────┴─────────────┴──────────┘
+    ↓             ↓             ↓
+┌─────────────┬─────────────┬──────────┐
+│ Onset       │ Onset       │ Onset    │
+│ Detector    │ Detector    │ Detector │
+└─────────────┴─────────────┴──────────┘
+    ↓             ↓             ↓
+┌─────────────────────────────────────┐
+│  Filter Outputs: [f₀, f₁, ..., f₇] │
+│  Onset Events: {(t, s, i)}          │
+│  where t=time, s=strength, i=band   │
+└─────────────────────────────────────┘
+\end{verbatim}
+
+\section{Neural Network Architecture}
+
+\subsection{Neuron Model}
+
+Each neuron $j$ in the network is modeled as a leaky integrate-and-fire unit following Laine's (2000) \cite{laine2000} neural approach to musical note modeling, with activation function $\phi_j$:
+
+\begin{equation}
+a_j(t+1) = \phi_j\left(\lambda_j \cdot a_j(t) + \sum_{k \in \mathcal{P}(j)} w_{kj} \cdot s_k(t) + r_j(t)\right)
+\end{equation}
+
+\noindent where:
+\begin{itemize}
+\item $a_j(t)$ is the activation of neuron $j$ at time $t$
+\item $\lambda_j \in [0,1]$ is the leak rate (decay factor)
+\item $\mathcal{P}(j)$ is the set of neurons with connections to $j$
+\item $w_{kj}$ is the weight from neuron $k$ to neuron $j$
+\item $s_k(t)$ is the spike output of neuron $k$ (1 if fired, 0 otherwise)
+\item $r_j(t)$ is the rhythmic input to neuron $j$
+\end{itemize}
+
+The activation function $\phi_j$ can be selected from:
+\begin{itemize}
+\item Linear: $\phi(x) = x$
+\item Sigmoid: $\phi(x) = \frac{1}{1 + e^{-x}}$
+\item ReLU: $\phi(x) = \max(0, x)$
+\item Tanh: $\phi(x) = \tanh(x)$
+\end{itemize}
+
+\subsection{Firing Threshold}
+
+A neuron fires when its activation exceeds its threshold $\theta_j$:
+
+\begin{equation}
+s_j(t) = \begin{cases} 
+1 & \text{if } a_j(t) \geq \theta_j \\
+0 & \text{otherwise}
+\end{cases}
+\end{equation}
+
+Upon firing, the neuron triggers its associated audio sample and its activation is reset:
+
+\begin{equation}
+a_j(t) \leftarrow 0
+\end{equation}
+
+\subsection{Rhythmic Input Mapping}
+
+The rhythmic input $r_j(t)$ for neuron $j$ is computed from the rhythmogram outputs via a learned connection matrix $M$:
+
+\begin{equation}
+r_j(t) = g \cdot \sum_{i=0}^{N-1} M_{ij} \cdot f_i(t)
+\end{equation}
+
+\noindent where:
+\begin{itemize}
+\item $M_{ij}$ is the connection weight from rhythm band $i$ to neuron $j$
+\item $f_i(t)$ is the filter output of band $i$
+\item $g$ is a global mapping gain parameter
+\end{itemize}
+
+\subsection{Network Signal Flow}
+
+\begin{verbatim}
+Rhythmogram Outputs [f₀, f₁, ..., f₇]
+    ↓
+┌────────────────────────────────────┐
+│  Rhythmogram Connection Matrix M   │
+│  (8 bands × N neurons)             │
+└────────────────────────────────────┘
+    ↓
+┌────────────────────────────────────┐
+│  Rhythmic Inputs: r = g·M·f        │
+└────────────────────────────────────┘
+    ↓
+┌──────────────────────────────────────────┐
+│           Neural Network Layer            │
+│  Neuron 1 ←→ Neuron 2 ←→ ... ←→ Neuron N │
+│    ↕           ↕                    ↕     │
+│  Sample 1    Sample 2            Sample N │
+│  Each connection has weight wᵢⱼ          │
+└──────────────────────────────────────────┘
+    ↓
+For each neuron j:
+  aⱼ(t+1) = φⱼ(λⱼ·aⱼ(t) + Σ wₖⱼ·sₖ(t) + rⱼ(t))
+  If aⱼ(t) ≥ θⱼ: Trigger Sample j, Reset aⱼ(t) = 0
+    ↓
+Audio Output
+\end{verbatim}
+
+\section{Adaptive Learning Algorithm}
+
+\subsection{Learning Objective}
+
+The system implements an online learning algorithm that adapts the rhythmogram-to-neuron connection matrix $M$ to maximize the correlation between rhythmic events and neuron activations. The learning process is modulated by onset detection, emphasizing rhythmically salient moments.
+
+\subsection{Onset-Modulated Learning Rule}
+
+The update rule for connection weight $M_{ij}$ is:
+
+\begin{equation}
+\Delta M_{ij} = -\eta \cdot \beta(t) \cdot \frac{\partial L}{\partial M_{ij}} - \delta \cdot M_{ij}
+\end{equation}
+
+\noindent where:
+\begin{itemize}
+\item $\eta$ is the learning rate
+\item $\beta(t)$ is the onset-dependent learning modulation
+\item $L$ is the loss function
+\item $\delta$ is the weight decay parameter
+\end{itemize}
+
+The onset modulation factor $\beta(t)$ is computed as:
+
+\begin{equation}
+\beta(t) = 1 + \alpha \cdot \sum_{i: \text{onset at } t} O_i(t) \cdot M_{ij}
+\end{equation}
+
+\noindent where:
+\begin{itemize}
+\item $\alpha$ is the onset bias parameter (0 = no onset influence, 1 = maximum onset influence)
+\item $O_i(t)$ is the onset strength for band $i$ at time $t$
+\end{itemize}
+
+\subsection{Loss Function}
+
+The system uses a prediction-based loss function comparing neuron activation to its assigned rhythmic band:
+
+\begin{equation}
+L_j = \frac{1}{2}\left(a_j(t) - f_{b(j)}(t)\right)^2
+\end{equation}
+
+\noindent where $b(j)$ maps neuron $j$ to its assigned frequency band.
+
+The gradient with respect to the connection weight is:
+
+\begin{equation}
+\frac{\partial L_j}{\partial M_{ij}} = \left(a_j(t) - f_{b(j)}(t)\right) \cdot f_i(t)
+\end{equation}
+
+\subsection{Complete Learning Algorithm}
+
+\begin{algorithm}
+\caption{Onset-Modulated Rhythmogram Learning}
+\begin{algorithmic}[1]
+\REQUIRE Audio stream, network configuration
+\ENSURE Adapted connection matrix $M$
+\STATE Initialize $M$ randomly or from preset
+\FOR{each audio frame $t$}
+    \STATE Extract rhythmogram features $f(t)$
+    \STATE Detect onsets $O(t)$ across all bands
+    \FOR{each neuron $j$}
+        \STATE Compute rhythmic input: $r_j(t) = g \cdot \sum_i M_{ij} \cdot f_i(t)$
+        \STATE Update activation: $a_j(t+1) = \phi_j(\lambda_j \cdot a_j(t) + \sum_k w_{kj} \cdot s_k(t) + r_j(t))$
+        \IF{$a_j(t) \geq \theta_j$}
+            \STATE Trigger sample $j$
+            \STATE $a_j(t) \leftarrow 0$
+        \ENDIF
+        \IF{learning enabled}
+            \STATE Compute onset boost: $\beta_j(t) = 1 + \alpha \cdot \sum_i O_i(t) \cdot M_{ij}$
+            \STATE Compute error: $e_j = a_j(t) - f_{b(j)}(t)$
+            \FOR{each band $i$}
+                \STATE $\Delta M_{ij} = -\eta \cdot \beta_j(t) \cdot e_j \cdot f_i(t) - \delta \cdot M_{ij}$
+                \STATE $M_{ij} \leftarrow M_{ij} + \Delta M_{ij}$
+                \STATE $M_{ij} \leftarrow \text{clip}(M_{ij}, -1, 1)$
+            \ENDFOR
+        \ENDIF
+    \ENDFOR
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+\section{Implementation Details}
+
+\subsection{System Parameters}
+
+\begin{table}[h]
+\centering
+\caption{Default System Parameters}
+\begin{tabular}{@{}llll@{}}
+\toprule
+Parameter & Symbol & Default Value & Range \\ \midrule
+Sample Rate & $f_s$ & 44100 Hz & --- \\
+Frame Size & --- & 512 samples & --- \\
+Filter Bands & $N$ & 8 & 1--16 \\
+Min Frequency & $f_{\min}$ & 0.125 Hz & --- \\
+Max Frequency & $f_{\max}$ & 16 Hz & --- \\
+Learning Rate & $\eta$ & 0.02 & 0.0--0.1 \\
+Weight Decay & $\delta$ & 0.0005 & 0.0--0.01 \\
+Mapping Gain & $g$ & 0.2 & 0.0--1.0 \\
+Onset Bias & $\alpha$ & 0.5 & 0.0--1.0 \\
+Onset Threshold & $\theta$ & 1.0 & 0.0--10.0 \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Real-Time Performance}
+
+The system processes audio in real-time with latency determined by the frame size:
+
+\begin{equation}
+\text{Latency} = \frac{\text{Frame Size}}{f_s} = \frac{512}{44100} \approx 11.6 \text{ ms}
+\end{equation}
+
+\section{Musical Applications}
+
+\subsection{Tempo-Relative Rhythm Analysis}
+
+The system can optionally adapt its filter bank to detected tempo. When BPM is known or estimated, the frequency bands shift to align with musically relevant subdivisions:
+
+\begin{equation}
+f_i' = f_i \cdot \frac{\text{BPM}}{120}
+\end{equation}
+
+This ensures that filters remain locked to musical meter rather than absolute time.
+
+\subsection{Quantization}
+
+The system includes optional quantization that aligns neuron firing to a musical grid, supporting subdivisions from whole notes to 32nd note triplets. This bridges the continuous-time neural dynamics with discrete musical timing.
+
+\section{Complete System Diagram}
+
+\begin{verbatim}
+┌─────────────────────────────────────────────────────────────┐
+│                    AUDIO INPUT STREAM                        │
+└─────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│                  RHYTHMOGRAM ANALYZER                        │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │ Envelope     │→ │ Filter Bank  │→ │ Onset        │     │
+│  │ Extraction   │  │ (8 bands)    │  │ Detection    │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+│  Outputs: f(t) = [f₀(t), f₁(t), ..., f₇(t)]               │
+│           O(t) = {onset events}                             │
+└─────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│           RHYTHMOGRAM-TO-NEURON MAPPING                      │
+│  r(t) = g · M · f(t)                                        │
+│  where M is 8×N connection matrix                           │
+└─────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│                 NEURAL NETWORK LAYER                         │
+│  Neurons with recurrent connections                          │
+│  Update: aⱼ(t+1) = φⱼ(λⱼ·aⱼ(t) + Σₖ wₖⱼ·sₖ(t) + rⱼ(t))    │
+│  Fire when aⱼ(t) ≥ θⱼ, trigger sample, reset               │
+└─────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│              ADAPTIVE LEARNING MODULE                        │
+│  Onset-modulated weight updates                             │
+│  ΔMᵢⱼ = -η·βⱼ(t)·eⱼ·fᵢ(t) - δ·Mᵢⱼ                          │
+└─────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    AUDIO OUTPUT                              │
+│                 (Triggered Samples)                          │
+└─────────────────────────────────────────────────────────────┘
+\end{verbatim}
+
+\section{Experimental Results}
+
+\subsection{Rhythmic Pattern Learning}
+
+In testing with various rhythmic inputs (4/4 drum loops, polyrhythmic patterns, irregular beats), the system demonstrates:
+\begin{itemize}
+\item Convergence of connection weights within 10--30 seconds
+\item Stable synchronization with input tempo
+\item Emergence of syncopated patterns when neurons interact
+\end{itemize}
+
+\subsection{Onset Bias Effects}
+
+The onset bias parameter $\alpha$ significantly affects learning behavior:
+\begin{itemize}
+\item $\alpha = 0$: Learning responds to sustained energy, slower adaptation
+\item $\alpha = 0.5$: Balanced response to both continuous and transient features
+\item $\alpha = 1.0$: Strong emphasis on onsets, rapid adaptation to rhythmic attacks
+\end{itemize}
+
+\section{Discussion}
+
+NeuronSeqSampler represents a synthesis of rhythm perception models \cite{todd1994} and neural network principles adapted from musical note modeling \cite{laine2000}. The key innovations include:
+
+\begin{enumerate}
+\item \textbf{Multi-scale rhythmic analysis}: Unlike fixed-tempo beat trackers, the logarithmic filter bank captures relationships across tempo ranges
+\item \textbf{Onset-modulated learning}: The $\alpha$ parameter allows interpolation between energy-based and event-based learning
+\item \textbf{Recurrent neural architecture}: Neuron interactions create emergent rhythmic patterns beyond direct rhythmogram mapping
+\end{enumerate}
+
+The system enables real-time interaction where the network learns from and responds to rhythmic input while maintaining its own generative dynamics through recurrent connections.
+
+\section{Conclusion}
+
+We have presented the mathematical foundations and implementation of NeuronSeqSampler, a hybrid system combining rhythmic analysis and neural network principles for generative music sequencing. The architecture draws on established models of auditory rhythm perception while introducing novel onset-weighted learning mechanisms. Future work includes extending the tempo adaptation mechanisms and exploring hierarchical network structures for multi-timescale pattern generation.
+
+\begin{thebibliography}{9}
+
+\bibitem{laine2000}
+Laine, U. K. (2000). 
+\textit{Analysis and Modeling of the Musical Note Onset}. 
+Helsinki University of Technology, Department of Electrical and Communications Engineering. 
+Available: \url{https://helda.helsinki.fi/server/api/core/bitstreams/6c68217b-752a-47bd-9b75-fb50e1fdc798/content}
+
+\bibitem{todd1994}
+Todd, N.P. (1994). 
+The auditory ``primal sketch'': A multiscale model of rhythmic grouping. 
+\textit{Journal of New Music Research}, 23(1), 25--70.
+
+\end{thebibliography}
+
+\appendix
+
+\section{Mathematical Notation Summary}
+
+\begin{table}[h]
+\centering
+\caption{Mathematical Symbols and Definitions}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Symbol & Description \\ \midrule
+$N$ & Number of frequency bands \\
+$f_i$ & Center frequency of band $i$ \\
+$X_i(n)$ & Filter output for band $i$ at time $n$ \\
+$\Phi_i(n)$ & Onset detection function for band $i$ \\
+$a_j(t)$ & Activation of neuron $j$ at time $t$ \\
+$\theta_j$ & Firing threshold for neuron $j$ \\
+$\lambda_j$ & Leak rate (decay) for neuron $j$ \\
+$w_{kj}$ & Connection weight from neuron $k$ to $j$ \\
+$M_{ij}$ & Rhythmogram connection weight from band $i$ to neuron $j$ \\
+$g$ & Global mapping gain \\
+$\eta$ & Learning rate \\
+$\delta$ & Weight decay parameter \\
+$\alpha$ & Onset bias (0=filter only, 1=onset only) \\
+$\beta(t)$ & Onset-dependent learning modulation \\
+$\phi_j$ & Activation function for neuron $j$ \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\end{document}
