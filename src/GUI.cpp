@@ -2016,6 +2016,7 @@ void GUI::createConnectionMatrixPanel() {
         bpmLabel = nullptr;
         autodetectTempoToggle = nullptr;
         detectedTempoLabel = nullptr;
+        adaptFiltersToggle = nullptr;
         // Learning controls
         learningToggle = nullptr;
         learningRateSlider = nullptr;
@@ -2708,15 +2709,64 @@ void GUI::createConnectionMatrixPanel() {
                 if (bpmSlider) {
                     bpmSlider->getRenderer()->setThumbColor(tgui::Color(100, 140, 100)); // Normal color
                 }
+                
+                // When auto-tempo is turned off, also turn off and gray out filter adaptation button
+                if (adaptFiltersToggle) {
+                    rhythmInterpreter->setFilterAdaptationEnabled(false);
+                    adaptFiltersToggle->getRenderer()->setBackgroundColor(tgui::Color(50, 50, 50));
+                    adaptFiltersToggle->getRenderer()->setTextColor(tgui::Color(120, 120, 120));
+                    adaptFiltersToggle->setText("ADAPT OFF");
+                }
             }
         }
     });
     
     connectionMatrixPanel->add(autodetectTempoToggle);
     
+    // Add filter adaptation toggle button (independent when auto-tempo is on, disabled when auto-tempo is off)
+    adaptFiltersToggle = tgui::Button::create("ADAPT OFF");
+    adaptFiltersToggle->setPosition(bpmSliderX - 40, 475); // Below auto-tempo button
+    adaptFiltersToggle->setSize(80, 25); // Slightly smaller than auto-tempo
+    adaptFiltersToggle->setTextSize(9);
+    adaptFiltersToggle->getRenderer()->setBackgroundColor(tgui::Color(50, 50, 50)); // Dark gray (disabled initially)
+    adaptFiltersToggle->getRenderer()->setTextColor(tgui::Color(120, 120, 120)); // Grayed out text
+    adaptFiltersToggle->getRenderer()->setBorderColor(tgui::Color(80, 80, 80));
+    adaptFiltersToggle->getRenderer()->setBorders(1);
+    
+    // Connect filter adaptation toggle
+    adaptFiltersToggle->onPress([this]() {
+        if (network && network->getRhythmInterpreter()) {
+            auto rhythmInterpreter = network->getRhythmInterpreter();
+            
+            // Only allow toggling if auto-tempo is enabled
+            if (!rhythmInterpreter->isAutoTempoEnabled()) {
+                return; // Do nothing if auto-tempo is off
+            }
+            
+            bool currentState = rhythmInterpreter->isFilterAdaptationEnabled();
+            bool newState = !currentState;
+            
+            // Enable/disable filter adaptation
+            rhythmInterpreter->setFilterAdaptationEnabled(newState);
+            
+            // Update toggle appearance
+            if (newState) {
+                adaptFiltersToggle->getRenderer()->setBackgroundColor(tgui::Color(100, 150, 200)); // Blue when active
+                adaptFiltersToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
+                adaptFiltersToggle->setText("ADAPT ON");
+            } else {
+                adaptFiltersToggle->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 60));
+                adaptFiltersToggle->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+                adaptFiltersToggle->setText("ADAPT OFF");
+            }
+        }
+    });
+    
+    connectionMatrixPanel->add(adaptFiltersToggle);
+    
     // Add detected tempo status display with better spacing
     detectedTempoLabel = tgui::Label::create("Detected: --");
-    detectedTempoLabel->setPosition(bpmSliderX - 45, 480); // More space below auto-tempo button
+    detectedTempoLabel->setPosition(bpmSliderX - 45, 505); // More space below adapt button
     detectedTempoLabel->setSize(90, 25); // Slightly taller
     detectedTempoLabel->setTextSize(10); // Slightly larger text
     detectedTempoLabel->getRenderer()->setTextColor(tgui::Color(150, 150, 255)); // Blue for detected tempo

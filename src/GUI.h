@@ -98,6 +98,7 @@ private:
     tgui::Label::Ptr bpmLabel; // Label showing current BPM value
     tgui::Button::Ptr autodetectTempoToggle; // Toggle for automatic tempo detection
     tgui::Label::Ptr detectedTempoLabel; // Label showing detected tempo when auto-tempo is enabled
+    tgui::Button::Ptr adaptFiltersToggle; // Toggle for filter adaptation to tempo (independent when auto-tempo is on)
 
     // Learning controls
     tgui::Button::Ptr learningToggle; // Enable/disable learning

@@ -158,6 +158,10 @@ public:
     bool isAutoTempoEnabled() const;
     void setBaseTempoFrequency(float frequency);
     float getBaseTempoFrequency() const;
+    
+    // Filter adaptation controls (separate from auto-tempo detection)
+    void setFilterAdaptationEnabled(bool enabled);
+    bool isFilterAdaptationEnabled() const;
 
     // ========================= ONSET DETECTION AND PREDICTION =========================
     
@@ -236,6 +240,7 @@ private:
     
     // Auto-tempo following parameters
     bool autoTempoEnabled;
+    bool filterAdaptationEnabled;         // Whether to adapt filter frequencies to detected tempo
     float baseTempoFrequency;             // Base frequency for 120 BPM
     std::vector<float> defaultFrequencies; // Original band frequencies for scaling
     float tempoSmoothingFactor;           // Smoothing for tempo changes
