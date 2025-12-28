@@ -18,6 +18,7 @@ add_executable(test_build
     src/main.cpp 
     src/NeuronNetwork.cpp
     src/RhythmInterpreter.cpp
+    src/BeatTracker.cpp
     src/Neuron.cpp
     src/Connection.cpp
     src/AudioManager.cpp

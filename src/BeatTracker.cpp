@@ -1,0 +1,280 @@
+#include "BeatTracker.h"
+#include <cmath>
+#include <algorithm>
+#include <numeric>
+#include <iostream>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+BeatTracker::BeatTracker(size_t sampleRate, size_t frameSize)
+    : sampleRate(sampleRate)
+    , frameSize(frameSize)
+    , enabled(false)
+    , currentPhase(0.0f)
+    , detectedTempo(120.0f)
+    , phaseConfidence(0.0f)
+    , beatPeriodSamples(0.0f)
+    , beatBoost(5.0f)
+    , phaseWindow(0.15f)
+    , historyLength(sampleRate * 3)  // 3 seconds of history (optimization)
+    , phaseVelocity(0.0f)
+    , lastPhaseUpdate(0.0f)
+    , frameCounter(0)
+    , minTempo(40.0f)
+    , maxTempo(200.0f)
+    , tempoSmoothingFactor(0.95f)
+{
+    // Initialize beat period from default tempo
+    beatPeriodSamples = (60.0f / detectedTempo) * sampleRate;
+    phaseVelocity = 1.0f / beatPeriodSamples;
+}
+
+void BeatTracker::update(const std::vector<float>& networkFirings, const std::vector<float>& inputOnsets) {
+    if (!enabled) {
+        return;
+    }
+    
+    // Combine multi-dimensional signals into scalar activity measures
+    float networkActivity = combineNetworkActivity(networkFirings);
+    float inputActivity = combineInputActivity(inputOnsets);
+    
+    // Add to history buffers
+    networkHistory.push_back(networkActivity);
+    inputHistory.push_back(inputActivity);
+    
+    // Maintain history length
+    while (networkHistory.size() > historyLength) {
+        networkHistory.pop_front();
+    }
+    while (inputHistory.size() > historyLength) {
+        inputHistory.pop_front();
+    }
+    
+    // Update phase based on current tempo estimate
+    updatePhase();
+    
+    // Perform cross-correlation analysis periodically (every 200 frames ~= 2-4 sec)
+    frameCounter++;
+    if (frameCounter >= 200) {
+        frameCounter = 0;
+        if (networkHistory.size() >= sampleRate && inputHistory.size() >= sampleRate) {
+            performCrossCorrelation();
+        }
+    }
+}
+
+void BeatTracker::updatePhase() {
+    // Advance phase based on current tempo
+    currentPhase += phaseVelocity * frameSize;
+    
+    // Wrap phase to [0, 1)
+    while (currentPhase >= 1.0f) {
+        currentPhase -= 1.0f;
+    }
+    while (currentPhase < 0.0f) {
+        currentPhase += 1.0f;
+    }
+}
+
+void BeatTracker::performCrossCorrelation() {
+    // Calculate correlation for different lags corresponding to tempo range
+    int minLagSamples = static_cast<int>((60.0f / maxTempo) * sampleRate);
+    int maxLagSamples = static_cast<int>((60.0f / minTempo) * sampleRate);
+    
+    float bestCorrelation = -1.0f;
+    int bestLag = 0;
+    
+    // Search for best lag in tempo range (coarse step for speed)
+    for (int lag = minLagSamples; lag <= maxLagSamples && lag < static_cast<int>(networkHistory.size()); lag += 50) {
+        float correlation = calculateCorrelation(lag);
+        if (correlation > bestCorrelation) {
+            bestCorrelation = correlation;
+            bestLag = lag;
+        }
+    }
+    
+    // Refine around best lag (smaller window for speed)
+    if (bestLag > 0) {
+        for (int lag = std::max(minLagSamples, bestLag - 10); 
+             lag <= std::min(maxLagSamples, bestLag + 10) && lag < static_cast<int>(networkHistory.size()); 
+             lag += 2) {
+            float correlation = calculateCorrelation(lag);
+            if (correlation > bestCorrelation) {
+                bestCorrelation = correlation;
+                bestLag = lag;
+            }
+        }
+    }
+    
+    // Update tempo if we found a good correlation
+    if (bestCorrelation > 0.3f && bestLag > 0) {
+        float newTempo = (60.0f * sampleRate) / static_cast<float>(bestLag);
+        
+        // Smooth tempo changes
+        detectedTempo = tempoSmoothingFactor * detectedTempo + 
+                       (1.0f - tempoSmoothingFactor) * newTempo;
+        
+        // Clamp to valid range
+        detectedTempo = std::clamp(detectedTempo, minTempo, maxTempo);
+        
+        // Update beat period and phase velocity
+        beatPeriodSamples = (60.0f / detectedTempo) * sampleRate;
+        phaseVelocity = 1.0f / beatPeriodSamples;
+        
+        // Update confidence based on correlation strength
+        phaseConfidence = std::min(1.0f, bestCorrelation);
+        
+        // Phase correction: find where in current cycle we are
+        // Look for peak in recent input activity as phase reference
+        findPhaseAlignment(bestLag);
+    } else {
+        // Decay confidence when correlation is weak
+        phaseConfidence *= 0.95f;
+    }
+}
+
+void BeatTracker::findPhaseAlignment(int beatPeriod) {
+    // Look at recent history to find phase offset (reduced window for speed)
+    size_t searchWindow = std::min(static_cast<size_t>(beatPeriod), inputHistory.size());
+    
+    if (searchWindow < 2) return;
+    
+    // Find strongest onset in recent history
+    float maxOnset = 0.0f;
+    size_t maxPosition = 0;
+    
+    for (size_t i = inputHistory.size() - searchWindow; i < inputHistory.size(); i++) {
+        if (inputHistory[i] > maxOnset) {
+            maxOnset = inputHistory[i];
+            maxPosition = i;
+        }
+    }
+    
+    // Calculate phase based on position of strongest onset
+    if (maxOnset > 0.1f) {
+        size_t samplesSinceOnset = inputHistory.size() - maxPosition;
+        float phaseEstimate = static_cast<float>(samplesSinceOnset % beatPeriod) / beatPeriod;
+        
+        // Smooth phase correction to avoid jumps
+        float phaseDiff = phaseEstimate - currentPhase;
+        
+        // Handle wraparound
+        if (phaseDiff > 0.5f) phaseDiff -= 1.0f;
+        if (phaseDiff < -0.5f) phaseDiff += 1.0f;
+        
+        // Apply gentle correction (10% per update)
+        currentPhase += phaseDiff * 0.1f;
+        
+        // Wrap to [0, 1)
+        while (currentPhase >= 1.0f) currentPhase -= 1.0f;
+        while (currentPhase < 0.0f) currentPhase += 1.0f;
+    }
+}
+
+float BeatTracker::calculateCorrelation(int lag) const {
+    if (lag >= static_cast<int>(networkHistory.size()) || 
+        lag >= static_cast<int>(inputHistory.size())) {
+        return 0.0f;
+    }
+    
+    // Calculate normalized cross-correlation at this lag
+    // Use only recent portion of history for speed (max 2 seconds)
+    size_t maxSamples = std::min(static_cast<size_t>(sampleRate * 2), networkHistory.size() - lag);
+    size_t n = std::min(maxSamples, inputHistory.size());
+    
+    if (n < 100) return 0.0f;  // Not enough data
+    
+    // Use only every 4th sample for correlation (downsampling for speed)
+    float sum = 0.0f;
+    float sumNetSq = 0.0f;
+    float sumInSq = 0.0f;
+    size_t count = 0;
+    
+    for (size_t i = 0; i < n; i += 4) {
+        float netVal = networkHistory[i + lag];
+        float inVal = inputHistory[i];
+        
+        sum += netVal * inVal;
+        sumNetSq += netVal * netVal;
+        sumInSq += inVal * inVal;
+        count++;
+    }
+    
+    if (count < 25) return 0.0f;  // Not enough samples
+    
+    // Normalized correlation coefficient
+    float denom = std::sqrt(sumNetSq * sumInSq);
+    if (denom < 1e-6f) return 0.0f;
+    
+    return sum / denom;
+}
+
+float BeatTracker::combineNetworkActivity(const std::vector<float>& networkFirings) const {
+    if (networkFirings.empty()) return 0.0f;
+    
+    // Sum all neuron firings with slight temporal weighting
+    float activity = 0.0f;
+    for (float firing : networkFirings) {
+        activity += firing;
+    }
+    
+    // Normalize by number of neurons
+    return activity / static_cast<float>(networkFirings.size());
+}
+
+float BeatTracker::combineInputActivity(const std::vector<float>& inputOnsets) const {
+    if (inputOnsets.empty()) return 0.0f;
+    
+    // Weight lower frequency bands more heavily (they contain downbeat info)
+    float activity = 0.0f;
+    float totalWeight = 0.0f;
+    
+    for (size_t i = 0; i < inputOnsets.size(); i++) {
+        // Exponential decay weighting: lower bands get higher weight
+        float weight = std::exp(-0.3f * i);
+        activity += inputOnsets[i] * weight;
+        totalWeight += weight;
+    }
+    
+    return totalWeight > 0.0f ? activity / totalWeight : 0.0f;
+}
+
+float BeatTracker::getPhaseBasedLearningGain() const {
+    if (!enabled || phaseConfidence < 0.1f) {
+        return 1.0f;  // No modulation if disabled or low confidence
+    }
+    
+    float gain = calculatePhaseGain(currentPhase);
+    
+    // Scale by confidence
+    float modulatedGain = 1.0f + (gain - 1.0f) * phaseConfidence;
+    
+    return modulatedGain;
+}
+
+float BeatTracker::calculatePhaseGain(float phase) const {
+    // Gaussian-like peak at phase = 0 (downbeat)
+    // gain = 1 + beatBoost * exp(-(phase / phaseWindow)^2)
+    
+    // Handle wraparound: phase near 1.0 should also be near 0.0
+    float distFromDownbeat = std::min(phase, 1.0f - phase);
+    
+    // Gaussian envelope
+    float exponent = -(distFromDownbeat * distFromDownbeat) / (phaseWindow * phaseWindow);
+    float boost = beatBoost * std::exp(exponent);
+    
+    return 1.0f + boost;
+}
+
+void BeatTracker::reset() {
+    networkHistory.clear();
+    inputHistory.clear();
+    currentPhase = 0.0f;
+    phaseConfidence = 0.0f;
+    frameCounter = 0;
+    detectedTempo = 120.0f;
+    beatPeriodSamples = (60.0f / detectedTempo) * sampleRate;
+    phaseVelocity = 1.0f / beatPeriodSamples;
+}

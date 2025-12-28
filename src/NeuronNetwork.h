@@ -8,6 +8,7 @@
 class AudioManager;
 class RhythmInterpreter;
 class Quantizer;
+class BeatTracker;
 
 class NeuronNetwork {
 private:
@@ -15,6 +16,7 @@ private:
     std::vector<std::unique_ptr<Connection>> connections;
     AudioManager* audioManager;
     RhythmInterpreter* rhythmInterpreter; // Use raw pointer to avoid incomplete type issues
+    std::unique_ptr<BeatTracker> beatTracker; // Beat phase tracking system
     
     // Rhythm-to-neuron mapping matrix (filterIndex -> neuronIndex -> weight)
     std::vector<std::vector<float>> rhythmConnectionMatrix;
@@ -87,6 +89,10 @@ public:
     // Onset bias (balance between onset and filter output learning)
     void setOnsetBias(float bias) { onsetBias = std::max(0.0f, std::min(bias, 1.0f)); }
     float getOnsetBias() const { return onsetBias; }
+    
+    // Beat tracker controls
+    BeatTracker* getBeatTracker() { return beatTracker.get(); }
+    const BeatTracker* getBeatTracker() const { return beatTracker.get(); }
 
     // Mapping controls
     void setNeuronBandMapping(size_t neuronIndex, size_t bandIndex);

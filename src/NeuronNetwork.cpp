@@ -1,6 +1,7 @@
 #include "NeuronNetwork.h"
 #include "AudioManager.h"
 #include "RhythmInterpreter.h"
+#include "BeatTracker.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -8,6 +9,8 @@
 NeuronNetwork::NeuronNetwork() 
     : audioManager(nullptr), rhythmInterpreter(nullptr), quantizer(nullptr)
 {
+    // Initialize beat tracker (44100 Hz, 512 frame size as defaults)
+    beatTracker = std::make_unique<BeatTracker>(44100, 512);
 }
 
 NeuronNetwork::~NeuronNetwork() {
@@ -141,8 +144,25 @@ void NeuronNetwork::initializeRhythmInterpreter() {
 void NeuronNetwork::processAudioForRhythm(const std::vector<float>& audioData) {
     if (rhythmInterpreter) {
         rhythmInterpreter->processAudioFrame(audioData);
+        
+        // Update beat tracker with network firings and input onsets
+        if (beatTracker) {
+            // Collect network firing activity
+            std::vector<float> networkFirings;
+            for (const auto& neuron : neurons) {
+                networkFirings.push_back(neuron->getHasFired() ? 1.0f : 0.0f);
+            }
+            
+            // Get input onset activity from rhythm interpreter
+            std::vector<float> inputOnsets = rhythmInterpreter->getFilterOutputs();
+            
+            // Update beat tracker
+            beatTracker->update(networkFirings, inputOnsets);
+        }
+        
         // Apply rhythm filter outputs to neurons
         applyRhythmConnections();
+        
         // Update weights if learning is enabled
         if (learningEnabled) {
             learnFromRhythm();
@@ -324,6 +344,12 @@ void NeuronNetwork::learnFromRhythm() {
         
         // Clamp effective onset boost to reasonable range
         effectiveOnsetBoost = std::min(5.0f, std::max(1.0f, effectiveOnsetBoost));
+        
+        // Get beat phase-based learning gain
+        float phaseGain = beatTracker ? beatTracker->getPhaseBasedLearningGain() : 1.0f;
+        
+        // Combine onset boost and phase gain
+        effectiveOnsetBoost *= phaseGain;
 
         // Update connection weights targeting this neuron
         for (size_t c = 0; c < connections.size(); ++c) {

@@ -129,10 +129,20 @@ private:
     tgui::Slider::Ptr beatRootMaxAgentsSlider; // Maximum number of agents
     tgui::Label::Ptr beatRootMaxAgentsLabel; // Max agents value display
     tgui::Button::Ptr beatRootAutoInitToggle; // Auto-initialize toggle
+    
+    // Beat Tracker controls
+    tgui::Button::Ptr beatTrackerToggle; // Enable/disable beat tracking
+    tgui::Label::Ptr beatTrackerStatusLabel; // Status display (phase, tempo, confidence)
+    tgui::Slider::Ptr beatBoostSlider; // Learning boost strength at downbeat
+    tgui::Label::Ptr beatBoostLabel; // Beat boost value display
+    tgui::Slider::Ptr phaseWindowSlider; // Phase window width
+    tgui::Label::Ptr phaseWindowLabel; // Phase window value display
+    
     bool matrixVisible = true; // Connection matrix visibility state
     bool isUpdatingMatrix = false; // Flag to prevent recursive updates
     int matrixUpdateCounter = 0; // Counter to reduce update frequency
     int toggleBlockCounter = 0; // Counter to block updates after toggle interactions
+    int beatTrackerUpdateCounter = 0; // Counter to reduce beat tracker status update frequency
 
     // Guard to avoid triggering connection slider callbacks during programmatic updates
     bool isUpdatingConnectionSliders = false;

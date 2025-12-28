@@ -5,6 +5,7 @@
 #include "Visualizer.h"
 #include "Recorder.h"
 #include "RhythmInterpreter.h"
+#include "BeatTracker.h"
 #include "SimpleSpectralDisplay.h"
 #include <TGUI/Widgets/FileDialog.hpp>
 #include "Debug.h"
@@ -634,6 +635,25 @@ void GUI::updateStatusDisplay() {
         } else {
             // Clear detected tempo display when auto-tempo is off
             detectedTempoLabel->setText("Detected: --");
+        }
+    }
+    
+    // Update beat tracker status display (reduced frequency for performance)
+    beatTrackerUpdateCounter++;
+    if (beatTrackerUpdateCounter >= 30) {
+        beatTrackerUpdateCounter = 0;
+        if (network->getBeatTracker() && beatTrackerStatusLabel) {
+            auto beatTracker = network->getBeatTracker();
+            if (beatTracker->isEnabled()) {
+                std::ostringstream statusStream;
+                statusStream << std::fixed << std::setprecision(2);
+                statusStream << "Phase: " << beatTracker->getCurrentPhase();
+                statusStream << " | Tempo: " << std::setprecision(1) << beatTracker->getDetectedTempo();
+                statusStream << " | Conf: " << std::setprecision(2) << beatTracker->getPhaseConfidence();
+                beatTrackerStatusLabel->setText(statusStream.str());
+            } else {
+                beatTrackerStatusLabel->setText("Phase: -- | Tempo: -- | Conf: --");
+            }
         }
     }
 }
@@ -2037,6 +2057,13 @@ void GUI::createConnectionMatrixPanel() {
         beatRootAutoInitToggle = nullptr;
         beatRootResetButton = nullptr;
         beatRootInitButton = nullptr;
+        // Beat Tracker controls
+        beatTrackerToggle = nullptr;
+        beatTrackerStatusLabel = nullptr;
+        beatBoostSlider = nullptr;
+        beatBoostLabel = nullptr;
+        phaseWindowSlider = nullptr;
+        phaseWindowLabel = nullptr;
     }
     // Always use the current value of matrixVisible when creating the panel, even if it did not exist before
     
@@ -2972,17 +2999,128 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixPanel->add(resetRhythmWeightsButton);
 
     // =========================================================================
+    // Beat Tracker Controls
+    // =========================================================================
+    auto beatTrackerSectionLabel = tgui::Label::create("BEAT TRACKER");
+    beatTrackerSectionLabel->setPosition(scaleSliderX - 60, 720);
+    beatTrackerSectionLabel->setTextSize(10);
+    beatTrackerSectionLabel->getRenderer()->setTextColor(tgui::Color(255, 200, 100));
+    connectionMatrixPanel->add(beatTrackerSectionLabel);
+
+    // Beat tracker toggle
+    beatTrackerToggle = tgui::Button::create("TRACK OFF");
+    beatTrackerToggle->setPosition(scaleSliderX - 60, 740);
+    beatTrackerToggle->setSize(100, 26);
+    beatTrackerToggle->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 60));
+    beatTrackerToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+    beatTrackerToggle->getRenderer()->setBorderColor(tgui::Color(100, 100, 100));
+    beatTrackerToggle->getRenderer()->setBorders(2);
+    beatTrackerToggle->onPress([this]() {
+        if (!network || !network->getBeatTracker()) return;
+        auto beatTracker = network->getBeatTracker();
+        bool enabled = beatTracker->isEnabled();
+        beatTracker->setEnabled(!enabled);
+        
+        // Update button appearance
+        if (!enabled) {
+            beatTrackerToggle->setText("TRACK ON");
+            beatTrackerToggle->getRenderer()->setBackgroundColor(tgui::Color(100, 150, 100));
+            beatTrackerToggle->getRenderer()->setTextColor(tgui::Color::White);
+        } else {
+            beatTrackerToggle->setText("TRACK OFF");
+            beatTrackerToggle->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 60));
+            beatTrackerToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+        }
+    });
+    connectionMatrixPanel->add(beatTrackerToggle);
+
+    // Beat tracker status
+    beatTrackerStatusLabel = tgui::Label::create("Phase: -- Tempo: --");
+    beatTrackerStatusLabel->setPosition(scaleSliderX - 60, 770);
+    beatTrackerStatusLabel->setSize(100, 40);
+    beatTrackerStatusLabel->setTextSize(9);
+    beatTrackerStatusLabel->getRenderer()->setTextColor(tgui::Color(200, 255, 200));
+    beatTrackerStatusLabel->getRenderer()->setBackgroundColor(tgui::Color(10, 20, 10));
+    beatTrackerStatusLabel->getRenderer()->setBorderColor(tgui::Color(50, 100, 50));
+    beatTrackerStatusLabel->getRenderer()->setBorders(1);
+    connectionMatrixPanel->add(beatTrackerStatusLabel);
+
+    // Beat boost slider
+    auto beatBoostTitle = tgui::Label::create("BeatBoost");
+    beatBoostTitle->setPosition(scaleSliderX - 60, 815);
+    beatBoostTitle->setTextSize(9);
+    beatBoostTitle->getRenderer()->setTextColor(tgui::Color(255, 200, 100));
+    connectionMatrixPanel->add(beatBoostTitle);
+
+    beatBoostSlider = tgui::Slider::create(1.0f, 20.0f);
+    beatBoostSlider->setValue(5.0f);
+    beatBoostSlider->setStep(0.5f);
+    beatBoostSlider->setPosition(scaleSliderX - 60, 830);
+    beatBoostSlider->setSize(60, 18);
+    beatBoostSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
+    beatBoostSlider->getRenderer()->setThumbColor(tgui::Color(255, 180, 80));
+    beatBoostSlider->onValueChange([this](float value) {
+        if (!network || !network->getBeatTracker()) return;
+        network->getBeatTracker()->setBeatBoost(value);
+        if (beatBoostLabel) {
+            char buffer[16];
+            snprintf(buffer, sizeof(buffer), "%.1f", value);
+            beatBoostLabel->setText(buffer);
+        }
+    });
+    connectionMatrixPanel->add(beatBoostSlider);
+
+    beatBoostLabel = tgui::Label::create("5.0");
+    beatBoostLabel->setPosition(scaleSliderX + 5, 830);
+    beatBoostLabel->setSize(35, 18);
+    beatBoostLabel->setTextSize(9);
+    beatBoostLabel->getRenderer()->setTextColor(tgui::Color(255, 200, 100));
+    connectionMatrixPanel->add(beatBoostLabel);
+
+    // Phase window slider
+    auto phaseWindowTitle = tgui::Label::create("PhaseWin");
+    phaseWindowTitle->setPosition(scaleSliderX - 60, 853);
+    phaseWindowTitle->setTextSize(9);
+    phaseWindowTitle->getRenderer()->setTextColor(tgui::Color(255, 200, 100));
+    connectionMatrixPanel->add(phaseWindowTitle);
+
+    phaseWindowSlider = tgui::Slider::create(0.01f, 0.5f);
+    phaseWindowSlider->setValue(0.15f);
+    phaseWindowSlider->setStep(0.01f);
+    phaseWindowSlider->setPosition(scaleSliderX - 60, 868);
+    phaseWindowSlider->setSize(60, 18);
+    phaseWindowSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
+    phaseWindowSlider->getRenderer()->setThumbColor(tgui::Color(255, 180, 80));
+    phaseWindowSlider->onValueChange([this](float value) {
+        if (!network || !network->getBeatTracker()) return;
+        network->getBeatTracker()->setPhaseWindow(value);
+        if (phaseWindowLabel) {
+            char buffer[16];
+            snprintf(buffer, sizeof(buffer), "%.2f", value);
+            phaseWindowLabel->setText(buffer);
+        }
+    });
+    connectionMatrixPanel->add(phaseWindowSlider);
+
+    phaseWindowLabel = tgui::Label::create("0.15");
+    phaseWindowLabel->setPosition(scaleSliderX + 5, 868);
+    phaseWindowLabel->setSize(35, 18);
+    phaseWindowLabel->setTextSize(9);
+    phaseWindowLabel->getRenderer()->setTextColor(tgui::Color(255, 200, 100));
+    connectionMatrixPanel->add(phaseWindowLabel);
+
+    // =========================================================================
     // Input Audio Playback Controls
     // =========================================================================
     audioControlsLabel = tgui::Label::create("AUDIO");
-    audioControlsLabel->setPosition(scaleSliderX - 60, 750);
+    audioControlsLabel->setPosition(scaleSliderX - 60, 900);
     audioControlsLabel->setTextSize(10);
     audioControlsLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
     connectionMatrixPanel->add(audioControlsLabel);
 
     // Play
     inputPlayButton = tgui::Button::create("Play");
-    inputPlayButton->setPosition(scaleSliderX - 60, 770);
+    inputPlayButton->setPosition(scaleSliderX - 60, 920);
     inputPlayButton->setSize(50, 24);
     inputPlayButton->getRenderer()->setBackgroundColor(tgui::Color(60, 100, 60));
     inputPlayButton->getRenderer()->setTextColor(tgui::Color::White);
@@ -2998,7 +3136,7 @@ void GUI::createConnectionMatrixPanel() {
 
     // Pause
     inputPauseButton = tgui::Button::create("Pause");
-    inputPauseButton->setPosition(scaleSliderX - 5, 770);
+    inputPauseButton->setPosition(scaleSliderX - 5, 920);
     inputPauseButton->setSize(50, 24);
     inputPauseButton->getRenderer()->setBackgroundColor(tgui::Color(100, 100, 60));
     inputPauseButton->getRenderer()->setTextColor(tgui::Color::White);
@@ -3010,7 +3148,7 @@ void GUI::createConnectionMatrixPanel() {
 
     // Stop
     inputStopButton = tgui::Button::create("Stop");
-    inputStopButton->setPosition(scaleSliderX + 50, 770);
+    inputStopButton->setPosition(scaleSliderX + 50, 920);
     inputStopButton->setSize(50, 24);
     inputStopButton->getRenderer()->setBackgroundColor(tgui::Color(120, 60, 60));
     inputStopButton->getRenderer()->setTextColor(tgui::Color::White);
