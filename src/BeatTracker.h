@@ -5,8 +5,9 @@
 #include <algorithm>
 
 enum class BoostTarget {
-    Learning,      // Apply phase boost to learning rate
-    Activation     // Apply phase boost to neuron activations
+    Learning,          // Apply phase boost to learning rate
+    Activation,        // Apply phase boost to neuron activations
+    ConnectionWeights  // Apply phase boost to connection weights
 };
 
 /**

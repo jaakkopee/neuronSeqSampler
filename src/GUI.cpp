@@ -3122,6 +3122,7 @@ void GUI::createConnectionMatrixPanel() {
     boostTargetCombo->setSize(100, 20);
     boostTargetCombo->addItem("Learning", "learning");
     boostTargetCombo->addItem("Activation", "activation");
+    boostTargetCombo->addItem("Conn Weights", "weights");
     boostTargetCombo->setSelectedItemById("learning");
     boostTargetCombo->setTextSize(9);
     boostTargetCombo->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 50));
@@ -3132,8 +3133,10 @@ void GUI::createConnectionMatrixPanel() {
         auto beatTracker = network->getBeatTracker();
         if (index == 0) {
             beatTracker->setBoostTarget(BoostTarget::Learning);
-        } else {
+        } else if (index == 1) {
             beatTracker->setBoostTarget(BoostTarget::Activation);
+        } else {
+            beatTracker->setBoostTarget(BoostTarget::ConnectionWeights);
         }
     });
     connectionMatrixPanel->add(boostTargetCombo);

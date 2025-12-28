@@ -371,6 +371,14 @@ void NeuronNetwork::learnFromRhythm() {
             if (x == 0.0f) continue; // nothing to learn this step
 
             float w = conn->getWeight();
+            
+            // Apply beat phase boost to connection weights if in ConnectionWeights mode
+            if (beatTracker && beatTracker->isEnabled() && 
+                beatTracker->getBoostTarget() == BoostTarget::ConnectionWeights) {
+                float phaseGain = beatTracker->getPhaseBasedLearningGain();
+                w *= phaseGain; // Modulate weight directly
+            }
+            
             // Apply onset-modulated learning rate
             float adaptiveLR = learningRate * effectiveOnsetBoost;
             float dw = -adaptiveLR * error * x;      // gradient step with onset boost
