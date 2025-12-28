@@ -223,12 +223,19 @@ void NeuronNetwork::applyRhythmConnections() {
     // Ensure matrix sized to current band/neuron counts
     ensureMatrixSize(filterOutputs.size(), neurons.size());
     
+    // Get beat phase boost if beat tracker is enabled and set to Activation mode
+    float phaseBoost = 1.0f;
+    if (beatTracker && beatTracker->isEnabled() && 
+        beatTracker->getBoostTarget() == BoostTarget::Activation) {
+        phaseBoost = beatTracker->getPhaseBasedLearningGain();
+    }
+    
     // Apply rhythm inputs directly to neurons
     for (size_t f = 0; f < filterOutputs.size() && f < rhythmConnectionMatrix.size(); ++f) {
         for (size_t n = 0; n < rhythmConnectionMatrix[f].size() && n < neurons.size(); ++n) {
             float mapWeight = rhythmConnectionMatrix[f][n];
             if (std::abs(mapWeight) > 0.001f) {
-                float rhythmInput = filterOutputs[f] * mapWeight * mappingGain;
+                float rhythmInput = filterOutputs[f] * mapWeight * mappingGain * phaseBoost;
                 if (neurons[n]) {
                     neurons[n]->addExternalInput(rhythmInput);
                 }
@@ -345,11 +352,12 @@ void NeuronNetwork::learnFromRhythm() {
         // Clamp effective onset boost to reasonable range
         effectiveOnsetBoost = std::min(5.0f, std::max(1.0f, effectiveOnsetBoost));
         
-        // Get beat phase-based learning gain
-        float phaseGain = beatTracker ? beatTracker->getPhaseBasedLearningGain() : 1.0f;
-        
-        // Combine onset boost and phase gain
-        effectiveOnsetBoost *= phaseGain;
+        // Apply beat phase-based learning gain if beat tracker is in Learning mode
+        if (beatTracker && beatTracker->isEnabled() && 
+            beatTracker->getBoostTarget() == BoostTarget::Learning) {
+            float phaseGain = beatTracker->getPhaseBasedLearningGain();
+            effectiveOnsetBoost *= phaseGain;
+        }
 
         // Update connection weights targeting this neuron
         for (size_t c = 0; c < connections.size(); ++c) {

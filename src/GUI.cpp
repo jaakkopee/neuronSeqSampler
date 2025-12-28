@@ -2064,6 +2064,7 @@ void GUI::createConnectionMatrixPanel() {
         beatBoostLabel = nullptr;
         phaseWindowSlider = nullptr;
         phaseWindowLabel = nullptr;
+        boostTargetCombo = nullptr;
     }
     // Always use the current value of matrixVisible when creating the panel, even if it did not exist before
     
@@ -3109,18 +3110,46 @@ void GUI::createConnectionMatrixPanel() {
     phaseWindowLabel->getRenderer()->setTextColor(tgui::Color(255, 200, 100));
     connectionMatrixPanel->add(phaseWindowLabel);
 
+    // Boost target selector
+    auto boostTargetTitle = tgui::Label::create("Target");
+    boostTargetTitle->setPosition(scaleSliderX - 60, 890);
+    boostTargetTitle->setTextSize(9);
+    boostTargetTitle->getRenderer()->setTextColor(tgui::Color(255, 200, 100));
+    connectionMatrixPanel->add(boostTargetTitle);
+
+    boostTargetCombo = tgui::ComboBox::create();
+    boostTargetCombo->setPosition(scaleSliderX - 60, 905);
+    boostTargetCombo->setSize(100, 20);
+    boostTargetCombo->addItem("Learning", "learning");
+    boostTargetCombo->addItem("Activation", "activation");
+    boostTargetCombo->setSelectedItemById("learning");
+    boostTargetCombo->setTextSize(9);
+    boostTargetCombo->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 50));
+    boostTargetCombo->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+    boostTargetCombo->getRenderer()->setBorderColor(tgui::Color(100, 100, 120));
+    boostTargetCombo->onItemSelect([this](int index) {
+        if (!network || !network->getBeatTracker()) return;
+        auto beatTracker = network->getBeatTracker();
+        if (index == 0) {
+            beatTracker->setBoostTarget(BoostTarget::Learning);
+        } else {
+            beatTracker->setBoostTarget(BoostTarget::Activation);
+        }
+    });
+    connectionMatrixPanel->add(boostTargetCombo);
+
     // =========================================================================
     // Input Audio Playback Controls
     // =========================================================================
     audioControlsLabel = tgui::Label::create("AUDIO");
-    audioControlsLabel->setPosition(scaleSliderX - 60, 900);
+    audioControlsLabel->setPosition(scaleSliderX - 60, 935);
     audioControlsLabel->setTextSize(10);
     audioControlsLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
     connectionMatrixPanel->add(audioControlsLabel);
 
     // Play
     inputPlayButton = tgui::Button::create("Play");
-    inputPlayButton->setPosition(scaleSliderX - 60, 920);
+    inputPlayButton->setPosition(scaleSliderX - 60, 955);
     inputPlayButton->setSize(50, 24);
     inputPlayButton->getRenderer()->setBackgroundColor(tgui::Color(60, 100, 60));
     inputPlayButton->getRenderer()->setTextColor(tgui::Color::White);
@@ -3136,7 +3165,7 @@ void GUI::createConnectionMatrixPanel() {
 
     // Pause
     inputPauseButton = tgui::Button::create("Pause");
-    inputPauseButton->setPosition(scaleSliderX - 5, 920);
+    inputPauseButton->setPosition(scaleSliderX - 5, 955);
     inputPauseButton->setSize(50, 24);
     inputPauseButton->getRenderer()->setBackgroundColor(tgui::Color(100, 100, 60));
     inputPauseButton->getRenderer()->setTextColor(tgui::Color::White);
@@ -3148,7 +3177,7 @@ void GUI::createConnectionMatrixPanel() {
 
     // Stop
     inputStopButton = tgui::Button::create("Stop");
-    inputStopButton->setPosition(scaleSliderX + 50, 920);
+    inputStopButton->setPosition(scaleSliderX + 50, 955);
     inputStopButton->setSize(50, 24);
     inputStopButton->getRenderer()->setBackgroundColor(tgui::Color(120, 60, 60));
     inputStopButton->getRenderer()->setTextColor(tgui::Color::White);

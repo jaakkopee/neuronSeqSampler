@@ -137,6 +137,7 @@ private:
     tgui::Label::Ptr beatBoostLabel; // Beat boost value display
     tgui::Slider::Ptr phaseWindowSlider; // Phase window width
     tgui::Label::Ptr phaseWindowLabel; // Phase window value display
+    tgui::ComboBox::Ptr boostTargetCombo; // Select where boost is applied (Learning/Activation)
     
     bool matrixVisible = true; // Connection matrix visibility state
     bool isUpdatingMatrix = false; // Flag to prevent recursive updates

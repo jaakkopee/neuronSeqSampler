@@ -4,6 +4,11 @@
 #include <cmath>
 #include <algorithm>
 
+enum class BoostTarget {
+    Learning,      // Apply phase boost to learning rate
+    Activation     // Apply phase boost to neuron activations
+};
+
 /**
  * @brief Beat phase tracking via cross-correlation of network output and input audio
  * 
@@ -69,6 +74,12 @@ public:
     float getPhaseWindow() const { return phaseWindow; }
     
     /**
+     * @brief Set boost target (learning rate or neuron activation)
+     */
+    void setBoostTarget(BoostTarget target) { boostTarget = target; }
+    BoostTarget getBoostTarget() const { return boostTarget; }
+    
+    /**
      * @brief Reset beat tracking state
      */
     void reset();
@@ -87,6 +98,7 @@ private:
     // Learning modulation parameters
     float beatBoost;              // Learning gain multiplier at downbeat (1.0-20.0)
     float phaseWindow;            // Width of high-gain window around downbeat (0.01-0.5)
+    BoostTarget boostTarget;      // Where to apply the boost (learning vs activation)
     
     // History buffers for cross-correlation
     std::deque<float> networkHistory;     // Recent network activity
