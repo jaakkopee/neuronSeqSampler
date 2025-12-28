@@ -106,6 +106,7 @@ private:
     tgui::Label::Ptr learningRateLabel; // Display current learning rate
     tgui::Slider::Ptr weightDecaySlider; // Weight decay control
     tgui::Label::Ptr weightDecayLabel; // Display current decay
+    tgui::Label::Ptr mappingGainLabel; // Display current mapping gain value
     tgui::Button::Ptr resetRhythmWeightsButton; // Reset rhythmogram mapping weights
 
     // Input audio playback controls

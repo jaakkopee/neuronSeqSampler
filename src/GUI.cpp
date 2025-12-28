@@ -2023,6 +2023,7 @@ void GUI::createConnectionMatrixPanel() {
         learningRateLabel = nullptr;
         weightDecaySlider = nullptr;
         weightDecayLabel = nullptr;
+        mappingGainLabel = nullptr;
         resetRhythmWeightsButton = nullptr;
         // BeatRoot controls
         beatRootToggle = nullptr;
@@ -2894,11 +2895,26 @@ void GUI::createConnectionMatrixPanel() {
     mappingGainSlider->setSize(100, 18);
     mappingGainSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
     mappingGainSlider->getRenderer()->setThumbColor(tgui::Color(180, 130, 200));
+    connectionMatrixPanel->add(mappingGainSlider);
+    
+    // Mapping gain value display
+    mappingGainLabel = tgui::Label::create(tgui::String(mappingGainSlider->getValue()));
+    mappingGainLabel->setPosition(scaleSliderX + 45, 615);
+    mappingGainLabel->setSize(50, 18);
+    mappingGainLabel->setTextSize(10);
+    mappingGainLabel->getRenderer()->setTextColor(tgui::Color(180, 130, 200));
+    connectionMatrixPanel->add(mappingGainLabel);
+    
+    // Update label when slider changes
     mappingGainSlider->onValueChange([this](float value) {
         if (!network) return;
         network->setMappingGain(value);
+        if (mappingGainLabel) {
+            char buffer[16];
+            snprintf(buffer, sizeof(buffer), "%.2f", value);
+            mappingGainLabel->setText(buffer);
+        }
     });
-    connectionMatrixPanel->add(mappingGainSlider);
 
     // Onset bias slider (0.0 - 1.0)
     auto obLabelTitle = tgui::Label::create("OnsetBias");
