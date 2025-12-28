@@ -61,6 +61,8 @@ void BeatTracker::update(const std::vector<float>& networkFirings, const std::ve
     if (frameCounter >= 200) {
         frameCounter = 0;
         if (networkHistory.size() >= sampleRate && inputHistory.size() >= sampleRate) {
+            // Preprocess signals to emphasize both peaks (strong beats) and valleys (weak beats)
+            preprocessSignalsForCorrelation();
             performCrossCorrelation();
         }
     }
@@ -79,6 +81,69 @@ void BeatTracker::updatePhase() {
     }
 }
 
+void BeatTracker::preprocessSignalsForCorrelation() {
+    // Create bipolar signals that emphasize both peaks (strong beats) and valleys (weak beats)
+    // This makes local minima count as negative influence in the correlation
+    
+    networkProcessed.clear();
+    inputProcessed.clear();
+    
+    // Process network signal
+    if (networkHistory.size() >= 5) {
+        for (size_t i = 2; i < networkHistory.size() - 2; i++) {
+            float current = networkHistory[i];
+            float prev1 = networkHistory[i-1];
+            float prev2 = networkHistory[i-2];
+            float next1 = networkHistory[i+1];
+            float next2 = networkHistory[i+2];
+            
+            float localMean = (prev2 + prev1 + current + next1 + next2) / 5.0f;
+            
+            // Create bipolar signal: deviation from local mean
+            // Peaks become positive, valleys become negative
+            float bipolar = current - localMean;
+            
+            // Detect local minima and accent them with negative values
+            bool isLocalMin = (current < prev1 && current < next1 && 
+                              current < prev2 && current < next2);
+            
+            if (isLocalMin) {
+                // Emphasize valleys as negative influence
+                bipolar -= 0.3f;
+            }
+            
+            networkProcessed.push_back(bipolar);
+        }
+    }
+    
+    // Process input signal
+    if (inputHistory.size() >= 5) {
+        for (size_t i = 2; i < inputHistory.size() - 2; i++) {
+            float current = inputHistory[i];
+            float prev1 = inputHistory[i-1];
+            float prev2 = inputHistory[i-2];
+            float next1 = inputHistory[i+1];
+            float next2 = inputHistory[i+2];
+            
+            float localMean = (prev2 + prev1 + current + next1 + next2) / 5.0f;
+            
+            // Create bipolar signal: deviation from local mean
+            float bipolar = current - localMean;
+            
+            // Detect local minima and accent them with negative values
+            bool isLocalMin = (current < prev1 && current < next1 && 
+                              current < prev2 && current < next2);
+            
+            if (isLocalMin) {
+                // Emphasize valleys as negative influence
+                bipolar -= 0.3f;
+            }
+            
+            inputProcessed.push_back(bipolar);
+        }
+    }
+}
+
 void BeatTracker::performCrossCorrelation() {
     // Calculate correlation for different lags corresponding to tempo range
     int minLagSamples = static_cast<int>((60.0f / maxTempo) * sampleRate);
@@ -87,8 +152,11 @@ void BeatTracker::performCrossCorrelation() {
     float bestCorrelation = -1.0f;
     int bestLag = 0;
     
+    // Use preprocessed signals if available
+    const auto& netSignal = networkProcessed.empty() ? networkHistory : networkProcessed;
+    
     // Search for best lag in tempo range (coarse step for speed)
-    for (int lag = minLagSamples; lag <= maxLagSamples && lag < static_cast<int>(networkHistory.size()); lag += 50) {
+    for (int lag = minLagSamples; lag <= maxLagSamples && lag < static_cast<int>(netSignal.size()); lag += 50) {
         float correlation = calculateCorrelation(lag);
         if (correlation > bestCorrelation) {
             bestCorrelation = correlation;
@@ -99,7 +167,7 @@ void BeatTracker::performCrossCorrelation() {
     // Refine around best lag (smaller window for speed)
     if (bestLag > 0) {
         for (int lag = std::max(minLagSamples, bestLag - 10); 
-             lag <= std::min(maxLagSamples, bestLag + 10) && lag < static_cast<int>(networkHistory.size()); 
+             lag <= std::min(maxLagSamples, bestLag + 10) && lag < static_cast<int>(netSignal.size()); 
              lag += 2) {
             float correlation = calculateCorrelation(lag);
             if (correlation > bestCorrelation) {
@@ -175,15 +243,19 @@ void BeatTracker::findPhaseAlignment(int beatPeriod) {
 }
 
 float BeatTracker::calculateCorrelation(int lag) const {
-    if (lag >= static_cast<int>(networkHistory.size()) || 
-        lag >= static_cast<int>(inputHistory.size())) {
+    // Use preprocessed signals if available, otherwise fall back to raw signals
+    const auto& netSignal = networkProcessed.empty() ? networkHistory : networkProcessed;
+    const auto& inSignal = inputProcessed.empty() ? inputHistory : inputProcessed;
+    
+    if (lag >= static_cast<int>(netSignal.size()) || 
+        lag >= static_cast<int>(inSignal.size())) {
         return 0.0f;
     }
     
     // Calculate normalized cross-correlation at this lag
     // Use only recent portion of history for speed (max 2 seconds)
-    size_t maxSamples = std::min(static_cast<size_t>(sampleRate * 2), networkHistory.size() - lag);
-    size_t n = std::min(maxSamples, inputHistory.size());
+    size_t maxSamples = std::min(static_cast<size_t>(sampleRate * 2), netSignal.size() - lag);
+    size_t n = std::min(maxSamples, inSignal.size());
     
     if (n < 100) return 0.0f;  // Not enough data
     
@@ -194,8 +266,8 @@ float BeatTracker::calculateCorrelation(int lag) const {
     size_t count = 0;
     
     for (size_t i = 0; i < n; i += 4) {
-        float netVal = networkHistory[i + lag];
-        float inVal = inputHistory[i];
+        float netVal = netSignal[i + lag];
+        float inVal = inSignal[i];
         
         sum += netVal * inVal;
         sumNetSq += netVal * netVal;
@@ -215,7 +287,7 @@ float BeatTracker::calculateCorrelation(int lag) const {
 float BeatTracker::combineNetworkActivity(const std::vector<float>& networkFirings) const {
     if (networkFirings.empty()) return 0.0f;
     
-    // Sum all neuron firings with slight temporal weighting
+    // Sum all neuron firings
     float activity = 0.0f;
     for (float firing : networkFirings) {
         activity += firing;

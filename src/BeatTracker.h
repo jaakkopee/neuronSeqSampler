@@ -103,6 +103,8 @@ private:
     // History buffers for cross-correlation
     std::deque<float> networkHistory;     // Recent network activity
     std::deque<float> inputHistory;       // Recent input onset activity
+    std::deque<float> networkProcessed;   // Preprocessed network signal (bipolar: peaks and valleys)
+    std::deque<float> inputProcessed;     // Preprocessed input signal (bipolar: peaks and valleys)
     size_t historyLength;                 // Samples to keep (e.g., 8 seconds)
     
     // Phase tracking state
@@ -119,6 +121,11 @@ private:
      * @brief Perform cross-correlation analysis to detect beat period and phase
      */
     void performCrossCorrelation();
+    
+    /**
+     * @brief Preprocess signals to emphasize both peaks (strong beats) and valleys (weak beats)
+     */
+    void preprocessSignalsForCorrelation();
     
     /**
      * @brief Update phase based on detected tempo
