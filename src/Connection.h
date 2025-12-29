@@ -12,7 +12,7 @@ private:
 public:
     Connection(Neuron* sourceNeuron, Neuron* targetNeuron, float weight = 1.0f);
     
-    void activate();
+    void activate(float weightMultiplier = 1.0f);
     
     // Getters
     Neuron* getSource() const { return source; }

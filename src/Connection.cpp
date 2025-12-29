@@ -8,10 +8,11 @@ Connection::Connection(Neuron* sourceNeuron, Neuron* targetNeuron, float weight)
 {
 }
 
-void Connection::activate() {
+void Connection::activate(float weightMultiplier) {
     if (source && target) {
         float sourceActivation = source->getActivation();
-        float weightedInput = sourceActivation * weight;
+        float effectiveWeight = weight * weightMultiplier;
+        float weightedInput = sourceActivation * effectiveWeight;
         target->activate(weightedInput);
     }
 }

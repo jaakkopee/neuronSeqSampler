@@ -79,9 +79,16 @@ void NeuronNetwork::activate() {
         neuron->update();
     }
     
-    // Then activate all connections
+    // Get beat phase boost for connection weights if in ConnectionWeights mode
+    float weightMultiplier = 1.0f;
+    if (beatTracker && beatTracker->isEnabled() && 
+        beatTracker->getBoostTarget() == BoostTarget::ConnectionWeights) {
+        weightMultiplier = beatTracker->getPhaseBasedLearningGain();
+    }
+    
+    // Then activate all connections with phase-based weight modulation
     for (auto& connection : connections) {
-        connection->activate();
+        connection->activate(weightMultiplier);
     }
 }
 
@@ -371,13 +378,6 @@ void NeuronNetwork::learnFromRhythm() {
             if (x == 0.0f) continue; // nothing to learn this step
 
             float w = conn->getWeight();
-            
-            // Apply beat phase boost to connection weights if in ConnectionWeights mode
-            if (beatTracker && beatTracker->isEnabled() && 
-                beatTracker->getBoostTarget() == BoostTarget::ConnectionWeights) {
-                float phaseGain = beatTracker->getPhaseBasedLearningGain();
-                w *= phaseGain; // Modulate weight directly
-            }
             
             // Apply onset-modulated learning rate
             float adaptiveLR = learningRate * effectiveOnsetBoost;
