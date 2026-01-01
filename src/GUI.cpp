@@ -2107,8 +2107,8 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixPanel->getRenderer()->setBorders(1);
     mainContainer->add(connectionMatrixPanel);
 
-    // Control panel (right side) - non-scrollable, fixed position
-    auto controlPanel = tgui::Panel::create();
+    // Control panel (right side) - scrollable
+    auto controlPanel = tgui::ScrollablePanel::create();
     controlPanel->setPosition(tgui::bindWidth(mainContainer) - 245, 0);
     controlPanel->setSize(245, tgui::bindHeight(mainContainer));
     controlPanel->getRenderer()->setBackgroundColor(tgui::Color(25, 25, 25, 240));
@@ -2123,10 +2123,9 @@ void GUI::createConnectionMatrixPanel() {
     float matrixWidth = std::max(600.0f, static_cast<float>(300 + numNeurons * 70 + 50));
     float matrixHeight = std::max(650.0f, static_cast<float>(200 + numFilters * 175 + 150)); // 175px row spacing
     
-    // Set content size for scrollable matrix panel
+    // Set content size for scrollable panels
     connectionMatrixPanel->setContentSize(tgui::Vector2f(matrixWidth, matrixHeight));
-    // Set content size for scrollable matrix panel
-    connectionMatrixPanel->setContentSize(tgui::Vector2f(matrixWidth, matrixHeight));
+    controlPanel->setContentSize(tgui::Vector2f(235, 1360)); // Fixed width, reduced content height
     
     // Title label (in matrix panel)
     std::string title = numNeurons == 0 ? "🎛️ Rhythmogram (" + std::to_string(numFilters) + "×0)" : 
