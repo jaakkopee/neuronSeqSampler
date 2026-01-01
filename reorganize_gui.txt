@@ -1,0 +1,30 @@
+RHYTHMOGRAM PANEL REORGANIZATION PLAN
+=====================================
+
+LAYOUT:
+- Left side: Connection matrix (variable width based on neurons/channels)
+- Right side: Two columns of controls
+
+Column 1 (col1X = contentWidth - 240):
+  - CHANNELS (Y:15-55)
+  - LEARNING (Y:70-310)
+  - BEAT TRACKER (Y:315-525)
+  - AUDIO (Y:530-580)
+
+Column 2 (col2X = contentWidth - 120):
+  - TEMPO (Y:15-460) includes BPM slider, auto-tempo, adapt, detected
+  - PEAK DECAY (Y:465-515)
+
+Consistent spacing:
+- Section headers: textSize 10, bold color
+- Toggle buttons: 100x26-28
+- Sliders: 70x18 + label 25x18
+- Value displays: properly aligned to right of sliders
+
+Colors:
+- Channels: blue tint (180,220,255)
+- Learning: purple tint (220,180,255)
+- Beat Tracker: yellow/orange (255,220,120)
+- Tempo: yellow/green (255,255,150)
+- Peak Decay: orange (255,200,150)
+- Audio: white (200,200,200)

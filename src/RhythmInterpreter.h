@@ -207,6 +207,13 @@ public:
      * @brief Clear all onset history
      */
     void clearOnsetHistory();
+    
+    /**
+     * @brief Set peak decay rate for rhythmogram visualization
+     * @param rate Decay factor per frame (0.0-1.0, higher = slower decay)
+     */
+    void setPeakDecayRate(float rate);
+    float getPeakDecayRate() const;
 
     // ========================= UTILITY METHODS =========================
     
@@ -253,6 +260,8 @@ private:
     
     // ========================= RUNTIME STATE =========================  
     std::vector<float> filterOutputs;        // Current output levels
+    std::vector<float> peakValues;           // Peak hold values for decay
+    float peakDecayRate;                     // Peak decay rate (0.0-1.0)
     std::vector<int> stuckCounters;          // Anti-stuck mechanism counters
     
     // Onset detection state

@@ -20,6 +20,7 @@ RhythmInterpreter::RhythmInterpreter(size_t sampleRate, size_t bufferSize)
     bandGains.resize(bandCount, 1.0f);
     filterGains.resize(bandCount, 1.0f);
     rhythmogramScale = 1.0f;          // Default scale multiplier
+    peakDecayRate = 0.85f;            // Default: 85% decay per frame (fast decay)
     stuckCounters.resize(bandCount, 0);
     // qValues is already initialized in initializeBands() - don't override it
     
@@ -174,6 +175,12 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         if (smoothedOutputs.size() != bandCount) {
             smoothedOutputs.resize(bandCount, 0.0f);
         }
+        
+        // Ensure peak values vector is sized correctly
+        if (peakValues.size() != bandCount) {
+            peakValues.resize(bandCount, 0.0f);
+        }
+        
         float rhythmActivity = 0.0f;
         for (float sample : bandData) {
             rhythmActivity += std::abs(sample);
@@ -194,10 +201,19 @@ void RhythmInterpreter::processAudioFrame(const std::vector<float>& audioData) {
         
         // Apply band-specific limit but allow values above 1.0 for dynamic range
         scaledActivity = std::min(scaledActivity, bandLimits[bandIndex]);
-        scaledActivity = std::max(0.0f, scaledActivity); // Only clamp minimum, not maximum
+        scaledActivity = std::max(0.0f, scaledActivity);
         
-        // Store the rhythm pattern output
-        filterOutputs[bandIndex] = scaledActivity;
+        // Peak detection and fast decay for sharp peaks
+        if (scaledActivity > peakValues[bandIndex]) {
+            // New peak detected - set to current value
+            peakValues[bandIndex] = scaledActivity;
+        } else {
+            // Decay existing peak using configurable rate
+            peakValues[bandIndex] *= peakDecayRate;
+        }
+        
+        // Use the peak value as output for sharp, short peaks
+        filterOutputs[bandIndex] = peakValues[bandIndex];
     }
 
     // Apply filter gains to the outputs
@@ -735,4 +751,12 @@ void RhythmInterpreter::clearOnsetHistory() {
     for (auto& history : onsetHistory) {
         history.clear();
     }
+}
+
+void RhythmInterpreter::setPeakDecayRate(float rate) {
+    peakDecayRate = std::clamp(rate, 0.0f, 1.0f);
+}
+
+float RhythmInterpreter::getPeakDecayRate() const {
+    return peakDecayRate;
 }

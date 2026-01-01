@@ -1,0 +1,48 @@
+{
+  "connections": [],
+  "learning": {
+    "enabled": true,
+    "learning_rate": 0.019999999552965164,
+    "mapping_gain": 0.20000000298023224,
+    "onset_bias": 0.5,
+    "weight_decay": 0.0005000000237487257
+  },
+  "neurons": [],
+  "preset_info": {
+    "author": "Unknown",
+    "connection_count": 0,
+    "created_date": "2026-01-01T18:40:33Z",
+    "description": "Quickly saved preset",
+    "name": "Quick Save",
+    "neuron_count": 0,
+    "tags": "",
+    "version": "1.0"
+  },
+  "quantization": {
+    "bpm": 120.0,
+    "enabled": true,
+    "grid_resolution": "sixteenth_note",
+    "grid_resolution_value": 3,
+    "quantization_amount": 0.7999999523162842,
+    "swing_factor": 0.0
+  },
+  "rhythm_connections": [],
+  "rhythmogram_matrix": {
+    "band_count": 8,
+    "enabled": true,
+    "filter_gains": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "onset_detection": {
+      "buffer_size": 100,
+      "threshold": 0.10000000149011612
+    }
+  }
+}

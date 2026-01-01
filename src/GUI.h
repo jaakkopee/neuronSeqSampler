@@ -99,6 +99,8 @@ private:
     tgui::Button::Ptr autodetectTempoToggle; // Toggle for automatic tempo detection
     tgui::Label::Ptr detectedTempoLabel; // Label showing detected tempo when auto-tempo is enabled
     tgui::Button::Ptr adaptFiltersToggle; // Toggle for filter adaptation to tempo (independent when auto-tempo is on)
+    tgui::Slider::Ptr peakDecaySlider; // Peak decay rate slider
+    tgui::Label::Ptr peakDecayLabel; // Peak decay value display
 
     // Learning controls
     tgui::Button::Ptr learningToggle; // Enable/disable learning

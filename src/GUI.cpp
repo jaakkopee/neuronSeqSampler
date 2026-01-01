@@ -2037,6 +2037,8 @@ void GUI::createConnectionMatrixPanel() {
         autodetectTempoToggle = nullptr;
         detectedTempoLabel = nullptr;
         adaptFiltersToggle = nullptr;
+        peakDecaySlider = nullptr;
+        peakDecayLabel = nullptr;
         // Learning controls
         learningToggle = nullptr;
         learningRateSlider = nullptr;
@@ -2089,30 +2091,49 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixWindow->setVisible(matrixVisible);
     connectionMatrixWindow->setTitleButtons(tgui::ChildWindow::TitleButton::None); // Remove close button
 
-    // Inner scrollable panel - all existing matrix widgets will be added to this panel
+    // Main container panel (non-scrollable) - holds matrix panel and control panels
+    auto mainContainer = tgui::Panel::create();
+    mainContainer->setPosition("0%", "0%");
+    mainContainer->setSize("100%", "100%");
+    mainContainer->getRenderer()->setBackgroundColor(tgui::Color(0,0,0,0));
+    connectionMatrixWindow->add(mainContainer);
+
+    // Scrollable panel for connection matrix (left side)
     connectionMatrixPanel = tgui::ScrollablePanel::create();
-    connectionMatrixPanel->setPosition("0%", "0%");
-    connectionMatrixPanel->setSize("100%", "100%");
-    // Make inner panel transparent to allow underlying visualization to show through
-    connectionMatrixPanel->getRenderer()->setBackgroundColor(tgui::Color(0,0,0,0));
-    connectionMatrixWindow->add(connectionMatrixPanel);
+    connectionMatrixPanel->setPosition(0, 0);
+    connectionMatrixPanel->setSize(tgui::bindWidth(mainContainer) - 250, tgui::bindHeight(mainContainer));
+    connectionMatrixPanel->getRenderer()->setBackgroundColor(tgui::Color(15, 15, 15, 240));
+    connectionMatrixPanel->getRenderer()->setBorderColor(tgui::Color(60, 60, 60));
+    connectionMatrixPanel->getRenderer()->setBorders(1);
+    mainContainer->add(connectionMatrixPanel);
+
+    // Control panel (right side) - non-scrollable, fixed position
+    auto controlPanel = tgui::Panel::create();
+    controlPanel->setPosition(tgui::bindWidth(mainContainer) - 245, 0);
+    controlPanel->setSize(245, tgui::bindHeight(mainContainer));
+    controlPanel->getRenderer()->setBackgroundColor(tgui::Color(25, 25, 25, 240));
+    controlPanel->getRenderer()->setBorderColor(tgui::Color(60, 60, 60));
+    controlPanel->getRenderer()->setBorders(1);
+    mainContainer->add(controlPanel, "ControlPanel");
 
     gui->add(connectionMatrixWindow, "ConnectionMatrixPanel");
 
-    // Compute content size estimates (used for laying out controls inside the popover)
+    // Compute content size estimates for the matrix area
     // Layout: Band info (0-280) + Neuron matrix starts at 300, 70px per column
-    float contentWidth = std::max(800.0f, static_cast<float>(300 + numNeurons * 70 + 50));
-    float contentHeight = std::max(650.0f, static_cast<float>(200 + numFilters * 175 + 150)); // 175px row spacing
+    float matrixWidth = std::max(600.0f, static_cast<float>(300 + numNeurons * 70 + 50));
+    float matrixHeight = std::max(650.0f, static_cast<float>(200 + numFilters * 175 + 150)); // 175px row spacing
     
-    // Set content size for scrollable panel now that we have computed the dimensions
-    connectionMatrixPanel->setContentSize(tgui::Vector2f(contentWidth, contentHeight));
+    // Set content size for scrollable matrix panel
+    connectionMatrixPanel->setContentSize(tgui::Vector2f(matrixWidth, matrixHeight));
+    // Set content size for scrollable matrix panel
+    connectionMatrixPanel->setContentSize(tgui::Vector2f(matrixWidth, matrixHeight));
     
-    // Title label
-    std::string title = numNeurons == 0 ? "🎛️ Rhythmogram Mapping (" + std::to_string(numFilters) + "×0) - Add neurons first" : 
-                                             "🎛️ Rhythmogram Mapping (" + std::to_string(numFilters) + "×" + std::to_string(numNeurons) + ")";
+    // Title label (in matrix panel)
+    std::string title = numNeurons == 0 ? "🎛️ Rhythmogram (" + std::to_string(numFilters) + "×0)" : 
+                                             "🎛️ Rhythmogram (" + std::to_string(numFilters) + "×" + std::to_string(numNeurons) + ")";
     matrixTitleLabel = tgui::Label::create(title);
     matrixTitleLabel->setPosition(5, 5);
-    matrixTitleLabel->setTextSize(14);
+    matrixTitleLabel->setTextSize(13);
     matrixTitleLabel->getRenderer()->setTextColor(tgui::Color::White);
     connectionMatrixPanel->add(matrixTitleLabel);
     
@@ -2599,25 +2620,34 @@ void GUI::createConnectionMatrixPanel() {
         }
     }
     
-    // Add BPM slider with better spacing from the right edge
-    float scaleSliderX = contentWidth - 160; // Reserved X for right-side controls
-    float bpmSliderX = contentWidth - 80; // Position BPM slider
-
-    // Channel count control label
-    auto channelsLabel = tgui::Label::create("Channels");
-    channelsLabel->setPosition(scaleSliderX - 10, 15);
+    // =============================================================================
+    // CONTROL PANEL LAYOUT (Right side, non-scrollable)
+    // =============================================================================
+    
+    // Get the control panel we created earlier
+    auto controlPanelPtr = mainContainer->get<tgui::Panel>("ControlPanel");
+    
+    float col1X = 10;              // First column in control panel
+    float col2X = 130;             // Second column in control panel
+    
+    // =============================================================================
+    // COLUMN 1: CHANNEL & LEARNING CONTROLS
+    // =============================================================================
+    
+    // --- Channel Count Section ---
+    auto channelsLabel = tgui::Label::create("CHANNELS");
+    channelsLabel->setPosition(col1X, 15);
     channelsLabel->setTextSize(10);
-    channelsLabel->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
-    connectionMatrixPanel->add(channelsLabel);
+    channelsLabel->getRenderer()->setTextColor(tgui::Color(180, 220, 255));
+    controlPanelPtr->add(channelsLabel);
 
-    // Channels ComboBox (4-16)
     auto channelsCombo = tgui::ComboBox::create();
-    channelsCombo->setPosition(scaleSliderX + 5, 15);
-    channelsCombo->setSize(60, 18);
+    channelsCombo->setPosition(col1X, 35);
+    channelsCombo->setSize(100, 20);
     channelsCombo->setTextSize(10);
     channelsCombo->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
     channelsCombo->getRenderer()->setTextColor(tgui::Color(220, 220, 220));
-    channelsCombo->getRenderer()->setBorderColor(tgui::Color(80, 80, 80));
+    channelsCombo->getRenderer()->setBorderColor(tgui::Color(80, 120, 140));
     channelsCombo->getRenderer()->setBorders(1);
     const std::vector<int> channelOptions = {4, 6, 8, 10, 12, 16};
     for (int opt : channelOptions) {
@@ -2626,120 +2656,92 @@ void GUI::createConnectionMatrixPanel() {
     channelsCombo->setSelectedItemById(std::to_string(static_cast<int>(numFilters)));
     channelsCombo->onItemSelect([this, channelsCombo](const tgui::String& /*item*/){
         if (!network || !network->getRhythmInterpreter()) return;
-        // Map index to channel options {4,6,8,10,12,16}
         const std::vector<int> channelOptions = {4, 6, 8, 10, 12, 16};
         int idx = channelsCombo->getSelectedItemIndex();
         size_t newCount = 8;
         if (idx >= 0 && static_cast<size_t>(idx) < channelOptions.size())
             newCount = static_cast<size_t>(channelOptions[idx]);
         network->getRhythmInterpreter()->setBandCount(newCount);
-        // Recreate matrix panel to reflect new channel count
         createConnectionMatrixPanel();
     });
-    connectionMatrixPanel->add(channelsCombo);
+    controlPanelPtr->add(channelsCombo);
     
-    // BPM control label - make more prominent with better spacing
-    auto bpmLabelTitle = tgui::Label::create("BPM");
-    bpmLabelTitle->setPosition(bpmSliderX - 20, 45); // Move left and up slightly
-    bpmLabelTitle->setTextSize(12); // Larger text
-    bpmLabelTitle->getRenderer()->setTextColor(tgui::Color(200, 200, 100)); // Yellowish for visibility
-    connectionMatrixPanel->add(bpmLabelTitle);
+    // =============================================================================
+    // COLUMN 2: TEMPO & PEAK DECAY CONTROLS
+    // =============================================================================
     
-    // Vertical BPM slider (30.0 - 300.0, default 120.0, step 0.1) - expanded range for better autodetect
+    // --- Tempo Section ---
+    auto tempoSectionLabel = tgui::Label::create("TEMPO");
+    tempoSectionLabel->setPosition(col2X, 15);
+    tempoSectionLabel->setTextSize(11);
+    tempoSectionLabel->getRenderer()->setTextColor(tgui::Color(255, 255, 150));
+    controlPanelPtr->add(tempoSectionLabel);
+    
+    // Vertical BPM slider
     bpmSlider = tgui::Slider::create(30.0f, 300.0f);
-    bpmSlider->setValue(120.0f); // Default BPM for minimal RhythmInterpreter
+    bpmSlider->setValue(120.0f);
     bpmSlider->setStep(0.1f);
-    bpmSlider->setPosition(bpmSliderX - 10, 65); // Move left and up slightly  
-    bpmSlider->setSize(20, 300); // Original slider size
+    bpmSlider->setPosition(col2X + 30, 40);
+    bpmSlider->setSize(20, 260);
     bpmSlider->setOrientation(tgui::Orientation::Vertical);
     bpmSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
-    bpmSlider->getRenderer()->setThumbColor(tgui::Color(100, 140, 100));
-    
-    // Connect BPM slider to BPM control (only when autodetect is disabled)
+    bpmSlider->getRenderer()->setThumbColor(tgui::Color(100, 160, 100));
     bpmSlider->onValueChange([this](float value) {
         if (network && network->getRhythmInterpreter()) {
-            // Minimal RhythmInterpreter: getAutodetectTempo and setBPM methods not supported
-            // Update BPM display with proper formatting (one decimal place)
             std::ostringstream stream;
             stream << std::fixed << std::setprecision(1) << value;
             bpmLabel->setText(stream.str());
-            // Update frequency labels to reflect new tempo scaling
             updateFrequencyLabels();
-            // Update quantizer BPM to match global tempo
             updateQuantizerBPM(value);
         }
     });
+    controlPanelPtr->add(bpmSlider);
     
-    connectionMatrixPanel->add(bpmSlider);
-    
-    // BPM value display - LARGE for easy reading
+    // BPM value display
     bpmLabel = tgui::Label::create("120.0");
-    bpmLabel->setPosition(bpmSliderX - 35, 370); // Centered under moved slider position  
-    bpmLabel->setSize(70, 35); // Larger for better visibility
-    bpmLabel->setTextSize(16); // Larger text for better readability
-    bpmLabel->getRenderer()->setTextColor(tgui::Color(150, 255, 150)); // Brighter green
-    bpmLabel->getRenderer()->setBackgroundColor(tgui::Color(20, 40, 20)); // Darker background
-    bpmLabel->getRenderer()->setBorderColor(tgui::Color(60, 120, 60)); // Brighter border
-    bpmLabel->getRenderer()->setBorders(2); // Thicker border
+    bpmLabel->setPosition(col2X + 5, 308);
+    bpmLabel->setSize(70, 30);
+    bpmLabel->setTextSize(14);
+    bpmLabel->getRenderer()->setTextColor(tgui::Color(150, 255, 150));
+    bpmLabel->getRenderer()->setBackgroundColor(tgui::Color(20, 40, 20));
+    bpmLabel->getRenderer()->setBorderColor(tgui::Color(60, 140, 60));
+    bpmLabel->getRenderer()->setBorders(2);
+    {
+        std::ostringstream bpmInitStream;
+        bpmInitStream << std::fixed << std::setprecision(1) << 120.0f;
+        bpmLabel->setText(bpmInitStream.str());
+    }
+    controlPanelPtr->add(bpmLabel);
     
-    // Initialize BPM display with current value
-    std::ostringstream bpmInitStream;
-    bpmInitStream << std::fixed << std::setprecision(1) << 120.0f; // Default BPM
-    bpmLabel->setText(bpmInitStream.str());
-    
-    connectionMatrixPanel->add(bpmLabel);
-    
-    // Add tempo control section label for better visibility with proper spacing
-    auto tempoSectionLabel = tgui::Label::create("TEMPO CONTROLS");
-    tempoSectionLabel->setPosition(bpmSliderX - 50, 415); // Move further left and down
-    tempoSectionLabel->setTextSize(10);
-    tempoSectionLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 100));
-    connectionMatrixPanel->add(tempoSectionLabel);
-    
-    // Add Autodetect Tempo toggle button with better spacing
     autodetectTempoToggle = tgui::Button::create("AUTO TEMPO");
-    autodetectTempoToggle->setPosition(bpmSliderX - 40, 440); // More space below section label
-    autodetectTempoToggle->setSize(80, 30); // Larger for better visibility
-    autodetectTempoToggle->setTextSize(10); // Larger text
-    autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 60)); // Lighter background
-    autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(220, 220, 100)); // Yellowish text
-    autodetectTempoToggle->getRenderer()->setBorderColor(tgui::Color(120, 120, 60)); // Yellow border
-    autodetectTempoToggle->getRenderer()->setBorders(2); // Thicker border
-    
-    // Set initial state (default is OFF)
-    // Auto-tempo is available now with the enhanced RhythmInterpreter
-    
-    // Connect autodetect toggle to tempo control
+    autodetectTempoToggle->setPosition(col2X, 348);
+    autodetectTempoToggle->setSize(100, 26);
+    autodetectTempoToggle->setTextSize(9);
+    autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 60));
+    autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(220, 220, 100));
+    autodetectTempoToggle->getRenderer()->setBorderColor(tgui::Color(120, 120, 60));
+    autodetectTempoToggle->getRenderer()->setBorders(2);
     autodetectTempoToggle->onPress([this]() {
         if (network && network->getRhythmInterpreter()) {
             auto rhythmInterpreter = network->getRhythmInterpreter();
             bool currentState = rhythmInterpreter->isAutoTempoEnabled();
             bool newState = !currentState;
-            
-            // Enable/disable auto-tempo functionality
             rhythmInterpreter->setAutoTempoEnabled(newState);
             
-            // Update toggle appearance
             if (newState) {
-                autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(100, 200, 100)); // Bright green when active
+                autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(100, 200, 100));
                 autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
                 autodetectTempoToggle->setText("AUTO ON");
-                
-                // Disable BPM slider when autodetect is ON
                 if (bpmSlider) {
-                    bpmSlider->getRenderer()->setThumbColor(tgui::Color(60, 60, 60)); // Grayed out
+                    bpmSlider->getRenderer()->setThumbColor(tgui::Color(60, 60, 60));
                 }
             } else {
-                autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 60)); // Default gray
+                autodetectTempoToggle->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 60));
                 autodetectTempoToggle->getRenderer()->setTextColor(tgui::Color(220, 220, 100));
                 autodetectTempoToggle->setText("AUTO TEMPO");
-                
-                // Re-enable BPM slider when autodetect is OFF
                 if (bpmSlider) {
-                    bpmSlider->getRenderer()->setThumbColor(tgui::Color(100, 140, 100)); // Normal color
+                    bpmSlider->getRenderer()->setThumbColor(tgui::Color(100, 160, 100));
                 }
-                
-                // When auto-tempo is turned off, also turn off and gray out filter adaptation button
                 if (adaptFiltersToggle) {
                     rhythmInterpreter->setFilterAdaptationEnabled(false);
                     adaptFiltersToggle->getRenderer()->setBackgroundColor(tgui::Color(50, 50, 50));
@@ -2749,38 +2751,28 @@ void GUI::createConnectionMatrixPanel() {
             }
         }
     });
+    controlPanelPtr->add(autodetectTempoToggle);
     
-    connectionMatrixPanel->add(autodetectTempoToggle);
-    
-    // Add filter adaptation toggle button (independent when auto-tempo is on, disabled when auto-tempo is off)
     adaptFiltersToggle = tgui::Button::create("ADAPT OFF");
-    adaptFiltersToggle->setPosition(bpmSliderX - 40, 475); // Below auto-tempo button
-    adaptFiltersToggle->setSize(80, 25); // Slightly smaller than auto-tempo
+    adaptFiltersToggle->setPosition(col2X, 378);
+    adaptFiltersToggle->setSize(100, 24);
     adaptFiltersToggle->setTextSize(9);
-    adaptFiltersToggle->getRenderer()->setBackgroundColor(tgui::Color(50, 50, 50)); // Dark gray (disabled initially)
-    adaptFiltersToggle->getRenderer()->setTextColor(tgui::Color(120, 120, 120)); // Grayed out text
+    adaptFiltersToggle->getRenderer()->setBackgroundColor(tgui::Color(50, 50, 50));
+    adaptFiltersToggle->getRenderer()->setTextColor(tgui::Color(120, 120, 120));
     adaptFiltersToggle->getRenderer()->setBorderColor(tgui::Color(80, 80, 80));
     adaptFiltersToggle->getRenderer()->setBorders(1);
-    
-    // Connect filter adaptation toggle
     adaptFiltersToggle->onPress([this]() {
         if (network && network->getRhythmInterpreter()) {
             auto rhythmInterpreter = network->getRhythmInterpreter();
-            
-            // Only allow toggling if auto-tempo is enabled
             if (!rhythmInterpreter->isAutoTempoEnabled()) {
-                return; // Do nothing if auto-tempo is off
+                return;
             }
-            
             bool currentState = rhythmInterpreter->isFilterAdaptationEnabled();
             bool newState = !currentState;
-            
-            // Enable/disable filter adaptation
             rhythmInterpreter->setFilterAdaptationEnabled(newState);
             
-            // Update toggle appearance
             if (newState) {
-                adaptFiltersToggle->getRenderer()->setBackgroundColor(tgui::Color(100, 150, 200)); // Blue when active
+                adaptFiltersToggle->getRenderer()->setBackgroundColor(tgui::Color(100, 150, 200));
                 adaptFiltersToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
                 adaptFiltersToggle->setText("ADAPT ON");
             } else {
@@ -2790,38 +2782,67 @@ void GUI::createConnectionMatrixPanel() {
             }
         }
     });
+    controlPanelPtr->add(adaptFiltersToggle);
     
-    connectionMatrixPanel->add(adaptFiltersToggle);
-    
-    // Add detected tempo status display with better spacing
     detectedTempoLabel = tgui::Label::create("Detected: --");
-    detectedTempoLabel->setPosition(bpmSliderX - 45, 505); // More space below adapt button
-    detectedTempoLabel->setSize(90, 25); // Slightly taller
-    detectedTempoLabel->setTextSize(10); // Slightly larger text
-    detectedTempoLabel->getRenderer()->setTextColor(tgui::Color(150, 150, 255)); // Blue for detected tempo
+    detectedTempoLabel->setPosition(col2X, 408);
+    detectedTempoLabel->setSize(100, 22);
+    detectedTempoLabel->setTextSize(9);
+    detectedTempoLabel->getRenderer()->setTextColor(tgui::Color(150, 180, 255));
     detectedTempoLabel->getRenderer()->setBackgroundColor(tgui::Color(10, 10, 30));
     detectedTempoLabel->getRenderer()->setBorderColor(tgui::Color(50, 50, 100));
     detectedTempoLabel->getRenderer()->setBorders(1);
-    connectionMatrixPanel->add(detectedTempoLabel);
+    controlPanelPtr->add(detectedTempoLabel);
 
+    // --- Peak Decay Section ---
+    auto peakDecaySectionLabel = tgui::Label::create("PEAK DECAY");
+    peakDecaySectionLabel->setPosition(col2X, 443);
+    peakDecaySectionLabel->setTextSize(10);
+    peakDecaySectionLabel->getRenderer()->setTextColor(tgui::Color(255, 200, 150));
+    controlPanelPtr->add(peakDecaySectionLabel);
+
+    peakDecaySlider = tgui::Slider::create(0.5f, 0.99f);
+    peakDecaySlider->setValue(0.85f);
+    peakDecaySlider->setStep(0.01f);
+    peakDecaySlider->setPosition(col2X, 463);
+    peakDecaySlider->setSize(70, 18);
+    peakDecaySlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
+    peakDecaySlider->getRenderer()->setThumbColor(tgui::Color(255, 180, 120));
+    peakDecaySlider->onValueChange([this](float value) {
+        if (!network || !network->getRhythmInterpreter()) return;
+        network->getRhythmInterpreter()->setPeakDecayRate(value);
+        if (peakDecayLabel) {
+            char buffer[16];
+            snprintf(buffer, sizeof(buffer), "%.2f", value);
+            peakDecayLabel->setText(buffer);
+        }
+    });
+    controlPanelPtr->add(peakDecaySlider);
+
+    peakDecayLabel = tgui::Label::create("0.85");
+    peakDecayLabel->setPosition(col2X + 75, 463);
+    peakDecayLabel->setSize(25, 18);
+    peakDecayLabel->setTextSize(8);
+    peakDecayLabel->getRenderer()->setTextColor(tgui::Color(255, 180, 120));
+    controlPanelPtr->add(peakDecayLabel);
+    
     // =============================================================================
-    // Learning Controls
+    // Back to COLUMN 1: LEARNING CONTROLS
     // =============================================================================
-    // Section label
+    
     auto learningSectionLabel = tgui::Label::create("LEARNING");
-    learningSectionLabel->setPosition(scaleSliderX - 55, 415);
+    learningSectionLabel->setPosition(col1X, 70);
     learningSectionLabel->setTextSize(10);
-    learningSectionLabel->getRenderer()->setTextColor(tgui::Color(200, 150, 200));
-    connectionMatrixPanel->add(learningSectionLabel);
+    learningSectionLabel->getRenderer()->setTextColor(tgui::Color(220, 180, 255));
+    controlPanelPtr->add(learningSectionLabel);
 
-    // Toggle button
     bool learningInitiallyEnabled = network && network->isLearningEnabled();
     learningToggle = tgui::Button::create(learningInitiallyEnabled ? "LEARN ON" : "LEARN OFF");
-    learningToggle->setPosition(scaleSliderX - 60, 440);
-    learningToggle->setSize(100, 30);
-    learningToggle->getRenderer()->setBackgroundColor(learningInitiallyEnabled ? tgui::Color(100, 80, 140) : tgui::Color(60, 60, 60));
+    learningToggle->setPosition(col1X, 90);
+    learningToggle->setSize(100, 26);
+    learningToggle->getRenderer()->setBackgroundColor(learningInitiallyEnabled ? tgui::Color(120, 80, 160) : tgui::Color(60, 60, 60));
     learningToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
-    learningToggle->getRenderer()->setBorderColor(tgui::Color(120, 90, 160));
+    learningToggle->getRenderer()->setBorderColor(tgui::Color(140, 100, 180));
     learningToggle->getRenderer()->setBorders(2);
     learningToggle->onPress([this]() {
         if (!network) return;
@@ -2829,24 +2850,23 @@ void GUI::createConnectionMatrixPanel() {
         network->setLearningEnabled(!enabled);
         bool nowEnabled = network->isLearningEnabled();
         learningToggle->setText(nowEnabled ? "LEARN ON" : "LEARN OFF");
-        learningToggle->getRenderer()->setBackgroundColor(nowEnabled ? tgui::Color(100, 80, 140) : tgui::Color(60, 60, 60));
+        learningToggle->getRenderer()->setBackgroundColor(nowEnabled ? tgui::Color(120, 80, 160) : tgui::Color(60, 60, 60));
     });
-    connectionMatrixPanel->add(learningToggle);
+    controlPanelPtr->add(learningToggle);
 
-    // Learning rate slider (0.0 - 0.1)
     auto lrLabelTitle = tgui::Label::create("Rate");
-    lrLabelTitle->setPosition(scaleSliderX - 60, 480);
-    lrLabelTitle->setTextSize(10);
+    lrLabelTitle->setPosition(col1X, 123);
+    lrLabelTitle->setTextSize(9);
     lrLabelTitle->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
-    connectionMatrixPanel->add(lrLabelTitle);
+    controlPanelPtr->add(lrLabelTitle);
 
     learningRateSlider = tgui::Slider::create(0.0f, 0.1f);
     learningRateSlider->setValue(network ? network->getLearningRate() : 0.02f);
     learningRateSlider->setStep(0.001f);
-    learningRateSlider->setPosition(scaleSliderX - 60, 500);
-    learningRateSlider->setSize(100, 18);
+    learningRateSlider->setPosition(col1X, 138);
+    learningRateSlider->setSize(70, 18);
     learningRateSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
-    learningRateSlider->getRenderer()->setThumbColor(tgui::Color(180, 130, 200));
+    learningRateSlider->getRenderer()->setThumbColor(tgui::Color(180, 130, 220));
     learningRateSlider->onValueChange([this](float value) {
         if (!network) return;
         network->setLearningRate(value);
@@ -2854,37 +2874,33 @@ void GUI::createConnectionMatrixPanel() {
         s << std::fixed << std::setprecision(3) << value;
         if (learningRateLabel) learningRateLabel->setText(s.str());
     });
-    connectionMatrixPanel->add(learningRateSlider);
+    controlPanelPtr->add(learningRateSlider);
 
     learningRateLabel = tgui::Label::create("0.020");
-    learningRateLabel->setPosition(scaleSliderX + 45, 497);
-    learningRateLabel->setSize(50, 22);
-    learningRateLabel->setTextSize(10);
-    learningRateLabel->getRenderer()->setTextColor(tgui::Color(230, 200, 255));
-    learningRateLabel->getRenderer()->setBackgroundColor(tgui::Color(25, 15, 25));
-    learningRateLabel->getRenderer()->setBorderColor(tgui::Color(100, 80, 140));
-    learningRateLabel->getRenderer()->setBorders(1);
+    learningRateLabel->setPosition(col1X + 75, 138);
+    learningRateLabel->setSize(25, 18);
+    learningRateLabel->setTextSize(8);
+    learningRateLabel->getRenderer()->setTextColor(tgui::Color(180, 130, 220));
     {
         float lr = network ? network->getLearningRate() : 0.02f;
         std::ostringstream s; s << std::fixed << std::setprecision(3) << lr;
         learningRateLabel->setText(s.str());
     }
-    connectionMatrixPanel->add(learningRateLabel);
+    controlPanelPtr->add(learningRateLabel);
 
-    // Weight decay slider (0.0 - 0.01)
     auto wdLabelTitle = tgui::Label::create("Decay");
-    wdLabelTitle->setPosition(scaleSliderX - 60, 525);
-    wdLabelTitle->setTextSize(10);
+    wdLabelTitle->setPosition(col1X, 161);
+    wdLabelTitle->setTextSize(9);
     wdLabelTitle->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
-    connectionMatrixPanel->add(wdLabelTitle);
+    controlPanelPtr->add(wdLabelTitle);
 
     weightDecaySlider = tgui::Slider::create(0.0f, 0.01f);
     weightDecaySlider->setValue(network ? network->getWeightDecay() : 0.0005f);
     weightDecaySlider->setStep(0.0001f);
-    weightDecaySlider->setPosition(scaleSliderX - 60, 545);
-    weightDecaySlider->setSize(100, 18);
+    weightDecaySlider->setPosition(col1X, 176);
+    weightDecaySlider->setSize(70, 18);
     weightDecaySlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
-    weightDecaySlider->getRenderer()->setThumbColor(tgui::Color(180, 130, 200));
+    weightDecaySlider->getRenderer()->setThumbColor(tgui::Color(180, 130, 220));
     weightDecaySlider->onValueChange([this](float value) {
         if (!network) return;
         network->setWeightDecay(value);
@@ -2892,48 +2908,42 @@ void GUI::createConnectionMatrixPanel() {
         s << std::fixed << std::setprecision(4) << value;
         if (weightDecayLabel) weightDecayLabel->setText(s.str());
     });
-    connectionMatrixPanel->add(weightDecaySlider);
+    controlPanelPtr->add(weightDecaySlider);
 
     weightDecayLabel = tgui::Label::create("0.0005");
-    weightDecayLabel->setPosition(scaleSliderX + 45, 542);
-    weightDecayLabel->setSize(50, 22);
-    weightDecayLabel->setTextSize(10);
-    weightDecayLabel->getRenderer()->setTextColor(tgui::Color(230, 200, 255));
-    weightDecayLabel->getRenderer()->setBackgroundColor(tgui::Color(25, 15, 25));
-    weightDecayLabel->getRenderer()->setBorderColor(tgui::Color(100, 80, 140));
-    weightDecayLabel->getRenderer()->setBorders(1);
+    weightDecayLabel->setPosition(col1X + 75, 176);
+    weightDecayLabel->setSize(25, 18);
+    weightDecayLabel->setTextSize(8);
+    weightDecayLabel->getRenderer()->setTextColor(tgui::Color(180, 130, 220));
     {
         float wd = network ? network->getWeightDecay() : 0.0005f;
         std::ostringstream s; s << std::fixed << std::setprecision(4) << wd;
         weightDecayLabel->setText(s.str());
     }
-    connectionMatrixPanel->add(weightDecayLabel);
+    controlPanelPtr->add(weightDecayLabel);
 
-    // Mapping gain slider (0.0 - 1.0)
     auto mgLabelTitle = tgui::Label::create("MapGain");
-    mgLabelTitle->setPosition(scaleSliderX - 60, 595);
-    mgLabelTitle->setTextSize(10);
+    mgLabelTitle->setPosition(col1X, 199);
+    mgLabelTitle->setTextSize(9);
     mgLabelTitle->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
-    connectionMatrixPanel->add(mgLabelTitle);
+    controlPanelPtr->add(mgLabelTitle);
 
     auto mappingGainSlider = tgui::Slider::create(0.0f, 1.0f);
     mappingGainSlider->setValue(network ? network->getMappingGain() : 0.2f);
     mappingGainSlider->setStep(0.01f);
-    mappingGainSlider->setPosition(scaleSliderX - 60, 615);
-    mappingGainSlider->setSize(100, 18);
+    mappingGainSlider->setPosition(col1X, 214);
+    mappingGainSlider->setSize(70, 18);
     mappingGainSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
-    mappingGainSlider->getRenderer()->setThumbColor(tgui::Color(180, 130, 200));
-    connectionMatrixPanel->add(mappingGainSlider);
+    mappingGainSlider->getRenderer()->setThumbColor(tgui::Color(180, 130, 220));
+    controlPanelPtr->add(mappingGainSlider);
     
-    // Mapping gain value display
-    mappingGainLabel = tgui::Label::create(tgui::String(mappingGainSlider->getValue()));
-    mappingGainLabel->setPosition(scaleSliderX + 45, 615);
-    mappingGainLabel->setSize(50, 18);
-    mappingGainLabel->setTextSize(10);
-    mappingGainLabel->getRenderer()->setTextColor(tgui::Color(180, 130, 200));
-    connectionMatrixPanel->add(mappingGainLabel);
+    mappingGainLabel = tgui::Label::create("0.20");
+    mappingGainLabel->setPosition(col1X + 75, 214);
+    mappingGainLabel->setSize(25, 18);
+    mappingGainLabel->setTextSize(8);
+    mappingGainLabel->getRenderer()->setTextColor(tgui::Color(180, 130, 220));
+    controlPanelPtr->add(mappingGainLabel);
     
-    // Update label when slider changes
     mappingGainSlider->onValueChange([this](float value) {
         if (!network) return;
         network->setMappingGain(value);
@@ -2944,73 +2954,61 @@ void GUI::createConnectionMatrixPanel() {
         }
     });
 
-    // Onset bias slider (0.0 - 1.0)
     auto obLabelTitle = tgui::Label::create("OnsetBias");
-    obLabelTitle->setPosition(scaleSliderX - 60, 640);
-    obLabelTitle->setTextSize(10);
+    obLabelTitle->setPosition(col1X, 237);
+    obLabelTitle->setTextSize(9);
     obLabelTitle->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
-    connectionMatrixPanel->add(obLabelTitle);
+    controlPanelPtr->add(obLabelTitle);
 
     auto onsetBiasSlider = tgui::Slider::create(0.0f, 1.0f);
     onsetBiasSlider->setValue(network ? network->getOnsetBias() : 0.5f);
     onsetBiasSlider->setStep(0.01f);
-    onsetBiasSlider->setPosition(scaleSliderX - 60, 660);
-    onsetBiasSlider->setSize(100, 18);
+    onsetBiasSlider->setPosition(col1X, 252);
+    onsetBiasSlider->setSize(70, 18);
     onsetBiasSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
-    onsetBiasSlider->getRenderer()->setThumbColor(tgui::Color(180, 130, 200));
-    onsetBiasSlider->onValueChange([this](float value) {
-        if (!network) return;
-        network->setOnsetBias(value);
-    });
-    connectionMatrixPanel->add(onsetBiasSlider);
+    onsetBiasSlider->getRenderer()->setThumbColor(tgui::Color(180, 130, 220));
+    controlPanelPtr->add(onsetBiasSlider);
 
     auto onsetBiasLabel = tgui::Label::create("0.50");
-    onsetBiasLabel->setPosition(scaleSliderX + 45, 657);
-    onsetBiasLabel->setSize(50, 22);
-    onsetBiasLabel->setTextSize(10);
-    onsetBiasLabel->getRenderer()->setTextColor(tgui::Color(230, 200, 255));
-    onsetBiasLabel->getRenderer()->setBackgroundColor(tgui::Color(25, 15, 25));
-    onsetBiasLabel->getRenderer()->setBorderColor(tgui::Color(100, 80, 140));
-    onsetBiasLabel->getRenderer()->setBorders(1);
+    onsetBiasLabel->setPosition(col1X + 75, 252);
+    onsetBiasLabel->setSize(25, 18);
+    onsetBiasLabel->setTextSize(8);
+    onsetBiasLabel->getRenderer()->setTextColor(tgui::Color(180, 130, 220));
     {
         float ob = network ? network->getOnsetBias() : 0.5f;
         std::ostringstream s; s << std::fixed << std::setprecision(2) << ob;
         onsetBiasLabel->setText(s.str());
     }
-    onsetBiasSlider->onValueChange([onsetBiasLabel](float value) {
+    onsetBiasSlider->onValueChange([this, onsetBiasLabel](float value) {
+        if (network) network->setOnsetBias(value);
         std::ostringstream s;
         s << std::fixed << std::setprecision(2) << value;
         onsetBiasLabel->setText(s.str());
     });
-    connectionMatrixPanel->add(onsetBiasLabel);
+    controlPanelPtr->add(onsetBiasLabel);
 
-    // Reset weights button
     resetRhythmWeightsButton = tgui::Button::create("Reset Weights");
-    resetRhythmWeightsButton->setPosition(scaleSliderX - 60, 685);
-    resetRhythmWeightsButton->setSize(100, 26);
+    resetRhythmWeightsButton->setPosition(col1X, 278);
+    resetRhythmWeightsButton->setSize(100, 24);
     resetRhythmWeightsButton->getRenderer()->setBackgroundColor(tgui::Color(80, 60, 60));
     resetRhythmWeightsButton->getRenderer()->setBorderColor(tgui::Color(140, 100, 100));
     resetRhythmWeightsButton->getRenderer()->setTextColor(tgui::Color::White);
     resetRhythmWeightsButton->onPress([this]() {
         if (!network) return;
         network->resetRhythmWeights(0.0f);
-        // Force matrix UI refresh so sliders reflect zeros
         forceMatrixUpdate();
     });
-    connectionMatrixPanel->add(resetRhythmWeightsButton);
+    controlPanelPtr->add(resetRhythmWeightsButton);
 
-    // =========================================================================
-    // Beat Tracker Controls
-    // =========================================================================
+    // --- Beat Tracker Section ---
     auto beatTrackerSectionLabel = tgui::Label::create("BEAT TRACKER");
-    beatTrackerSectionLabel->setPosition(scaleSliderX - 60, 720);
+    beatTrackerSectionLabel->setPosition(col1X, 313);
     beatTrackerSectionLabel->setTextSize(10);
-    beatTrackerSectionLabel->getRenderer()->setTextColor(tgui::Color(255, 200, 100));
-    connectionMatrixPanel->add(beatTrackerSectionLabel);
+    beatTrackerSectionLabel->getRenderer()->setTextColor(tgui::Color(255, 220, 120));
+    controlPanelPtr->add(beatTrackerSectionLabel);
 
-    // Beat tracker toggle
     beatTrackerToggle = tgui::Button::create("TRACK OFF");
-    beatTrackerToggle->setPosition(scaleSliderX - 60, 740);
+    beatTrackerToggle->setPosition(col1X, 333);
     beatTrackerToggle->setSize(100, 26);
     beatTrackerToggle->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 60));
     beatTrackerToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
@@ -3033,31 +3031,29 @@ void GUI::createConnectionMatrixPanel() {
             beatTrackerToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
         }
     });
-    connectionMatrixPanel->add(beatTrackerToggle);
+    controlPanelPtr->add(beatTrackerToggle);
 
-    // Beat tracker status
-    beatTrackerStatusLabel = tgui::Label::create("Phase: -- Tempo: --");
-    beatTrackerStatusLabel->setPosition(scaleSliderX - 60, 770);
-    beatTrackerStatusLabel->setSize(100, 40);
-    beatTrackerStatusLabel->setTextSize(9);
+    beatTrackerStatusLabel = tgui::Label::create("Phase: --\\nTempo: --");
+    beatTrackerStatusLabel->setPosition(col1X, 363);
+    beatTrackerStatusLabel->setSize(100, 36);
+    beatTrackerStatusLabel->setTextSize(8);
     beatTrackerStatusLabel->getRenderer()->setTextColor(tgui::Color(200, 255, 200));
     beatTrackerStatusLabel->getRenderer()->setBackgroundColor(tgui::Color(10, 20, 10));
     beatTrackerStatusLabel->getRenderer()->setBorderColor(tgui::Color(50, 100, 50));
     beatTrackerStatusLabel->getRenderer()->setBorders(1);
-    connectionMatrixPanel->add(beatTrackerStatusLabel);
+    controlPanelPtr->add(beatTrackerStatusLabel);
 
-    // Beat boost slider
     auto beatBoostTitle = tgui::Label::create("BeatBoost");
-    beatBoostTitle->setPosition(scaleSliderX - 60, 815);
+    beatBoostTitle->setPosition(col1X, 405);
     beatBoostTitle->setTextSize(9);
-    beatBoostTitle->getRenderer()->setTextColor(tgui::Color(255, 200, 100));
-    connectionMatrixPanel->add(beatBoostTitle);
+    beatBoostTitle->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+    controlPanelPtr->add(beatBoostTitle);
 
     beatBoostSlider = tgui::Slider::create(1.0f, 20.0f);
     beatBoostSlider->setValue(5.0f);
     beatBoostSlider->setStep(0.5f);
-    beatBoostSlider->setPosition(scaleSliderX - 60, 830);
-    beatBoostSlider->setSize(60, 18);
+    beatBoostSlider->setPosition(col1X, 420);
+    beatBoostSlider->setSize(70, 18);
     beatBoostSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
     beatBoostSlider->getRenderer()->setThumbColor(tgui::Color(255, 180, 80));
     beatBoostSlider->onValueChange([this](float value) {
@@ -3069,27 +3065,26 @@ void GUI::createConnectionMatrixPanel() {
             beatBoostLabel->setText(buffer);
         }
     });
-    connectionMatrixPanel->add(beatBoostSlider);
+    controlPanelPtr->add(beatBoostSlider);
 
     beatBoostLabel = tgui::Label::create("5.0");
-    beatBoostLabel->setPosition(scaleSliderX + 5, 830);
-    beatBoostLabel->setSize(35, 18);
-    beatBoostLabel->setTextSize(9);
-    beatBoostLabel->getRenderer()->setTextColor(tgui::Color(255, 200, 100));
-    connectionMatrixPanel->add(beatBoostLabel);
+    beatBoostLabel->setPosition(col1X + 75, 420);
+    beatBoostLabel->setSize(25, 18);
+    beatBoostLabel->setTextSize(8);
+    beatBoostLabel->getRenderer()->setTextColor(tgui::Color(255, 180, 80));
+    controlPanelPtr->add(beatBoostLabel);
 
-    // Phase window slider
     auto phaseWindowTitle = tgui::Label::create("PhaseWin");
-    phaseWindowTitle->setPosition(scaleSliderX - 60, 853);
-    phaseWindowTitle->setTextSize(9);
-    phaseWindowTitle->getRenderer()->setTextColor(tgui::Color(255, 200, 100));
-    connectionMatrixPanel->add(phaseWindowTitle);
+    phaseWindowTitle->setPosition(col1X, 443);
+    beatTrackerStatusLabel->setTextSize(9);
+    phaseWindowTitle->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+    controlPanelPtr->add(phaseWindowTitle);
 
     phaseWindowSlider = tgui::Slider::create(0.01f, 0.5f);
     phaseWindowSlider->setValue(0.15f);
     phaseWindowSlider->setStep(0.01f);
-    phaseWindowSlider->setPosition(scaleSliderX - 60, 868);
-    phaseWindowSlider->setSize(60, 18);
+    phaseWindowSlider->setPosition(col1X, 458);
+    phaseWindowSlider->setSize(70, 18);
     phaseWindowSlider->getRenderer()->setTrackColor(tgui::Color(60, 60, 60));
     phaseWindowSlider->getRenderer()->setThumbColor(tgui::Color(255, 180, 80));
     phaseWindowSlider->onValueChange([this](float value) {
@@ -3101,24 +3096,23 @@ void GUI::createConnectionMatrixPanel() {
             phaseWindowLabel->setText(buffer);
         }
     });
-    connectionMatrixPanel->add(phaseWindowSlider);
+    controlPanelPtr->add(phaseWindowSlider);
 
     phaseWindowLabel = tgui::Label::create("0.15");
-    phaseWindowLabel->setPosition(scaleSliderX + 5, 868);
-    phaseWindowLabel->setSize(35, 18);
-    phaseWindowLabel->setTextSize(9);
-    phaseWindowLabel->getRenderer()->setTextColor(tgui::Color(255, 200, 100));
-    connectionMatrixPanel->add(phaseWindowLabel);
+    phaseWindowLabel->setPosition(col1X + 75, 458);
+    phaseWindowLabel->setSize(25, 18);
+    phaseWindowLabel->setTextSize(8);
+    phaseWindowLabel->getRenderer()->setTextColor(tgui::Color(255, 180, 80));
+    controlPanelPtr->add(phaseWindowLabel);
 
-    // Boost target selector
     auto boostTargetTitle = tgui::Label::create("Target");
-    boostTargetTitle->setPosition(scaleSliderX - 60, 890);
+    boostTargetTitle->setPosition(col1X, 481);
     boostTargetTitle->setTextSize(9);
-    boostTargetTitle->getRenderer()->setTextColor(tgui::Color(255, 200, 100));
-    connectionMatrixPanel->add(boostTargetTitle);
+    boostTargetTitle->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+    controlPanelPtr->add(boostTargetTitle);
 
     boostTargetCombo = tgui::ComboBox::create();
-    boostTargetCombo->setPosition(scaleSliderX - 60, 905);
+    boostTargetCombo->setPosition(col1X, 496);
     boostTargetCombo->setSize(100, 20);
     boostTargetCombo->addItem("Learning", "learning");
     boostTargetCombo->addItem("Activation", "activation");
@@ -3139,21 +3133,18 @@ void GUI::createConnectionMatrixPanel() {
             beatTracker->setBoostTarget(BoostTarget::ConnectionWeights);
         }
     });
-    connectionMatrixPanel->add(boostTargetCombo);
+    controlPanelPtr->add(boostTargetCombo);
 
-    // =========================================================================
-    // Input Audio Playback Controls
-    // =========================================================================
+    // --- Audio Playback Section ---
     audioControlsLabel = tgui::Label::create("AUDIO");
-    audioControlsLabel->setPosition(scaleSliderX - 60, 935);
+    audioControlsLabel->setPosition(col1X, 528);
     audioControlsLabel->setTextSize(10);
     audioControlsLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
-    connectionMatrixPanel->add(audioControlsLabel);
+    controlPanelPtr->add(audioControlsLabel);
 
-    // Play
     inputPlayButton = tgui::Button::create("Play");
-    inputPlayButton->setPosition(scaleSliderX - 60, 955);
-    inputPlayButton->setSize(50, 24);
+    inputPlayButton->setPosition(col1X, 548);
+    inputPlayButton->setSize(48, 24);
     inputPlayButton->getRenderer()->setBackgroundColor(tgui::Color(60, 100, 60));
     inputPlayButton->getRenderer()->setTextColor(tgui::Color::White);
     inputPlayButton->onPress([this]() {
@@ -3164,31 +3155,29 @@ void GUI::createConnectionMatrixPanel() {
             audioManager->startInputPlayback();
         }
     });
-    connectionMatrixPanel->add(inputPlayButton);
+    controlPanelPtr->add(inputPlayButton);
 
-    // Pause
     inputPauseButton = tgui::Button::create("Pause");
-    inputPauseButton->setPosition(scaleSliderX - 5, 955);
-    inputPauseButton->setSize(50, 24);
+    inputPauseButton->setPosition(col1X + 52, 548);
+    inputPauseButton->setSize(48, 24);
     inputPauseButton->getRenderer()->setBackgroundColor(tgui::Color(100, 100, 60));
     inputPauseButton->getRenderer()->setTextColor(tgui::Color::White);
     inputPauseButton->onPress([this]() {
         if (!audioManager) return;
         audioManager->pauseInputPlayback();
     });
-    connectionMatrixPanel->add(inputPauseButton);
+    controlPanelPtr->add(inputPauseButton);
 
-    // Stop
     inputStopButton = tgui::Button::create("Stop");
-    inputStopButton->setPosition(scaleSliderX + 50, 955);
-    inputStopButton->setSize(50, 24);
+    inputStopButton->setPosition(col1X, 576);
+    inputStopButton->setSize(100, 24);
     inputStopButton->getRenderer()->setBackgroundColor(tgui::Color(120, 60, 60));
     inputStopButton->getRenderer()->setTextColor(tgui::Color::White);
     inputStopButton->onPress([this]() {
         if (!audioManager) return;
         audioManager->stopInputPlayback();
     });
-    connectionMatrixPanel->add(inputStopButton);
+    controlPanelPtr->add(inputStopButton);
     
     // ============================================================================
     // BeatRoot Controls - DISABLED BY DEFAULT
