@@ -729,22 +729,40 @@ json PresetManager::quantizationToJson(const Quantizer* quantizer) {
 
 bool PresetManager::createNeuronFromJson(NeuronNetwork& network, const json& neuronData) {
     try {
-        int sampleIndex = neuronData.value("sample_index", 1);
-        float activation = neuronData.value("activation", 0.0f);
-        float threshold = neuronData.value("threshold", 1.0f);
-        float decayRate = neuronData.value("decay_rate", 1.0f);
-        float activationIncrease = neuronData.value("activation_increase_per_iteration", 0.0f);
+        // Use defaults and check for null explicitly
+        int sampleIndex = 1;
+        float activation = 0.0f;
+        float threshold = 1.0f;
+        float decayRate = 1.0f;
+        float activationIncrease = 0.0f;
+        
+        // Safe extraction with explicit null checking
+        if (neuronData.contains("sample_index") && !neuronData["sample_index"].is_null()) {
+            sampleIndex = neuronData["sample_index"];
+        }
+        if (neuronData.contains("activation") && !neuronData["activation"].is_null()) {
+            activation = neuronData["activation"];
+        }
+        if (neuronData.contains("threshold") && !neuronData["threshold"].is_null()) {
+            threshold = neuronData["threshold"];
+        }
+        if (neuronData.contains("decay_rate") && !neuronData["decay_rate"].is_null()) {
+            decayRate = neuronData["decay_rate"];
+        }
+        if (neuronData.contains("activation_increase_per_iteration") && !neuronData["activation_increase_per_iteration"].is_null()) {
+            activationIncrease = neuronData["activation_increase_per_iteration"];
+        }
         
         // Validate sample index
-        if (sampleIndex <= 0 || sampleIndex > 100) { // Reasonable range for sample indices
-            std::cerr << "❌ Invalid sample index: " << sampleIndex << ", using default (1)" << std::endl;
+        if (sampleIndex <= 0 || sampleIndex > 100) {
+            std::cerr << "⚠️  Invalid sample index: " << sampleIndex << ", using default (1)" << std::endl;
             sampleIndex = 1;
         }
         
         // Validate float values to prevent NaN or extreme values
         if (!std::isfinite(activation) || !std::isfinite(threshold) || 
             !std::isfinite(decayRate) || !std::isfinite(activationIncrease)) {
-            std::cerr << "❌ Invalid float values in neuron data, using defaults" << std::endl;
+            std::cerr << "⚠️  Invalid float values in neuron data, using defaults" << std::endl;
             activation = 0.0f;
             threshold = 1.0f;
             decayRate = 1.0f;
@@ -752,15 +770,19 @@ bool PresetManager::createNeuronFromJson(NeuronNetwork& network, const json& neu
         }
         
         ActivationFunction func = ActivationFunction::Linear;
-        std::string funcName = neuronData.value("activation_function", "Linear");
-        if (funcName == "Sigmoid") func = ActivationFunction::Sigmoid;
-        else if (funcName == "ReLU") func = ActivationFunction::ReLU;
-        else if (funcName == "Tanh") func = ActivationFunction::Tanh;
+        if (neuronData.contains("activation_function") && !neuronData["activation_function"].is_null()) {
+            std::string funcName = neuronData["activation_function"];
+            if (funcName == "Sigmoid") func = ActivationFunction::Sigmoid;
+            else if (funcName == "ReLU") func = ActivationFunction::ReLU;
+            else if (funcName == "Tanh") func = ActivationFunction::Tanh;
+        }
         
         // Extract sample file path (try both field names for compatibility)
-        std::string sampleFilePath = neuronData.value("sample_file_path", "");
-        if (sampleFilePath.empty()) {
-            sampleFilePath = neuronData.value("sample_file", "");
+        std::string sampleFilePath = "";
+        if (neuronData.contains("sample_file_path") && !neuronData["sample_file_path"].is_null()) {
+            sampleFilePath = neuronData["sample_file_path"];
+        } else if (neuronData.contains("sample_file") && !neuronData["sample_file"].is_null()) {
+            sampleFilePath = neuronData["sample_file"];
         }
         
         Neuron* neuron = network.addNeuron(sampleIndex, activation, threshold, decayRate, activationIncrease, func, sampleFilePath);
@@ -774,11 +796,27 @@ bool PresetManager::createNeuronFromJson(NeuronNetwork& network, const json& neu
 
 bool PresetManager::createConnectionFromJson(NeuronNetwork& network, const json& connectionData) {
     try {
-        // Get the raw values first to validate them
+        // Get the raw values first to validate them with null checking
         // Support both old field names (source_id, target_id) and new field names (from, to)
-        auto sourceIdValue = connectionData.contains("from") ? connectionData.value("from", 0) : connectionData.value("source_id", 0);
-        auto targetIdValue = connectionData.contains("to") ? connectionData.value("to", 0) : connectionData.value("target_id", 0);
-        float weight = connectionData.value("weight", 1.0f);
+        int sourceIdValue = 0;
+        int targetIdValue = 0;
+        float weight = 1.0f;
+        
+        if (connectionData.contains("from") && !connectionData["from"].is_null()) {
+            sourceIdValue = connectionData["from"];
+        } else if (connectionData.contains("source_id") && !connectionData["source_id"].is_null()) {
+            sourceIdValue = connectionData["source_id"];
+        }
+        
+        if (connectionData.contains("to") && !connectionData["to"].is_null()) {
+            targetIdValue = connectionData["to"];
+        } else if (connectionData.contains("target_id") && !connectionData["target_id"].is_null()) {
+            targetIdValue = connectionData["target_id"];
+        }
+        
+        if (connectionData.contains("weight") && !connectionData["weight"].is_null()) {
+            weight = connectionData["weight"];
+        }
         
         // Convert to size_t with safety checks
         if (sourceIdValue < 0 || targetIdValue < 0) {
