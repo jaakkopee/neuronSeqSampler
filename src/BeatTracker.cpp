@@ -193,13 +193,6 @@ void BeatTracker::performCrossCorrelation() {
     if (bestCorrelation > 0.3f && bestLag > 0) {
         float newTempo = (60.0f * sampleRate) / static_cast<float>(bestLag);
         
-        // Spawn new agent if correlation is strong enough (potential new hypothesis)
-        if (bestCorrelation > agentSpawnThreshold) {
-            // Calculate initial phase for this new hypothesis
-            float estimatedPhase = 0.0f;  // Will be refined by findPhaseAlignment
-            spawnAgent(newTempo, estimatedPhase);
-        }
-        
         // Smooth tempo changes
         detectedTempo = tempoSmoothingFactor * detectedTempo + 
                        (1.0f - tempoSmoothingFactor) * newTempo;
@@ -217,6 +210,12 @@ void BeatTracker::performCrossCorrelation() {
         // Phase correction: find where in current cycle we are
         // Look for peak in recent input activity as phase reference
         findPhaseAlignment(bestLag);
+        
+        // Spawn new agent if correlation is strong enough (potential new hypothesis)
+        // Phase is now refined by findPhaseAlignment above
+        if (bestCorrelation > agentSpawnThreshold) {
+            spawnAgent(newTempo, currentPhase);
+        }
     } else {
         // Decay confidence when correlation is weak
         phaseConfidence *= 0.95f;
@@ -373,6 +372,8 @@ void BeatTracker::reset() {
     if (patternFinder) {
         patternFinder->reset();
     }
+    // Spawn initial agent with default hypothesis for consistency with constructor
+    spawnAgent(detectedTempo, 0.0f);
 }
 
 // ============================================================================
@@ -554,7 +555,7 @@ float PatternFinder::calculateRecurrence(const std::vector<size_t>& peakPosition
     }
     
     // Count how many peaks align with periodic grid
-    int alignedPeaks = 0;
+    size_t alignedPeaks = 0;
     
     for (size_t peak : peakPositions) {
         // Calculate phase relative to period
