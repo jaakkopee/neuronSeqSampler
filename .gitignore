@@ -15,6 +15,7 @@ Makefile
 *.exe
 *.out
 *.app
+*.o
 NeuronSeqSampler
 
 # IDE files
