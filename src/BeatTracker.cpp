@@ -26,10 +26,19 @@ BeatTracker::BeatTracker(size_t sampleRate, size_t frameSize)
     , minTempo(40.0f)
     , maxTempo(200.0f)
     , tempoSmoothingFactor(0.95f)
+    , maxAgents(5)
+    , agentSpawnThreshold(0.6f)
+    , agentRemovalThreshold(0.1f)
 {
     // Initialize beat period from default tempo
     beatPeriodSamples = (60.0f / detectedTempo) * sampleRate;
     phaseVelocity = 1.0f / beatPeriodSamples;
+    
+    // Initialize pattern finder
+    patternFinder = std::make_unique<PatternFinder>(sampleRate);
+    
+    // Spawn initial agent with default hypothesis
+    spawnAgent(detectedTempo, 0.0f);
 }
 
 void BeatTracker::update(const std::vector<float>& networkFirings, const std::vector<float>& inputOnsets) {
@@ -55,6 +64,9 @@ void BeatTracker::update(const std::vector<float>& networkFirings, const std::ve
     
     // Update phase based on current tempo estimate
     updatePhase();
+    
+    // Update agent-based tracking system (every frame for real-time responsiveness)
+    updateAgents();
     
     // Perform cross-correlation analysis periodically (every 200 frames ~= 2-4 sec)
     frameCounter++;
@@ -198,6 +210,12 @@ void BeatTracker::performCrossCorrelation() {
         // Phase correction: find where in current cycle we are
         // Look for peak in recent input activity as phase reference
         findPhaseAlignment(bestLag);
+        
+        // Spawn new agent if correlation is strong enough (potential new hypothesis)
+        // Phase is now refined by findPhaseAlignment above
+        if (bestCorrelation > agentSpawnThreshold) {
+            spawnAgent(newTempo, currentPhase);
+        }
     } else {
         // Decay confidence when correlation is weak
         phaseConfidence *= 0.95f;
@@ -350,4 +368,359 @@ void BeatTracker::reset() {
     detectedTempo = 120.0f;
     beatPeriodSamples = (60.0f / detectedTempo) * sampleRate;
     phaseVelocity = 1.0f / beatPeriodSamples;
+    agents.clear();
+    if (patternFinder) {
+        patternFinder->reset();
+    }
+    // Spawn initial agent with default hypothesis for consistency with constructor
+    spawnAgent(detectedTempo, 0.0f);
+}
+
+// ============================================================================
+// Agent Implementation
+// ============================================================================
+
+Agent::Agent(float tempo, float phase, size_t sampleRate)
+    : tempo(tempo)
+    , phase(phase)
+    , confidence(0.5f)  // Start with moderate confidence
+    , sampleRate(sampleRate)
+{
+    beatPeriod = (60.0f / tempo) * sampleRate;
+}
+
+float Agent::scoreHypothesis(const std::deque<float>& onsets, const std::vector<Pattern>& patterns) {
+    // Calculate onset alignment score
+    float onsetScore = calculateOnsetAlignment(onsets);
+    
+    // Calculate pattern match score
+    float patternScore = calculatePatternMatch(patterns);
+    
+    // Combine scores (60% onset alignment, 40% pattern matching)
+    confidence = 0.6f * onsetScore + 0.4f * patternScore;
+    
+    // Clamp to valid range
+    confidence = std::max(0.0f, std::min(1.0f, confidence));
+    
+    return confidence;
+}
+
+float Agent::calculateOnsetAlignment(const std::deque<float>& onsets) const {
+    if (onsets.empty() || beatPeriod <= 0) {
+        return 0.0f;
+    }
+    
+    // Check how well onsets align with predicted beat positions
+    float score = 0.0f;
+    int sampleCount = 0;
+    
+    // Look at recent history (last 4 beats)
+    size_t lookback = std::min(static_cast<size_t>(beatPeriod * 4), onsets.size());
+    
+    for (size_t i = onsets.size() - lookback; i < onsets.size(); i++) {
+        // Calculate expected phase at this point in history
+        float samplesSinceNow = static_cast<float>(onsets.size() - i);
+        float expectedPhase = phase - (samplesSinceNow / beatPeriod);
+        
+        // Normalize to [0, 1)
+        expectedPhase = expectedPhase - std::floor(expectedPhase);
+        
+        // Calculate distance to nearest beat (0.0 or 1.0)
+        float distToDownbeat = std::min(expectedPhase, 1.0f - expectedPhase);
+        
+        // Weight onset strength by how close it is to a predicted beat
+        // Strong onsets near predicted beats increase score
+        float alignmentWeight = std::exp(-20.0f * distToDownbeat * distToDownbeat);
+        score += onsets[i] * alignmentWeight;
+        sampleCount++;
+    }
+    
+    return sampleCount > 0 ? std::min(1.0f, score / sampleCount) : 0.0f;
+}
+
+float Agent::calculatePatternMatch(const std::vector<Pattern>& patterns) const {
+    if (patterns.empty()) {
+        return 0.5f;  // Neutral score if no patterns
+    }
+    
+    float bestMatch = 0.0f;
+    
+    for (const auto& pattern : patterns) {
+        // Check if pattern period matches this agent's tempo
+        float periodRatio = pattern.period / beatPeriod;
+        
+        // Pattern should be close to 1x, 2x, 0.5x the beat period (harmonic relationships)
+        float harmonicScore = 0.0f;
+        for (float harmonic : {0.5f, 1.0f, 2.0f, 4.0f}) {
+            float diff = std::abs(periodRatio - harmonic);
+            if (diff < 0.1f) {  // Within 10% of harmonic
+                harmonicScore = std::max(harmonicScore, 1.0f - diff * 10.0f);
+            }
+        }
+        
+        // Weight by pattern strength
+        float matchScore = harmonicScore * pattern.strength;
+        bestMatch = std::max(bestMatch, matchScore);
+    }
+    
+    return bestMatch;
+}
+
+void Agent::adapt(float targetPhase, float targetTempo, float adaptationRate) {
+    // Gradually adapt phase
+    float phaseDiff = targetPhase - phase;
+    
+    // Handle wraparound
+    if (phaseDiff > 0.5f) phaseDiff -= 1.0f;
+    if (phaseDiff < -0.5f) phaseDiff += 1.0f;
+    
+    phase += phaseDiff * adaptationRate;
+    
+    // Wrap to [0, 1)
+    while (phase >= 1.0f) phase -= 1.0f;
+    while (phase < 0.0f) phase += 1.0f;
+    
+    // Gradually adapt tempo
+    tempo += (targetTempo - tempo) * adaptationRate;
+    beatPeriod = (60.0f / tempo) * sampleRate;
+}
+
+void Agent::advancePhase(size_t frameSamples) {
+    float phaseIncrement = static_cast<float>(frameSamples) / beatPeriod;
+    phase += phaseIncrement;
+    
+    // Wrap to [0, 1)
+    while (phase >= 1.0f) phase -= 1.0f;
+    while (phase < 0.0f) phase += 1.0f;
+}
+
+// ============================================================================
+// PatternFinder Implementation
+// ============================================================================
+
+PatternFinder::PatternFinder(size_t sampleRate)
+    : sampleRate(sampleRate)
+{
+}
+
+std::vector<Pattern> PatternFinder::findPatterns(const std::deque<float>& onsets, 
+                                                  float downbeatPhase, 
+                                                  float beatPeriod) {
+    recentPatterns.clear();
+    
+    if (onsets.empty() || beatPeriod <= 0) {
+        return recentPatterns;
+    }
+    
+    // Find peaks in onset data
+    float threshold = 0.2f;  // Minimum onset strength to consider
+    auto peaks = findOnsetPeaks(onsets, threshold);
+    
+    if (peaks.size() < 3) {
+        return recentPatterns;  // Not enough peaks to form a pattern
+    }
+    
+    // Extract pattern relative to downbeat
+    Pattern pattern = extractPattern(peaks, downbeatPhase, beatPeriod);
+    
+    if (pattern.occurrences >= 2) {  // Pattern must repeat at least twice
+        recentPatterns.push_back(pattern);
+    }
+    
+    return recentPatterns;
+}
+
+std::vector<size_t> PatternFinder::findOnsetPeaks(const std::deque<float>& onsets, float threshold) const {
+    std::vector<size_t> peaks;
+    
+    if (onsets.size() < 3) {
+        return peaks;
+    }
+    
+    // Find local maxima above threshold
+    for (size_t i = 1; i < onsets.size() - 1; i++) {
+        if (onsets[i] > threshold &&
+            onsets[i] > onsets[i-1] &&
+            onsets[i] >= onsets[i+1]) {
+            peaks.push_back(i);
+        }
+    }
+    
+    return peaks;
+}
+
+float PatternFinder::calculateRecurrence(const std::vector<size_t>& peakPositions, float period) const {
+    if (peakPositions.size() < 2 || period <= 0) {
+        return 0.0f;
+    }
+    
+    // Count how many peaks align with periodic grid
+    size_t alignedPeaks = 0;
+    
+    for (size_t peak : peakPositions) {
+        // Calculate phase relative to period
+        float phaseInPeriod = std::fmod(static_cast<float>(peak), period);
+        float normalizedPhase = phaseInPeriod / period;
+        
+        // Check if peak aligns with any grid point (0, 0.25, 0.5, 0.75)
+        for (float gridPoint : {0.0f, 0.25f, 0.5f, 0.75f}) {
+            float dist = std::abs(normalizedPhase - gridPoint);
+            dist = std::min(dist, 1.0f - dist);  // Wraparound
+            
+            if (dist < 0.1f) {  // Within 10% of grid point
+                alignedPeaks++;
+                break;
+            }
+        }
+    }
+    
+    return static_cast<float>(alignedPeaks) / peakPositions.size();
+}
+
+Pattern PatternFinder::extractPattern(const std::vector<size_t>& peakPositions, 
+                                       float downbeatPhase, 
+                                       float beatPeriod) const {
+    Pattern pattern;
+    pattern.period = beatPeriod;
+    pattern.occurrences = 0;
+    pattern.strength = 0.0f;
+    
+    if (peakPositions.empty() || beatPeriod <= 0) {
+        return pattern;
+    }
+    
+    // Convert peak positions to phase values relative to downbeat
+    for (size_t peakPos : peakPositions) {
+        float phase = std::fmod(static_cast<float>(peakPos) + downbeatPhase * beatPeriod, beatPeriod) / beatPeriod;
+        pattern.onsetPositions.push_back(phase);
+    }
+    
+    // Calculate recurrence score
+    pattern.strength = calculateRecurrence(peakPositions, beatPeriod);
+    
+    // Estimate occurrences (number of periods with peaks)
+    if (!peakPositions.empty()) {
+        float span = static_cast<float>(peakPositions.back() - peakPositions.front());
+        pattern.occurrences = static_cast<int>(span / beatPeriod) + 1;
+    }
+    
+    return pattern;
+}
+
+Pattern PatternFinder::getStrongestPattern() const {
+    if (recentPatterns.empty()) {
+        return Pattern();
+    }
+    
+    auto strongest = std::max_element(recentPatterns.begin(), recentPatterns.end(),
+        [](const Pattern& a, const Pattern& b) {
+            return a.strength < b.strength;
+        });
+    
+    return *strongest;
+}
+
+void PatternFinder::reset() {
+    recentPatterns.clear();
+}
+
+// ============================================================================
+// BeatTracker Agent Management
+// ============================================================================
+
+void BeatTracker::updateAgents() {
+    // Update all agents with current onset data
+    std::vector<Pattern> patterns;
+    if (patternFinder) {
+        patterns = patternFinder->findPatterns(inputHistory, currentPhase, beatPeriodSamples);
+    }
+    
+    // Advance phase and score all agents
+    for (auto& agent : agents) {
+        agent->advancePhase(frameSize);
+        agent->scoreHypothesis(inputHistory, patterns);
+    }
+    
+    // Remove weak agents
+    pruneWeakAgents();
+    
+    // Update global state from best agent
+    updateFromBestAgent();
+}
+
+void BeatTracker::spawnAgent(float tempo, float phase) {
+    // Don't spawn if we're at max capacity
+    if (agents.size() >= maxAgents) {
+        return;
+    }
+    
+    // Check if we already have a similar agent
+    for (const auto& agent : agents) {
+        float tempoDiff = std::abs(agent->getTempo() - tempo);
+        float phaseDiff = std::abs(agent->getPhase() - phase);
+        phaseDiff = std::min(phaseDiff, 1.0f - phaseDiff);  // Wraparound
+        
+        // If very similar agent exists, don't spawn
+        if (tempoDiff < 5.0f && phaseDiff < 0.1f) {
+            return;
+        }
+    }
+    
+    // Create new agent
+    agents.push_back(std::make_unique<Agent>(tempo, phase, sampleRate));
+}
+
+void BeatTracker::pruneWeakAgents() {
+    // Remove agents with confidence below threshold
+    agents.erase(
+        std::remove_if(agents.begin(), agents.end(),
+            [this](const std::unique_ptr<Agent>& agent) {
+                return agent->getConfidence() < agentRemovalThreshold;
+            }),
+        agents.end()
+    );
+}
+
+Agent* BeatTracker::getBestAgent() {
+    if (agents.empty()) {
+        return nullptr;
+    }
+    
+    auto best = std::max_element(agents.begin(), agents.end(),
+        [](const std::unique_ptr<Agent>& a, const std::unique_ptr<Agent>& b) {
+            return a->getConfidence() < b->getConfidence();
+        });
+    
+    return best->get();
+}
+
+void BeatTracker::updateFromBestAgent() {
+    Agent* best = getBestAgent();
+    
+    if (best && best->getConfidence() > 0.3f) {
+        // Update global tempo and phase from best agent
+        float targetTempo = best->getTempo();
+        float targetPhase = best->getPhase();
+        
+        // Smooth transition
+        detectedTempo = tempoSmoothingFactor * detectedTempo + 
+                       (1.0f - tempoSmoothingFactor) * targetTempo;
+        
+        // Phase correction
+        float phaseDiff = targetPhase - currentPhase;
+        if (phaseDiff > 0.5f) phaseDiff -= 1.0f;
+        if (phaseDiff < -0.5f) phaseDiff += 1.0f;
+        currentPhase += phaseDiff * 0.1f;
+        
+        // Wrap phase
+        while (currentPhase >= 1.0f) currentPhase -= 1.0f;
+        while (currentPhase < 0.0f) currentPhase += 1.0f;
+        
+        // Update confidence
+        phaseConfidence = best->getConfidence();
+        
+        // Update beat period
+        beatPeriodSamples = (60.0f / detectedTempo) * sampleRate;
+        phaseVelocity = 1.0f / beatPeriodSamples;
+    }
 }

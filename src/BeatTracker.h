@@ -3,11 +3,138 @@
 #include <deque>
 #include <cmath>
 #include <algorithm>
+#include <memory>
 
 enum class BoostTarget {
     Learning,          // Apply phase boost to learning rate
     Activation,        // Apply phase boost to neuron activations
     ConnectionWeights  // Apply phase boost to connection weights
+};
+
+/**
+ * @brief Represents a detected rhythmic pattern in onset data
+ */
+struct Pattern {
+    std::vector<float> onsetPositions;  // Positions of strong onsets (in phase units 0.0-1.0)
+    float period;                        // Pattern period in samples
+    float strength;                      // Pattern strength (recurrence score)
+    int occurrences;                     // Number of times pattern was detected
+};
+
+/**
+ * @brief Agent representing a beat tracking hypothesis
+ * 
+ * Each agent maintains a tempo and phase hypothesis and competes
+ * with other agents based on how well it aligns with input onset data.
+ */
+class Agent {
+public:
+    /**
+     * @brief Construct an agent with initial hypothesis
+     * @param tempo Initial tempo hypothesis in BPM
+     * @param phase Initial phase hypothesis (0.0-1.0)
+     * @param sampleRate Audio sample rate
+     */
+    Agent(float tempo, float phase, size_t sampleRate);
+    
+    /**
+     * @brief Update agent's confidence score based on onset alignment
+     * @param onsets Recent onset data
+     * @param patterns Detected patterns to boost confidence
+     * @return Updated confidence score
+     */
+    float scoreHypothesis(const std::deque<float>& onsets, const std::vector<Pattern>& patterns);
+    
+    /**
+     * @brief Adapt phase and tempo based on new evidence
+     * @param targetPhase Phase correction target
+     * @param targetTempo Tempo correction target
+     * @param adaptationRate Speed of adaptation (0.0-1.0)
+     */
+    void adapt(float targetPhase, float targetTempo, float adaptationRate = 0.1f);
+    
+    /**
+     * @brief Advance phase based on current tempo
+     * @param frameSamples Number of samples to advance
+     */
+    void advancePhase(size_t frameSamples);
+    
+    // Accessors
+    float getTempo() const { return tempo; }
+    float getPhase() const { return phase; }
+    float getConfidence() const { return confidence; }
+    void setConfidence(float conf) { confidence = std::max(0.0f, std::min(1.0f, conf)); }
+    
+private:
+    float tempo;          // Tempo hypothesis in BPM
+    float phase;          // Phase hypothesis (0.0-1.0, 0.0 = downbeat)
+    float confidence;     // Confidence score (0.0-1.0)
+    size_t sampleRate;    // Audio sample rate
+    float beatPeriod;     // Beat period in samples (derived from tempo)
+    
+    /**
+     * @brief Calculate how well this agent's hypothesis aligns with onsets
+     */
+    float calculateOnsetAlignment(const std::deque<float>& onsets) const;
+    
+    /**
+     * @brief Calculate pattern match score for this agent
+     */
+    float calculatePatternMatch(const std::vector<Pattern>& patterns) const;
+};
+
+/**
+ * @brief Pattern finder for detecting recurring rhythmic patterns in onset data
+ */
+class PatternFinder {
+public:
+    /**
+     * @brief Construct a pattern finder
+     * @param sampleRate Audio sample rate
+     */
+    PatternFinder(size_t sampleRate);
+    
+    /**
+     * @brief Detect patterns in onset data starting from a downbeat hypothesis
+     * @param onsets Onset strength data
+     * @param downbeatPhase Current downbeat phase hypothesis (0.0-1.0)
+     * @param beatPeriod Beat period in samples
+     * @return Detected patterns
+     */
+    std::vector<Pattern> findPatterns(const std::deque<float>& onsets, 
+                                      float downbeatPhase, 
+                                      float beatPeriod);
+    
+    /**
+     * @brief Get the strongest pattern detected
+     */
+    Pattern getStrongestPattern() const;
+    
+    /**
+     * @brief Clear pattern history
+     */
+    void reset();
+    
+private:
+    size_t sampleRate;
+    std::vector<Pattern> recentPatterns;  // Recently detected patterns
+    
+    /**
+     * @brief Find onset peaks in the data
+     */
+    std::vector<size_t> findOnsetPeaks(const std::deque<float>& onsets, float threshold) const;
+    
+    /**
+     * @brief Calculate pattern recurrence score
+     */
+    float calculateRecurrence(const std::vector<size_t>& peakPositions, float period) const;
+    
+    /**
+     * @brief Extract temporal pattern from peaks relative to downbeat
+     */
+    Pattern extractPattern(const std::vector<size_t>& peakPositions, 
+                          float downbeatPhase, 
+                          float beatPeriod) const;
 };
 
 /**
@@ -118,6 +245,13 @@ private:
     float maxTempo;               // Maximum tempo to detect (200 BPM)
     float tempoSmoothingFactor;   // Smoothing for tempo changes (0.95)
     
+    // Agent-based tracking system
+    std::vector<std::unique_ptr<Agent>> agents;  // Active beat tracking agents
+    std::unique_ptr<PatternFinder> patternFinder; // Pattern detection system
+    size_t maxAgents;             // Maximum number of concurrent agents (default: 5)
+    float agentSpawnThreshold;    // Confidence threshold to spawn new agent (0.6)
+    float agentRemovalThreshold;  // Confidence threshold to remove agent (0.1)
+    
     /**
      * @brief Perform cross-correlation analysis to detect beat period and phase
      */
@@ -162,4 +296,29 @@ private:
      * @brief Calculate phase-based gain using Gaussian-like envelope
      */
     float calculatePhaseGain(float phase) const;
+    
+    /**
+     * @brief Manage agent lifecycle (spawn, score, remove)
+     */
+    void updateAgents();
+    
+    /**
+     * @brief Spawn new agent with given tempo and phase hypothesis
+     */
+    void spawnAgent(float tempo, float phase);
+    
+    /**
+     * @brief Remove weak agents below removal threshold
+     */
+    void pruneWeakAgents();
+    
+    /**
+     * @brief Get the agent with highest confidence
+     */
+    Agent* getBestAgent();
+    
+    /**
+     * @brief Update global tempo and phase from best agent
+     */
+    void updateFromBestAgent();
 };
