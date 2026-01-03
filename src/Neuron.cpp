@@ -58,7 +58,7 @@ float Neuron::activate(float inputValue) {
     }
     
     if (processedActivation < -threshold) {
-        activation += threshold;
+        activation += decayRate;
     }
     
     // Maintain activation history (store raw activation for visualization)
