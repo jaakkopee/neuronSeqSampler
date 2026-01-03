@@ -154,6 +154,12 @@ void NeuronNetwork::processAudioForRhythm(const std::vector<float>& audioData) {
         
         // Update beat tracker with network firings and input onsets
         if (beatTracker) {
+            // Sync global tempo from auto-detected tempo if enabled
+            if (rhythmInterpreter->isAutoTempoEnabled()) {
+                float autoTempo = rhythmInterpreter->getDetectedTempo();
+                beatTracker->setGlobalTempo(autoTempo);
+            }
+            
             // Collect network firing activity
             std::vector<float> networkFirings;
             for (const auto& neuron : neurons) {

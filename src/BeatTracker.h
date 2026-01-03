@@ -189,6 +189,12 @@ public:
     bool isEnabled() const { return enabled; }
     
     /**
+     * @brief Set global tempo reference (e.g., from auto-detect)
+     * @param tempo Global tempo in BPM
+     */
+    void setGlobalTempo(float tempo);
+    
+    /**
      * @brief Set beat boost strength (multiplier at downbeat)
      */
     void setBeatBoost(float boost) { beatBoost = std::max(1.0f, boost); }
@@ -206,6 +212,18 @@ public:
      */
     void setBoostTarget(BoostTarget target) { boostTarget = target; }
     BoostTarget getBoostTarget() const { return boostTarget; }
+    
+    /**
+     * @brief Get current number of active agents
+     */
+    size_t getAgentCount() const { return agents.size(); }
+    
+    /**
+     * @brief Get the strongest detected pattern
+     */
+    Pattern getStrongestPattern() const { 
+        return patternFinder ? patternFinder->getStrongestPattern() : Pattern(); 
+    }
     
     /**
      * @brief Reset beat tracking state
@@ -242,7 +260,7 @@ private:
     
     // Tempo detection parameters
     float minTempo;               // Minimum tempo to detect (40 BPM)
-    float maxTempo;               // Maximum tempo to detect (200 BPM)
+    float maxTempo;               // Maximum tempo to detect (320 BPM)
     float tempoSmoothingFactor;   // Smoothing for tempo changes (0.95)
     
     // Agent-based tracking system

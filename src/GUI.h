@@ -18,6 +18,7 @@
 #include <filesystem>
 #include "PresetManager.h"
 #include "Quantizer.h"
+#include "BeatTracker.h"
 #include "QuantizerWidget.h"
 
 // Forward declarations
@@ -141,6 +142,14 @@ private:
     tgui::Label::Ptr phaseWindowLabel; // Phase window value display
     tgui::ComboBox::Ptr boostTargetCombo; // Select where boost is applied (Learning/Activation)
     
+    // Agent and pattern display
+    tgui::Label::Ptr neuronCountLabel; // Display neuron count
+    tgui::Label::Ptr agentCountLabel; // Display agent count
+    tgui::Panel::Ptr agentBlinkIndicator; // Blink indicator for new agent spawns
+    tgui::Panel::Ptr patternTimelinePanel; // Timeline showing detected pattern with onsets
+    int lastAgentCount = 0; // Track last agent count to detect spawns
+    int agentBlinkCounter = 0; // Counter for blink animation
+    
     bool matrixVisible = true; // Connection matrix visibility state
     bool isUpdatingMatrix = false; // Flag to prevent recursive updates
     int matrixUpdateCounter = 0; // Counter to reduce update frequency
@@ -169,6 +178,7 @@ private:
     void updateStatusDisplay();
     void updateRhythmStatus();
     void updateConnectionMatrix();
+    void drawPatternTimeline(const Pattern& pattern);
     // void drawFilterResponse(size_t filterIndex); // Temporarily disabled
     
     // Menu actions

@@ -651,9 +651,58 @@ void GUI::updateStatusDisplay() {
                 statusStream << " | Tempo: " << std::setprecision(1) << beatTracker->getDetectedTempo();
                 statusStream << " | Conf: " << std::setprecision(2) << beatTracker->getPhaseConfidence();
                 beatTrackerStatusLabel->setText(statusStream.str());
+                
+                // Update agent count
+                if (agentCountLabel) {
+                    size_t currentAgentCount = beatTracker->getAgentCount();
+                    agentCountLabel->setText("Agents: " + std::to_string(currentAgentCount));
+                    
+                    // Detect new agent spawn and trigger blink
+                    if (currentAgentCount > lastAgentCount) {
+                        agentBlinkCounter = 20; // Blink for 20 frames
+                    }
+                    lastAgentCount = currentAgentCount;
+                }
+                
+                // Update blink indicator
+                if (agentBlinkIndicator && agentBlinkCounter > 0) {
+                    agentBlinkCounter--;
+                    int brightness = (agentBlinkCounter % 4 < 2) ? 255 : 100;
+                    agentBlinkIndicator->getRenderer()->setBackgroundColor(
+                        tgui::Color(0, brightness, 0, 200)
+                    );
+                } else if (agentBlinkIndicator) {
+                    agentBlinkIndicator->getRenderer()->setBackgroundColor(
+                        tgui::Color(0, 0, 0, 0)
+                    );
+                }
+                
+                // Draw pattern timeline
+                if (patternTimelinePanel) {
+                    Pattern pattern = beatTracker->getStrongestPattern();
+                    drawPatternTimeline(pattern);
+                }
             } else {
                 beatTrackerStatusLabel->setText("Phase: -- | Tempo: -- | Conf: --");
+                if (agentCountLabel) {
+                    agentCountLabel->setText("Agents: --");
+                }
+                // Clear pattern display when disabled
+                if (patternTimelinePanel) {
+                    patternTimelinePanel->removeAllWidgets();
+                    auto disabledLabel = tgui::Label::create("Enable tracker");
+                    disabledLabel->setPosition(5, 12);
+                    disabledLabel->setTextSize(8);
+                    disabledLabel->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
+                    patternTimelinePanel->add(disabledLabel);
+                }
             }
+        }
+        
+        // Update neuron count
+        if (neuronCountLabel && network) {
+            size_t neuronCount = network->getNeuronCount();
+            neuronCountLabel->setText("Neurons: " + std::to_string(neuronCount));
         }
     }
 }
@@ -2125,7 +2174,7 @@ void GUI::createConnectionMatrixPanel() {
     
     // Set content size for scrollable panels
     connectionMatrixPanel->setContentSize(tgui::Vector2f(matrixWidth, matrixHeight));
-    controlPanel->setContentSize(tgui::Vector2f(235, 1360)); // Fixed width, reduced content height
+    controlPanel->setContentSize(tgui::Vector2f(235, 1500)); // Increased for agent/pattern displays
     
     // Title label (in matrix panel)
     std::string title = numNeurons == 0 ? "🎛️ Rhythmogram (" + std::to_string(numFilters) + "×0)" : 
@@ -3134,15 +3183,68 @@ void GUI::createConnectionMatrixPanel() {
     });
     controlPanelPtr->add(boostTargetCombo);
 
+    // --- Agent & Pattern Info Section ---
+    auto agentInfoTitle = tgui::Label::create("AGENTS & PATTERN");
+    agentInfoTitle->setPosition(col1X, 528);
+    agentInfoTitle->setTextSize(9);
+    agentInfoTitle->getRenderer()->setTextColor(tgui::Color(180, 200, 255));
+    controlPanelPtr->add(agentInfoTitle);
+
+    // Neuron count display
+    neuronCountLabel = tgui::Label::create("Neurons: 0");
+    neuronCountLabel->setPosition(col1X, 545);
+    neuronCountLabel->setSize(100, 16);
+    neuronCountLabel->setTextSize(8);
+    neuronCountLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 255));
+    neuronCountLabel->getRenderer()->setBackgroundColor(tgui::Color(15, 15, 25));
+    neuronCountLabel->getRenderer()->setBorderColor(tgui::Color(60, 60, 100));
+    neuronCountLabel->getRenderer()->setBorders(1);
+    controlPanelPtr->add(neuronCountLabel);
+
+    // Agent count display with blink indicator
+    agentCountLabel = tgui::Label::create("Agents: 0");
+    agentCountLabel->setPosition(col1X, 565);
+    agentCountLabel->setSize(80, 16);
+    agentCountLabel->setTextSize(8);
+    agentCountLabel->getRenderer()->setTextColor(tgui::Color(200, 255, 200));
+    agentCountLabel->getRenderer()->setBackgroundColor(tgui::Color(10, 20, 10));
+    agentCountLabel->getRenderer()->setBorderColor(tgui::Color(50, 100, 50));
+    agentCountLabel->getRenderer()->setBorders(1);
+    controlPanelPtr->add(agentCountLabel);
+
+    // Blink indicator for new agent spawns
+    agentBlinkIndicator = tgui::Panel::create();
+    agentBlinkIndicator->setPosition(col1X + 85, 565);
+    agentBlinkIndicator->setSize(10, 16);
+    agentBlinkIndicator->getRenderer()->setBackgroundColor(tgui::Color(0, 0, 0, 0));
+    agentBlinkIndicator->getRenderer()->setBorderColor(tgui::Color(100, 255, 100));
+    agentBlinkIndicator->getRenderer()->setBorders(1);
+    controlPanelPtr->add(agentBlinkIndicator);
+
+    // Pattern timeline panel
+    auto patternTitle = tgui::Label::create("Pattern:");
+    patternTitle->setPosition(col1X, 587);
+    patternTitle->setTextSize(8);
+    patternTitle->getRenderer()->setTextColor(tgui::Color(255, 200, 100));
+    controlPanelPtr->add(patternTitle);
+
+    patternTimelinePanel = tgui::Panel::create();
+    patternTimelinePanel->setPosition(col1X, 602);
+    patternTimelinePanel->setSize(210, 40);
+    patternTimelinePanel->getRenderer()->setBackgroundColor(tgui::Color(10, 10, 15));
+    patternTimelinePanel->getRenderer()->setBorderColor(tgui::Color(80, 80, 100));
+    patternTimelinePanel->getRenderer()->setBorders(1);
+    controlPanelPtr->add(patternTimelinePanel);
+
     // --- Audio Playback Section ---
     audioControlsLabel = tgui::Label::create("AUDIO");
-    audioControlsLabel->setPosition(col1X, 528);
+    audioControlsLabel->setPosition(col1X, 652);
     audioControlsLabel->setTextSize(10);
     audioControlsLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
     controlPanelPtr->add(audioControlsLabel);
 
     inputPlayButton = tgui::Button::create("Play");
-    inputPlayButton->setPosition(col1X, 548);
+    inputPlayButton->setPosition(col1X, 672);
     inputPlayButton->setSize(48, 24);
     inputPlayButton->getRenderer()->setBackgroundColor(tgui::Color(60, 100, 60));
     inputPlayButton->getRenderer()->setTextColor(tgui::Color::White);
@@ -3157,7 +3259,7 @@ void GUI::createConnectionMatrixPanel() {
     controlPanelPtr->add(inputPlayButton);
 
     inputPauseButton = tgui::Button::create("Pause");
-    inputPauseButton->setPosition(col1X + 52, 548);
+    inputPauseButton->setPosition(col1X + 52, 672);
     inputPauseButton->setSize(48, 24);
     inputPauseButton->getRenderer()->setBackgroundColor(tgui::Color(100, 100, 60));
     inputPauseButton->getRenderer()->setTextColor(tgui::Color::White);
@@ -3168,7 +3270,7 @@ void GUI::createConnectionMatrixPanel() {
     controlPanelPtr->add(inputPauseButton);
 
     inputStopButton = tgui::Button::create("Stop");
-    inputStopButton->setPosition(col1X, 576);
+    inputStopButton->setPosition(col1X, 700);
     inputStopButton->setSize(100, 24);
     inputStopButton->getRenderer()->setBackgroundColor(tgui::Color(120, 60, 60));
     inputStopButton->getRenderer()->setTextColor(tgui::Color::White);
@@ -3932,4 +4034,84 @@ void GUI::loadPresetSamplesIntoAudioManager() {
     }
     
     std::cout << "🎵 Preset sample loading complete! Loaded " << sampleFileToIndex.size() << " unique samples." << std::endl;
+}
+
+void GUI::drawPatternTimeline(const Pattern& pattern) {
+    if (!patternTimelinePanel) return;
+    
+    // Clear previous content
+    patternTimelinePanel->removeAllWidgets();
+    
+    // Draw timeline background grid (always show grid for reference)
+    const float panelWidth = 210.0f;
+    const float panelHeight = 40.0f;
+    const float timelineY = 20.0f;
+    const float timelineHeight = 15.0f;
+    
+    // Draw quarter divisions (4 beats)
+    for (int i = 0; i <= 4; ++i) {
+        float x = (panelWidth - 10) * i / 4.0f + 5;
+        auto divider = tgui::Panel::create();
+        divider->setPosition(x, timelineY);
+        divider->setSize(1, timelineHeight);
+        divider->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 80));
+        patternTimelinePanel->add(divider);
+    }
+    
+    // If no pattern detected, show listening state with tempo grid
+    if (pattern.onsetPositions.empty()) {
+        auto emptyLabel = tgui::Label::create(pattern.strength < 0.01f ? "Listening..." : "No onsets");
+        emptyLabel->setPosition(5, 2);
+        emptyLabel->setTextSize(7);
+        emptyLabel->getRenderer()->setTextColor(tgui::Color(100, 100, 100));
+        patternTimelinePanel->add(emptyLabel);
+        
+        // Show expected beat positions as placeholder
+        for (int i = 0; i < 4; ++i) {
+            float x = (panelWidth - 10) * i / 4.0f + 5;
+            auto beatMarker = tgui::Panel::create();
+            beatMarker->setPosition(x - 1, timelineY + 4);
+            beatMarker->setSize(2, timelineHeight - 8);
+            beatMarker->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 80, 150));
+            patternTimelinePanel->add(beatMarker);
+        }
+        return;
+    }
+    
+    if (pattern.strength < 0.1f) {
+        auto weakLabel = tgui::Label::create("Pattern weak");
+        weakLabel->setPosition(5, 2);
+        weakLabel->setTextSize(7);
+        weakLabel->getRenderer()->setTextColor(tgui::Color(150, 100, 100));
+        patternTimelinePanel->add(weakLabel);
+        return;
+    }
+    
+    // Draw onset markers
+    for (float onsetPos : pattern.onsetPositions) {
+        // onsetPos is in phase units (0.0-1.0)
+        float x = (panelWidth - 10) * onsetPos + 5;
+        
+        auto onsetMarker = tgui::Panel::create();
+        onsetMarker->setPosition(x - 2, timelineY - 2);
+        onsetMarker->setSize(4, timelineHeight + 4);
+        
+        // Color intensity based on pattern strength
+        int brightness = static_cast<int>(100 + 155 * pattern.strength);
+        onsetMarker->getRenderer()->setBackgroundColor(
+            tgui::Color(brightness, brightness / 2, 0)
+        );
+        patternTimelinePanel->add(onsetMarker);
+    }
+    
+    // Show pattern info
+    std::ostringstream infoStream;
+    infoStream << std::fixed << std::setprecision(2);
+    infoStream << "Str: " << pattern.strength << " | " << pattern.onsetPositions.size() << " onsets";
+    
+    auto infoLabel = tgui::Label::create(infoStream.str());
+    infoLabel->setPosition(5, 2);
+    infoLabel->setTextSize(7);
+    infoLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 100));
+    patternTimelinePanel->add(infoLabel);
 }

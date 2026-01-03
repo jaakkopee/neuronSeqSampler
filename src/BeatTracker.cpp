@@ -24,11 +24,11 @@ BeatTracker::BeatTracker(size_t sampleRate, size_t frameSize)
     , lastPhaseUpdate(0.0f)
     , frameCounter(0)
     , minTempo(40.0f)
-    , maxTempo(200.0f)
+    , maxTempo(320.0f)
     , tempoSmoothingFactor(0.95f)
     , maxAgents(5)
-    , agentSpawnThreshold(0.6f)
-    , agentRemovalThreshold(0.1f)
+    , agentSpawnThreshold(0.3f)  // Lower threshold for easier agent spawning
+    , agentRemovalThreshold(0.05f)  // Lower threshold to keep weak agents longer
 {
     // Initialize beat period from default tempo
     beatPeriodSamples = (60.0f / detectedTempo) * sampleRate;
@@ -512,18 +512,38 @@ std::vector<Pattern> PatternFinder::findPatterns(const std::deque<float>& onsets
         return recentPatterns;
     }
     
-    // Find peaks in onset data
-    float threshold = 0.2f;  // Minimum onset strength to consider
+    // Find peaks in onset data with adaptive threshold
+    float threshold = 0.15f;  // Balanced threshold
     auto peaks = findOnsetPeaks(onsets, threshold);
     
-    if (peaks.size() < 3) {
-        return recentPatterns;  // Not enough peaks to form a pattern
+    if (peaks.size() < 2) {
+        return recentPatterns;
+    }
+    
+    // Limit peaks to reasonable number (focus on recent strong onsets)
+    size_t maxPeaks = 16; // Reduced to 16 for cleaner patterns
+    if (peaks.size() > maxPeaks) {
+        // Keep the strongest peaks by re-sorting and filtering
+        std::vector<std::pair<float, size_t>> strengthPeaks;
+        for (size_t idx : peaks) {
+            if (idx < onsets.size()) {
+                strengthPeaks.push_back({onsets[idx], idx});
+            }
+        }
+        std::sort(strengthPeaks.begin(), strengthPeaks.end(), 
+                  [](const auto& a, const auto& b) { return a.first > b.first; });
+        
+        peaks.clear();
+        for (size_t i = 0; i < maxPeaks && i < strengthPeaks.size(); ++i) {
+            peaks.push_back(strengthPeaks[i].second);
+        }
+        std::sort(peaks.begin(), peaks.end()); // Re-sort by time
     }
     
     // Extract pattern relative to downbeat
     Pattern pattern = extractPattern(peaks, downbeatPhase, beatPeriod);
     
-    if (pattern.occurrences >= 2) {  // Pattern must repeat at least twice
+    if (pattern.occurrences >= 1) {
         recentPatterns.push_back(pattern);
     }
     
@@ -641,6 +661,21 @@ void BeatTracker::updateAgents() {
         agent->scoreHypothesis(inputHistory, patterns);
     }
     
+    // Ensure we always have at least one agent
+    if (agents.empty()) {
+        spawnAgent(detectedTempo, currentPhase);
+    }
+    
+    // Periodically spawn exploration agents (every ~5 seconds at 44.1kHz / 512 frames)
+    static int explorationCounter = 0;
+    explorationCounter++;
+    if (explorationCounter >= 430 && agents.size() < maxAgents) {  // ~5 sec at 44.1kHz/512
+        explorationCounter = 0;
+        // Spawn agent with slightly different tempo for exploration
+        float exploreTempo = detectedTempo * (0.9f + (rand() % 40) / 100.0f); // ±20%
+        spawnAgent(exploreTempo, currentPhase);
+    }
+    
     // Remove weak agents
     pruneWeakAgents();
     
@@ -671,10 +706,17 @@ void BeatTracker::spawnAgent(float tempo, float phase) {
 }
 
 void BeatTracker::pruneWeakAgents() {
+    // Never remove all agents - keep at least one
+    if (agents.size() <= 1) {
+        return;
+    }
+    
     // Remove agents with confidence below threshold
     agents.erase(
         std::remove_if(agents.begin(), agents.end(),
             [this](const std::unique_ptr<Agent>& agent) {
+                // Keep at least one agent even if weak
+                if (agents.size() <= 1) return false;
                 return agent->getConfidence() < agentRemovalThreshold;
             }),
         agents.end()
@@ -723,4 +765,16 @@ void BeatTracker::updateFromBestAgent() {
         beatPeriodSamples = (60.0f / detectedTempo) * sampleRate;
         phaseVelocity = 1.0f / beatPeriodSamples;
     }
+}
+
+void BeatTracker::setGlobalTempo(float tempo) {
+    // Clamp to valid tempo range
+    tempo = std::clamp(tempo, minTempo, maxTempo);
+    
+    // Update detected tempo with smoothing
+    detectedTempo = detectedTempo * tempoSmoothingFactor + tempo * (1.0f - tempoSmoothingFactor);
+    
+    // Update beat period
+    beatPeriodSamples = (60.0f / detectedTempo) * sampleRate;
+    phaseVelocity = 1.0f / beatPeriodSamples;
 }
