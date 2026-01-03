@@ -20,7 +20,7 @@ add_executable(test_build
     src/AudioManager.cpp
     src/Visualizer.cpp
     src/Recorder.cpp
-    src/BeatRoot.cpp
+    src/BeatTracker.cpp
     src/GUI.cpp
     src/SimpleSpectralDisplay.cpp
     src/PresetManager.cpp

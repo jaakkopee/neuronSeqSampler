@@ -9,8 +9,8 @@ Removed all filter sensitivity sliders and related UI components from the neuron
 **Removed declarations:**
 - `std::vector<tgui::Slider::Ptr> sensitivitySliders;` - Array of sensitivity control sliders
 - `std::vector<tgui::Label::Ptr> sensitivityLabels;` - Display labels for sensitivity values  
-- `tgui::Slider::Ptr beatRootSensitivitySlider;` - BeatRoot sensitivity control
-- `tgui::Label::Ptr beatRootSensitivityLabel;` - BeatRoot sensitivity value display
+- `tgui::Slider::Ptr beatRootSensitivitySlider;` - BeatTracker sensitivity control
+- `tgui::Label::Ptr beatRootSensitivityLabel;` - BeatTracker sensitivity value display
 
 ### 2. GUI Implementation File (src/GUI.cpp)
 **Removed initialization code:**
@@ -29,7 +29,7 @@ Removed all filter sensitivity sliders and related UI components from the neuron
 ### What Was Removed:
 - **8 sensitivity sliders** (one per frequency band) that controlled `bandScalings[i]`
 - **8 sensitivity labels** showing current scaling values with color coding
-- **1 BeatRoot sensitivity slider** and its associated label
+- **1 BeatTracker sensitivity slider** and its associated label
 - **Color-coded feedback** (red for negative, yellow for low, green for normal, blue for high values)
 
 ### What Still Works:

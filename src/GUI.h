@@ -117,13 +117,13 @@ private:
     tgui::Button::Ptr inputPauseButton;
     tgui::Button::Ptr inputStopButton;
     
-    // BeatRoot controls
-    tgui::Button::Ptr beatRootToggle; // Toggle for BeatRoot system
+    // BeatTracker controls (legacy, disabled)
+    tgui::Button::Ptr beatRootToggle; // Toggle for BeatTracker system
     tgui::Label::Ptr beatRootStatusLabel; // Status display (agents, tempo strength, etc.)
     tgui::Button::Ptr beatRootResetButton; // Manual reset button
     tgui::Button::Ptr beatRootInitButton; // Manual initialization button
     
-    // Additional BeatRoot controls
+    // Additional BeatTracker controls (legacy, disabled)
     tgui::Slider::Ptr beatRootOnsetThresholdSlider; // Onset detection threshold
     tgui::Label::Ptr beatRootOnsetThresholdLabel; // Onset threshold value display
     tgui::Slider::Ptr beatRootBeatToleranceSlider; // Beat prediction tolerance
