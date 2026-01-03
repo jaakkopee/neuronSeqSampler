@@ -5,7 +5,7 @@
 #include "Visualizer.h"
 #include "Recorder.h"
 #include "RhythmInterpreter.h"
-#include "BeatRoot.h"
+#include "BeatTracker.h"
 #include "SimpleSpectralDisplay.h"
 #include "Debug.h"
 #include <iostream>
@@ -1574,7 +1574,7 @@ void GUI::createConnectionMatrixPanel() {
         bpmSlider = nullptr;
         bpmLabel = nullptr;
         autodetectTempoToggle = nullptr;
-        // BeatRoot controls
+        // BeatTracker controls
         beatRootToggle = nullptr;
         beatRootSensitivitySlider = nullptr;
         beatRootSensitivityLabel = nullptr;
@@ -1611,7 +1611,7 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixPanel->setVisible(matrixVisible);
     
     // Set content size to accommodate all filters, neurons, and control sliders (Scale + BPM)
-    float contentWidth = std::max(350.0f, static_cast<float>(270 + numNeurons * 80 + 280)); // Space for sliders and controls (BeatRoot controls removed)
+    float contentWidth = std::max(350.0f, static_cast<float>(270 + numNeurons * 80 + 280)); // Space for sliders and controls (BeatTracker controls removed)
     float contentHeight = std::max(400.0f, static_cast<float>(150 + numFilters * 60));
     static_cast<tgui::ScrollablePanel*>(connectionMatrixPanel.get())->setContentSize(tgui::Vector2f(contentWidth, contentHeight));
     
@@ -2041,27 +2041,27 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixPanel->add(autodetectTempoToggle);
     
     // ============================================================================
-    // BeatRoot Controls - DISABLED BY DEFAULT
+    // BeatTracker Controls - DISABLED BY DEFAULT
     // ============================================================================
     
-    // BeatRoot controls have been removed from the GUI to simplify the interface
-    // The BeatRoot system is disabled by default in RhythmInterpreter
+    // BeatTracker controls have been removed from the GUI to simplify the interface
+    // The BeatTracker system is disabled by default in RhythmInterpreter
     
-    /* BeatRoot controls disabled in minimal RhythmInterpreter */
-    float beatRootControlsX = scaleSliderX - 200; // Position BeatRoot controls much further left to avoid scale/BPM controls
+    /* BeatTracker controls disabled in minimal RhythmInterpreter */
+    float beatRootControlsX = scaleSliderX - 200; // Position BeatTracker controls much further left to avoid scale/BPM controls
     
-    // BeatRoot toggle button - aligned with other controls
-    beatRootToggle = tgui::Button::create("BeatRoot");
+    // BeatTracker toggle button - aligned with other controls
+    beatRootToggle = tgui::Button::create("BeatTracker");
     beatRootToggle->setPosition(beatRootControlsX - 10, 70);
     beatRootToggle->setSize(80, 30);
     beatRootToggle->setTextSize(11);
-    beatRootToggle->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 80)); // Different color for BeatRoot
+    beatRootToggle->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 80)); // Different color for BeatTracker
     beatRootToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
     beatRootToggle->getRenderer()->setBorderColor(tgui::Color(80, 80, 120));
     beatRootToggle->getRenderer()->setBorders(1);
     
     // Set initial state based on RhythmInterpreter
-    if (rhythmInterpreter && rhythmInterpreter->getUseBeatRoot()) {
+    if (rhythmInterpreter && rhythmInterpreter->getUseBeatTracker()) {
         beatRootToggle->getRenderer()->setBackgroundColor(tgui::Color(80, 80, 140));
         beatRootToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
     }
@@ -2069,16 +2069,16 @@ void GUI::createConnectionMatrixPanel() {
     beatRootToggle->onPress([this]() {
         if (network && network->getRhythmInterpreter()) {
             auto rhythmInterpreter = network->getRhythmInterpreter();
-            bool newState = !rhythmInterpreter->getUseBeatRoot();
-            // Minimal RhythmInterpreter: setUseBeatRoot method not supported
+            bool newState = !rhythmInterpreter->getUseBeatTracker();
+            // Minimal RhythmInterpreter: setUseBeatTracker method not supported
             
             if (newState) {
-                std::cout << "🎯 BeatRoot enabled via GUI (minimal mode)" << std::endl;
-                // Minimal RhythmInterpreter: initializeBeatRoot and getBPM methods not supported
+                std::cout << "🎯 BeatTracker enabled via GUI (minimal mode)" << std::endl;
+                // Minimal RhythmInterpreter: initializeBeatTracker and getBPM methods not supported
                 beatRootToggle->getRenderer()->setBackgroundColor(tgui::Color(80, 80, 140));
                 beatRootToggle->getRenderer()->setTextColor(tgui::Color(255, 255, 255));
             } else {
-                std::cout << "🎯 BeatRoot disabled via GUI" << std::endl;
+                std::cout << "🎯 BeatTracker disabled via GUI" << std::endl;
                 beatRootToggle->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 80));
                 beatRootToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
             }
@@ -2087,7 +2087,7 @@ void GUI::createConnectionMatrixPanel() {
     
     connectionMatrixPanel->add(beatRootToggle);
     
-    // BeatRoot sensitivity slider
+    // BeatTracker sensitivity slider
     auto beatRootSensitivityTitle = tgui::Label::create("Sens");
     beatRootSensitivityTitle->setPosition(beatRootControlsX + 5, 105);
     beatRootSensitivityTitle->setTextSize(10);
@@ -2095,7 +2095,7 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixPanel->add(beatRootSensitivityTitle);
     
     beatRootSensitivitySlider = tgui::Slider::create(0.1f, 2.0f);
-    beatRootSensitivitySlider->setValue(rhythmInterpreter ? rhythmInterpreter->getBeatRootSensitivity() : 1.0f);
+    beatRootSensitivitySlider->setValue(rhythmInterpreter ? rhythmInterpreter->getBeatTrackerSensitivity() : 1.0f);
     beatRootSensitivitySlider->setStep(0.1f);
     beatRootSensitivitySlider->setSize(20, 300);
     beatRootSensitivitySlider->setPosition(beatRootControlsX, 125);
@@ -2106,7 +2106,7 @@ void GUI::createConnectionMatrixPanel() {
     beatRootSensitivitySlider->getRenderer()->setBorders(1);
     
     beatRootSensitivitySlider->onValueChange([this](float value) {
-        // Minimal RhythmInterpreter: setBeatRootSensitivity method not supported
+        // Minimal RhythmInterpreter: setBeatTrackerSensitivity method not supported
         if (beatRootSensitivityLabel) {
             beatRootSensitivityLabel->setText(tgui::String::fromNumber(value));
         }
@@ -2114,7 +2114,7 @@ void GUI::createConnectionMatrixPanel() {
     
     connectionMatrixPanel->add(beatRootSensitivitySlider);
     
-    // BeatRoot sensitivity value display
+    // BeatTracker sensitivity value display
     beatRootSensitivityLabel = tgui::Label::create(tgui::String::fromNumber(beatRootSensitivitySlider->getValue()));
     beatRootSensitivityLabel->setPosition(beatRootControlsX, 435);
     beatRootSensitivityLabel->setSize(50, 20);
@@ -2125,8 +2125,8 @@ void GUI::createConnectionMatrixPanel() {
     beatRootSensitivityLabel->getRenderer()->setBorders(1);
     connectionMatrixPanel->add(beatRootSensitivityLabel);
     
-    // BeatRoot status display
-    beatRootStatusLabel = tgui::Label::create("BeatRoot: OFF");
+    // BeatTracker status display
+    beatRootStatusLabel = tgui::Label::create("BeatTracker: OFF");
     beatRootStatusLabel->setPosition(beatRootControlsX - 10, 470);
     beatRootStatusLabel->setSize(90, 40);
     beatRootStatusLabel->setTextSize(9);
@@ -2136,7 +2136,7 @@ void GUI::createConnectionMatrixPanel() {
     beatRootStatusLabel->getRenderer()->setBorders(1);
     connectionMatrixPanel->add(beatRootStatusLabel);
     
-    // BeatRoot reset button
+    // BeatTracker reset button
     beatRootResetButton = tgui::Button::create("Reset");
     beatRootResetButton->setPosition(beatRootControlsX - 10, 520);
     beatRootResetButton->setSize(38, 22);
@@ -2147,13 +2147,13 @@ void GUI::createConnectionMatrixPanel() {
     beatRootResetButton->getRenderer()->setBorders(1);
     
     beatRootResetButton->onPress([this]() {
-        // Minimal RhythmInterpreter: resetBeatRoot method not supported
-        std::cout << "🎯 BeatRoot reset via GUI (minimal mode)" << std::endl;
+        // Minimal RhythmInterpreter: resetBeatTracker method not supported
+        std::cout << "🎯 BeatTracker reset via GUI (minimal mode)" << std::endl;
     });
     
     connectionMatrixPanel->add(beatRootResetButton);
     
-    // BeatRoot initialization button
+    // BeatTracker initialization button
     beatRootInitButton = tgui::Button::create("Init");
     beatRootInitButton->setPosition(beatRootControlsX + 33, 520);
     beatRootInitButton->setSize(38, 22);
@@ -2164,13 +2164,13 @@ void GUI::createConnectionMatrixPanel() {
     beatRootInitButton->getRenderer()->setBorders(1);
     
     beatRootInitButton->onPress([this]() {
-        // Minimal RhythmInterpreter: getBPM and initializeBeatRoot methods not supported
-        std::cout << "🎯 BeatRoot manually initialized (minimal mode)" << std::endl;
+        // Minimal RhythmInterpreter: getBPM and initializeBeatTracker methods not supported
+        std::cout << "🎯 BeatTracker manually initialized (minimal mode)" << std::endl;
     });
     
     connectionMatrixPanel->add(beatRootInitButton);
     
-    // Additional BeatRoot controls section (positioned to avoid overlap)
+    // Additional BeatTracker controls section (positioned to avoid overlap)
     float advancedControlsX = beatRootControlsX + 70; // Position advanced controls to the right of main controls
     
     // Onset threshold control
@@ -2181,7 +2181,7 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixPanel->add(onsetThresholdTitle);
     
     beatRootOnsetThresholdSlider = tgui::Slider::create(0.1f, 1.0f);
-    beatRootOnsetThresholdSlider->setValue(rhythmInterpreter ? rhythmInterpreter->getBeatRootOnsetThreshold() : 0.3f);
+    beatRootOnsetThresholdSlider->setValue(rhythmInterpreter ? rhythmInterpreter->getBeatTrackerOnsetThreshold() : 0.3f);
     beatRootOnsetThresholdSlider->setStep(0.05f);
     beatRootOnsetThresholdSlider->setSize(15, 80);  // Shorter slider to fit better
     beatRootOnsetThresholdSlider->setPosition(advancedControlsX, 65);
@@ -2193,7 +2193,7 @@ void GUI::createConnectionMatrixPanel() {
     
     beatRootOnsetThresholdSlider->onValueChange([this](float value) {
         if (network && network->getRhythmInterpreter()) {
-            network->getRhythmInterpreter()->setBeatRootOnsetThreshold(value);
+            network->getRhythmInterpreter()->setBeatTrackerOnsetThreshold(value);
             if (beatRootOnsetThresholdLabel) {
                 beatRootOnsetThresholdLabel->setText(tgui::String::fromNumber(std::round(value * 100) / 100));
             }
@@ -2219,7 +2219,7 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixPanel->add(beatToleranceTitle);
     
     beatRootBeatToleranceSlider = tgui::Slider::create(0.05f, 0.3f);
-    beatRootBeatToleranceSlider->setValue(rhythmInterpreter ? rhythmInterpreter->getBeatRootBeatTolerance() : 0.1f);
+    beatRootBeatToleranceSlider->setValue(rhythmInterpreter ? rhythmInterpreter->getBeatTrackerBeatTolerance() : 0.1f);
     beatRootBeatToleranceSlider->setStep(0.01f);
     beatRootBeatToleranceSlider->setSize(15, 80);
     beatRootBeatToleranceSlider->setPosition(advancedControlsX + 30, 65);
@@ -2231,7 +2231,7 @@ void GUI::createConnectionMatrixPanel() {
     
     beatRootBeatToleranceSlider->onValueChange([this](float value) {
         if (network && network->getRhythmInterpreter()) {
-            network->getRhythmInterpreter()->setBeatRootBeatTolerance(value);
+            network->getRhythmInterpreter()->setBeatTrackerBeatTolerance(value);
             if (beatRootBeatToleranceLabel) {
                 beatRootBeatToleranceLabel->setText(tgui::String::fromNumber(std::round(value * 100) / 100));
             }
@@ -2257,7 +2257,7 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixPanel->add(maxAgentsTitle);
     
     beatRootMaxAgentsSlider = tgui::Slider::create(1.0f, 16.0f);
-    beatRootMaxAgentsSlider->setValue(static_cast<float>(rhythmInterpreter ? rhythmInterpreter->getBeatRootMaxAgents() : 8));
+    beatRootMaxAgentsSlider->setValue(static_cast<float>(rhythmInterpreter ? rhythmInterpreter->getBeatTrackerMaxAgents() : 8));
     beatRootMaxAgentsSlider->setStep(1.0f);
     beatRootMaxAgentsSlider->setSize(15, 80);
     beatRootMaxAgentsSlider->setPosition(advancedControlsX + 60, 65);
@@ -2270,7 +2270,7 @@ void GUI::createConnectionMatrixPanel() {
     beatRootMaxAgentsSlider->onValueChange([this](float value) {
         if (network && network->getRhythmInterpreter()) {
             size_t maxAgents = static_cast<size_t>(value);
-            // Minimal RhythmInterpreter: setBeatRootMaxAgents method not supported
+            // Minimal RhythmInterpreter: setBeatTrackerMaxAgents method not supported
             if (beatRootMaxAgentsLabel) {
                 beatRootMaxAgentsLabel->setText(std::to_string(maxAgents));
             }
@@ -2294,7 +2294,7 @@ void GUI::createConnectionMatrixPanel() {
     beatRootAutoInitToggle->setSize(35, 18);
     beatRootAutoInitToggle->setTextSize(8);
     
-    // Minimal RhythmInterpreter: getBeatRootAutoInitialize method not supported
+    // Minimal RhythmInterpreter: getBeatTrackerAutoInitialize method not supported
     bool autoInitEnabled = true;
     if (autoInitEnabled) {
         beatRootAutoInitToggle->getRenderer()->setBackgroundColor(tgui::Color(40, 80, 40));
@@ -2307,7 +2307,7 @@ void GUI::createConnectionMatrixPanel() {
     beatRootAutoInitToggle->getRenderer()->setBorders(1);
     
     beatRootAutoInitToggle->onPress([this]() {
-        // Minimal RhythmInterpreter: getBeatRootAutoInitialize and setBeatRootAutoInitialize methods not supported
+        // Minimal RhythmInterpreter: getBeatTrackerAutoInitialize and setBeatTrackerAutoInitialize methods not supported
         static bool currentState = true;
         currentState = !currentState;
         
@@ -2490,7 +2490,7 @@ void GUI::updateConnectionMatrix() {
         }
     }
     
-    // BeatRoot controls disabled in minimal RhythmInterpreter
+    // BeatTracker controls disabled in minimal RhythmInterpreter
     
     isUpdatingMatrix = false; // Reset the flag
 }

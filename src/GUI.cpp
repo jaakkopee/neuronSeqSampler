@@ -2047,7 +2047,7 @@ void GUI::createConnectionMatrixPanel() {
         weightDecayLabel = nullptr;
         mappingGainLabel = nullptr;
         resetRhythmWeightsButton = nullptr;
-        // BeatRoot controls
+        // BeatTracker controls
         beatRootToggle = nullptr;
         beatRootStatusLabel = nullptr;
         beatRootOnsetThresholdSlider = nullptr;
@@ -3179,13 +3179,13 @@ void GUI::createConnectionMatrixPanel() {
     controlPanelPtr->add(inputStopButton);
     
     // ============================================================================
-    // BeatRoot Controls - DISABLED BY DEFAULT
+    // BeatTracker Controls - DISABLED BY DEFAULT
     // ============================================================================
     
-    // BeatRoot controls have been removed from the GUI to simplify the interface
-    // The BeatRoot system is disabled by default in RhythmInterpreter
+    // BeatTracker controls have been removed from the GUI to simplify the interface
+    // The BeatTracker system is disabled by default in RhythmInterpreter
     
-    /* BeatRoot controls disabled in minimal RhythmInterpreter */
+    /* BeatTracker controls disabled in minimal RhythmInterpreter */
 }
 
 void GUI::updateConnectionMatrix() {
@@ -3373,7 +3373,7 @@ void GUI::updateConnectionMatrix() {
         }
     }
     
-    // BeatRoot controls disabled in minimal RhythmInterpreter
+    // BeatTracker controls disabled in minimal RhythmInterpreter
     
     isUpdatingMatrix = false; // Reset the flag
 }

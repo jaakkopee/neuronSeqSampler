@@ -19,7 +19,7 @@
 \maketitle
 
 \begin{abstract}
-We present NeuronSeqSampler, a novel real-time audio sequencing system that integrates artificial neural network principles with advanced rhythm interpretation for generative music creation. The system employs a user-configurable spiking neural network coupled with a multi-band rhythmogram analyzer implementing Todd's (1994) auditory primal sketch model for rhythmic grouping. The architecture features: (1) an 8-band logarithmic filter bank for multi-scale temporal decomposition covering 0.125Hz-16Hz, (2) a recurrent neural network with per-neuron configurable activation functions (Linear, Sigmoid, ReLU, Tanh), (3) a BeatRoot-inspired multi-agent beat tracking system with competing tempo/phase hypotheses, (4) a real-time musical quantization engine with grid-based trigger suppression, (5) an adaptive rhythmogram-to-neuron connection matrix with dual-gain architecture, and (6) a comprehensive JSON-based preset management system. The system achieves approximately 13ms total latency while processing audio at 44.1kHz with 512-sample buffers, making it suitable for live performance and interactive composition. Drawing on principles from Todd's rhythmic analysis, Laine's neural modeling approach for musical notes, and modern multi-agent beat tracking research, our implementation enables emergent musical behaviors through the integration of biological neural dynamics, musical timing structures, and real-time performance control.
+We present NeuronSeqSampler, a novel real-time audio sequencing system that integrates artificial neural network principles with advanced rhythm interpretation for generative music creation. The system employs a user-configurable spiking neural network coupled with a multi-band rhythmogram analyzer implementing Todd's (1994) auditory primal sketch model for rhythmic grouping. The architecture features: (1) an 8-band logarithmic filter bank for multi-scale temporal decomposition covering 0.125Hz-16Hz, (2) a recurrent neural network with per-neuron configurable activation functions (Linear, Sigmoid, ReLU, Tanh), (3) a BeatTracker-inspired multi-agent beat tracking system with competing tempo/phase hypotheses, (4) a real-time musical quantization engine with grid-based trigger suppression, (5) an adaptive rhythmogram-to-neuron connection matrix with dual-gain architecture, and (6) a comprehensive JSON-based preset management system. The system achieves approximately 13ms total latency while processing audio at 44.1kHz with 512-sample buffers, making it suitable for live performance and interactive composition. Drawing on principles from Todd's rhythmic analysis, Laine's neural modeling approach for musical notes, and modern multi-agent beat tracking research, our implementation enables emergent musical behaviors through the integration of biological neural dynamics, musical timing structures, and real-time performance control.
 \end{abstract}
 
 \section{Introduction}
@@ -350,7 +350,7 @@ The complete NeuronSeqSampler system integrates multiple subsystems in a cohesiv
                             ↓                         ↓
         ┌──────────────────────────────┐   ┌──────────────────┐
         │   RHYTHMOGRAM ANALYZER       │   │  BEAT TRACKER    │
-        │  ┌────────────────────────┐  │   │  (BeatRoot)      │
+        │  ┌────────────────────────┐  │   │  (BeatTracker)      │
         │  │ Envelope Extraction    │  │   │  ┌─────────────┐ │
         │  │ (RMS, 512 samples)     │  │   │  │ Multi-Agent │ │
         │  └────────────────────────┘  │   │  │ System      │ │
@@ -725,11 +725,11 @@ t_{\text{grid}}(n) + s \cdot T_{\text{grid}} & \text{if } n \bmod 2 = 1
 \end{algorithmic}
 \end{algorithm}
 
-\section{BeatRoot Multi-Agent Beat Tracking}
+\section{BeatTracker Multi-Agent Beat Tracking}
 
 \subsection{Agent-Based Architecture}
 
-The BeatRoot system employs multiple competing agents, each representing a distinct tempo and phase hypothesis. This multi-agent approach provides robust beat tracking in complex musical scenarios where single-hypothesis trackers fail.
+The BeatTracker system employs multiple competing agents, each representing a distinct tempo and phase hypothesis. This multi-agent approach provides robust beat tracking in complex musical scenarios where single-hypothesis trackers fail.
 
 \subsection{Agent State Model}
 
