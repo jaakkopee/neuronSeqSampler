@@ -513,7 +513,7 @@ std::vector<Pattern> PatternFinder::findPatterns(const std::deque<float>& onsets
     }
     
     // Find peaks in onset data with adaptive threshold
-    float threshold = 0.15f;  // Balanced threshold
+    float threshold = 0.05f;  // Lowered threshold for better sensitivity
     auto peaks = findOnsetPeaks(onsets, threshold);
     
     if (peaks.size() < 2) {
