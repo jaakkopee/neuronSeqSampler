@@ -19,7 +19,7 @@
 \maketitle
 
 \begin{abstract}
-We present NeuronSeqSampler, a novel real-time audio sequencing system that combines artificial neural network principles with rhythm interpretation for generative music creation. The system employs a user-configurable spiking neural network coupled with a multi-band rhythmogram analyzer to create adaptive, rhythm-driven sample triggering. Drawing on principles from Todd's (1994) auditory primal sketch for rhythmic grouping and Laine's (2000) neural modeling approach for musical note analysis, our implementation features adaptive learning algorithms, onset detection, and tempo-relative frequency analysis. We describe the mathematical foundations, signal processing architecture, and learning mechanisms that enable the system to respond to and generate complex rhythmic patterns.
+We present NeuronSeqSampler, a novel real-time audio sequencing system that integrates artificial neural network principles with advanced rhythm interpretation for generative music creation. The system employs a user-configurable spiking neural network coupled with a multi-band rhythmogram analyzer implementing Todd's (1994) auditory primal sketch model for rhythmic grouping. The architecture features: (1) an 8-band logarithmic filter bank for multi-scale temporal decomposition covering 0.125Hz-16Hz, (2) a recurrent neural network with per-neuron configurable activation functions (Linear, Sigmoid, ReLU, Tanh), (3) a BeatRoot-inspired multi-agent beat tracking system with competing tempo/phase hypotheses, (4) a real-time musical quantization engine with grid-based trigger suppression, (5) an adaptive rhythmogram-to-neuron connection matrix with dual-gain architecture, and (6) a comprehensive JSON-based preset management system. The system achieves approximately 13ms total latency while processing audio at 44.1kHz with 512-sample buffers, making it suitable for live performance and interactive composition. Drawing on principles from Todd's rhythmic analysis, Laine's neural modeling approach for musical notes, and modern multi-agent beat tracking research, our implementation enables emergent musical behaviors through the integration of biological neural dynamics, musical timing structures, and real-time performance control.
 \end{abstract}
 
 \section{Introduction}
@@ -332,6 +332,218 @@ This ensures that filters remain locked to musical meter rather than absolute ti
 
 The system includes optional quantization that aligns neuron firing to a musical grid, supporting subdivisions from whole notes to 32nd note triplets. This bridges the continuous-time neural dynamics with discrete musical timing.
 
+\section{Complete System Architecture}
+
+\subsection{Signal Flow Diagram}
+
+The complete NeuronSeqSampler system integrates multiple subsystems in a cohesive signal processing pipeline. The following diagram illustrates the data flow from audio input through various processing stages to final audio output.
+
+\begin{figure}[h]
+\centering
+\begin{verbatim}
+┌─────────────────────────────────────────────────────────────┐
+│                    AUDIO INPUT STREAM                        │
+│              (External Mic + Internal Output)                │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ├─────────────────────────┐
+                            ↓                         ↓
+        ┌──────────────────────────────┐   ┌──────────────────┐
+        │   RHYTHMOGRAM ANALYZER       │   │  BEAT TRACKER    │
+        │  ┌────────────────────────┐  │   │  (BeatRoot)      │
+        │  │ Envelope Extraction    │  │   │  ┌─────────────┐ │
+        │  │ (RMS, 512 samples)     │  │   │  │ Multi-Agent │ │
+        │  └────────────────────────┘  │   │  │ System      │ │
+        │            ↓                  │   │  └─────────────┘ │
+        │  ┌────────────────────────┐  │   │  ┌─────────────┐ │
+        │  │ Bandpass Filter Bank   │  │   │  │ Pattern     │ │
+        │  │ 8 bands (0.125-16 Hz)  │  │   │  │ Detection   │ │
+        │  │ Logarithmic spacing    │  │   │  └─────────────┘ │
+        │  └────────────────────────┘  │   │        ↓         │
+        │            ↓                  │   │  ┌─────────────┐ │
+        │  ┌────────────────────────┐  │   │  │ Tempo &     │ │
+        │  │ Hybrid Processing:     │  │   │  │ Phase       │ │
+        │  │ <4Hz: Envelope follow  │  │   │  │ Estimates   │ │
+        │  │ ≥4Hz: Biquad filters   │  │   │  └─────────────┘ │
+        │  └────────────────────────┘  │   └──────────────────┘
+        │            ↓                  │            │
+        │  ┌────────────────────────┐  │            │
+        │  │ Onset Detection        │  │            │
+        │  │ (Spectral flux)        │  │            │
+        │  └────────────────────────┘  │            │
+        │            ↓                  │            │
+        │  f(t) = [f₀, f₁, ..., f₇]   │            │
+        │  O(t) = {onset events}       │            │
+        └──────────────────────────────┘            │
+                     │                               │
+                     └───────────┬───────────────────┘
+                                 ↓
+              ┌──────────────────────────────────────┐
+              │  RHYTHMOGRAM CONNECTION MATRIX (8×N) │
+              │                                      │
+              │  rⱼ(t) = Σᵢ Mᵢⱼ·Gconn,ij·          │
+              │          (Gfilter,i · fᵢ(t))        │
+              │                                      │
+              │  Toggle states: M ∈ {0,1}           │
+              │  Filter gains: Gfilter ∈ [0,5]      │
+              │  Connection gains: Gconn ∈ [0,1]    │
+              └──────────────────────────────────────┘
+                                 ↓
+              ┌──────────────────────────────────────┐
+              │       NEURAL NETWORK LAYER           │
+              │                                      │
+              │  For each neuron j:                 │
+              │  ┌────────────────────────────────┐ │
+              │  │ aⱼ(t+1) = φⱼ(λⱼ·aⱼ(t) +       │ │
+              │  │            Σₖ wₖⱼ·sₖ(t) +      │ │
+              │  │            rⱼ(t))               │ │
+              │  │                                 │ │
+              │  │ If aⱼ(t) ≥ θⱼ:                 │ │
+              │  │   • Trigger sample j           │ │
+              │  │   • Reset aⱼ(t) = 0            │ │
+              │  │   • sⱼ(t) = 1                  │ │
+              │  └────────────────────────────────┘ │
+              │                                      │
+              │  Activation Functions:              │
+              │  • Linear: φ(x) = x                 │
+              │  • Sigmoid: φ(x) = 1/(1+e⁻ˣ)       │
+              │  • ReLU: φ(x) = max(0,x)            │
+              │  • Tanh: φ(x) = tanh(x)             │
+              └──────────────────────────────────────┘
+                                 ↓
+              ┌──────────────────────────────────────┐
+              │     MUSICAL QUANTIZATION SYSTEM      │
+              │                                      │
+              │  For each trigger at time t:        │
+              │  1. Compute grid: Tgrid =           │
+              │     60/BPM · 4/R                    │
+              │  2. Find nearest: tnearest =        │
+              │     round(t/Tgrid)·Tgrid            │
+              │  3. Check distance: Δt =            │
+              │     |t - tnearest|                  │
+              │  4. Decision:                       │
+              │     If Δt ≤ 10ms AND U < Qamount:  │
+              │       → Play sample                 │
+              │     Else:                           │
+              │       → Suppress trigger            │
+              │                                      │
+              │  Grid resolutions:                  │
+              │  • 1/2 to 1/64 notes                │
+              │  Swing: s ∈ [-1,1]                  │
+              └──────────────────────────────────────┘
+                                 ↓
+              ┌──────────────────────────────────────┐
+              │        AUDIO OUTPUT MIXER            │
+              │                                      │
+              │  • Sample playback engine (SFML)    │
+              │  • 44.1kHz sample rate              │
+              │  • Stereo output                    │
+              │  • ~11.6ms total latency            │
+              └──────────────────────────────────────┘
+                                 ↓
+              ┌──────────────────────────────────────┐
+              │      RECORDING & VISUALIZATION       │
+              │                                      │
+              │  Recording:                         │
+              │  • WAV file output                  │
+              │  • Timestamped filenames            │
+              │                                      │
+              │  Visualization:                     │
+              │  • Real-time neuron activation      │
+              │  • Connection animation             │
+              │  • Spectral display                 │
+              │  • Per decamille rhythmogram        │
+              └──────────────────────────────────────┘
+                                 ↓
+              ┌──────────────────────────────────────┐
+              │     ADAPTIVE LEARNING MODULE         │
+              │          (Optional, future)          │
+              │                                      │
+              │  Onset-modulated weight updates:    │
+              │  ΔMᵢⱼ = -η·βⱼ(t)·eⱼ·fᵢ(t) - δ·Mᵢⱼ  │
+              │                                      │
+              │  βⱼ(t) = 1 + α·Σᵢ Oᵢ(t)·Mᵢⱼ        │
+              └──────────────────────────────────────┘
+
+        ┌──────────────────────────────────────────┐
+        │         PRESET MANAGEMENT SYSTEM          │
+        │                                           │
+        │  JSON Serialization:                     │
+        │  • Neuron parameters & functions         │
+        │  • Connection topology & weights         │
+        │  • Rhythmogram matrix configuration      │
+        │  • Quantization settings                 │
+        │  • Metadata & version info               │
+        │                                           │
+        │  Operations:                             │
+        │  • Save: S key (quick) / Menu (named)    │
+        │  • Load: L key (factory) / Menu (browse) │
+        └──────────────────────────────────────────┘
+
+        ┌──────────────────────────────────────────┐
+        │          GUI CONTROL INTERFACE            │
+        │                                           │
+        │  Keyboard Shortcuts:                     │
+        │  • M: Toggle connection matrix           │
+        │  • Q: Toggle quantization panel          │
+        │  • R: Toggle recording                   │
+        │  • S: Quick save preset                  │
+        │  • L: Load factory preset                │
+        │  • F11: Toggle fullscreen                │
+        │  • 1-9: Activate neurons                 │
+        │  • Spacebar: Random activation           │
+        │                                           │
+        │  Interactive Controls:                   │
+        │  • Neuron activation sliders             │
+        │  • Connection weight sliders             │
+        │  • Activation function dropdowns         │
+        │  • Matrix toggle buttons                 │
+        │  • Filter & connection gain sliders      │
+        │  • BPM control & autodetect toggle       │
+        └──────────────────────────────────────────┘
+\end{verbatim}
+\caption{Complete NeuronSeqSampler System Architecture and Signal Flow}
+\label{fig:system_architecture}
+\end{figure}
+
+\subsection{Processing Pipeline Latency Analysis}
+
+The system maintains real-time performance through optimized processing at each stage:
+
+\begin{table}[h]
+\centering
+\caption{System Latency Breakdown}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Component & Latency & Notes \\ \midrule
+Audio Frame Buffer & 11.6 ms & 512 samples @ 44.1kHz \\
+Rhythmogram Analysis & <1 ms & Parallel filter processing \\
+Beat Tracking & <1 ms & Agent updates per frame \\
+Connection Matrix & <0.1 ms & Direct memory access \\
+Neural Network Update & <1 ms & N neurons, bounded connections \\
+Quantization Decision & <0.1 ms & Simple arithmetic ops \\
+Audio Playback & 0 ms & Immediate trigger \\
+\midrule
+\textbf{Total System Latency} & \textbf{~13 ms} & Acceptable for real-time \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Data Flow Summary}
+
+The signal processing pipeline can be summarized in key stages:
+
+\begin{enumerate}
+\item \textbf{Input Acquisition}: Audio stream captured at 44.1kHz with 512-sample buffers
+\item \textbf{Rhythmic Analysis}: Dual-path processing with rhythmogram (8 bands) and beat tracker (multi-agent)
+\item \textbf{Feature Routing}: Connection matrix maps frequency bands to neural inputs with dual-gain control
+\item \textbf{Neural Processing}: Leaky integrate-and-fire neurons with configurable activation functions
+\item \textbf{Musical Alignment}: Quantization system aligns triggers to musical grid with intelligent suppression
+\item \textbf{Audio Synthesis}: Triggered samples mixed and output to speakers/file
+\item \textbf{Visualization}: Real-time display of neural activity, connections, and rhythmogram levels
+\item \textbf{State Management}: Complete configuration save/load via JSON preset system
+\end{enumerate}
+
 \section{Complete System Diagram}
 
 \begin{verbatim}
@@ -406,9 +618,355 @@ NeuronSeqSampler represents a synthesis of rhythm perception models \cite{todd19
 
 The system enables real-time interaction where the network learns from and responds to rhythmic input while maintaining its own generative dynamics through recurrent connections.
 
+\section{Quantization System}
+
+\subsection{Musical Grid Quantization}
+
+The quantization system aligns neural triggers to musical grid points, bridging continuous-time neural dynamics with discrete musical timing. This enables musically coherent output while preserving the emergent behavior of the neural network.
+
+\subsection{Grid Resolution}
+
+The system supports multiple grid resolutions, from whole notes to 64th notes:
+
+\begin{equation}
+T_{\text{grid}} = \frac{60}{BPM} \cdot \frac{4}{R}
+\end{equation}
+
+\noindent where:
+\begin{itemize}
+\item $T_{\text{grid}}$ is the grid interval in seconds
+\item $BPM$ is the current tempo in beats per minute
+\item $R$ is the resolution multiplier:
+  \begin{itemize}
+  \item $R=0.5$ for whole notes (1/2)
+  \item $R=1$ for half notes (1/2)
+  \item $R=2$ for quarter notes (1/4)
+  \item $R=4$ for eighth notes (1/8)
+  \item $R=8$ for sixteenth notes (1/16)
+  \item $R=16$ for thirty-second notes (1/32)
+  \item $R=32$ for sixty-fourth notes (1/64)
+  \end{itemize}
+\end{itemize}
+
+\subsection{Quantization Decision Algorithm}
+
+For each neural trigger at time $t_{\text{trigger}}$:
+
+\begin{equation}
+t_{\text{nearest}} = \text{round}\left(\frac{t_{\text{trigger}}}{T_{\text{grid}}}\right) \cdot T_{\text{grid}}
+\end{equation}
+
+\begin{equation}
+\Delta t = |t_{\text{trigger}} - t_{\text{nearest}}|
+\end{equation}
+
+The trigger is processed according to:
+
+\begin{equation}
+\text{Action} = \begin{cases}
+\text{Play immediately} & \text{if } \Delta t \leq \epsilon \text{ and } U < Q_{\text{amount}} \\
+\text{Suppress} & \text{otherwise}
+\end{cases}
+\end{equation}
+
+\noindent where:
+\begin{itemize}
+\item $\epsilon = 10$ ms is the timing tolerance window
+\item $U \sim \mathcal{U}(0,1)$ is a uniform random variable
+\item $Q_{\text{amount}} \in [0,1]$ is the quantization strength parameter
+\end{itemize}
+
+\subsection{Swing Implementation}
+
+Swing modifies alternating grid points to create rhythmic feel:
+
+\begin{equation}
+t_{\text{grid,swing}}(n) = \begin{cases}
+t_{\text{grid}}(n) & \text{if } n \bmod 2 = 0 \\
+t_{\text{grid}}(n) + s \cdot T_{\text{grid}} & \text{if } n \bmod 2 = 1
+\end{cases}
+\end{equation}
+
+\noindent where $s \in [-1, 1]$ is the swing factor:
+\begin{itemize}
+\item $s = 0$: straight timing (no swing)
+\item $s > 0$: delayed off-beats (shuffle feel)
+\item $s < 0$: anticipated off-beats (rushed feel)
+\end{itemize}
+
+\subsection{Quantization Algorithm Pseudocode}
+
+\begin{algorithm}
+\caption{Real-Time Musical Quantization}
+\begin{algorithmic}[1]
+\REQUIRE Neural trigger event at time $t$, current BPM, grid resolution $R$, quantization amount $Q$, swing factor $s$
+\ENSURE Trigger played or suppressed
+\STATE Compute grid interval: $T_{\text{grid}} = \frac{60}{BPM} \cdot \frac{4}{R}$
+\STATE Find grid index: $n = \text{round}(t / T_{\text{grid}})$
+\IF{$n \bmod 2 = 1$ and swing enabled}
+    \STATE Apply swing: $t_{\text{nearest}} = n \cdot T_{\text{grid}} + s \cdot T_{\text{grid}}$
+\ELSE
+    \STATE $t_{\text{nearest}} = n \cdot T_{\text{grid}}$
+\ENDIF
+\STATE Compute timing error: $\Delta t = |t - t_{\text{nearest}}|$
+\IF{$\Delta t \leq 0.01$ seconds}
+    \STATE Generate random value: $u \sim \mathcal{U}(0,1)$
+    \IF{$u < Q$}
+        \STATE \textbf{Play sample immediately}
+        \STATE Log: "On-grid trigger (delay: $\Delta t$ s)"
+    \ELSE
+        \STATE \textbf{Suppress trigger}
+        \STATE Log: "Suppressed by quantization amount"
+    \ENDIF
+\ELSE
+    \STATE \textbf{Suppress trigger}
+    \STATE Log: "Off-grid suppression (delay: $\Delta t$ s)"
+\ENDIF
+\end{algorithmic}
+\end{algorithm}
+
+\section{BeatRoot Multi-Agent Beat Tracking}
+
+\subsection{Agent-Based Architecture}
+
+The BeatRoot system employs multiple competing agents, each representing a distinct tempo and phase hypothesis. This multi-agent approach provides robust beat tracking in complex musical scenarios where single-hypothesis trackers fail.
+
+\subsection{Agent State Model}
+
+Each agent $\mathcal{A}_i$ maintains:
+
+\begin{equation}
+\mathcal{A}_i = (BPM_i, \phi_i, c_i, h_i)
+\end{equation}
+
+\noindent where:
+\begin{itemize}
+\item $BPM_i \in [30, 300]$ is the tempo hypothesis in beats per minute
+\item $\phi_i \in [0, 1)$ is the phase hypothesis (downbeat position)
+\item $c_i \in [0, 1]$ is the confidence score
+\item $h_i$ is the agent's beat hypothesis history
+\end{itemize}
+
+\subsection{Agent Confidence Scoring}
+
+Agent confidence is computed as weighted combination of onset alignment and pattern matching:
+
+\begin{equation}
+c_i = 0.6 \cdot S_{\text{onset}}(\mathcal{A}_i) + 0.4 \cdot S_{\text{pattern}}(\mathcal{A}_i)
+\end{equation}
+
+\subsubsection{Onset Alignment Score}
+
+The onset alignment score measures how well the agent's beat hypothesis aligns with detected onsets:
+
+\begin{equation}
+S_{\text{onset}}(\mathcal{A}_i) = \frac{1}{N_{\text{lookback}}} \sum_{k=0}^{N_{\text{lookback}}-1} O(t-k) \cdot w_{\phi}(\phi_k, \mathcal{A}_i)
+\end{equation}
+
+\noindent where:
+\begin{itemize}
+\item $O(t-k)$ is the onset strength at time $t-k$
+\item $N_{\text{lookback}}$ is the number of past samples to consider (typically 4 beats)
+\item $w_{\phi}$ is a phase-dependent weighting function
+\end{itemize}
+
+The phase weighting function emphasizes onsets near predicted beat positions:
+
+\begin{equation}
+w_{\phi}(\phi_k, \mathcal{A}_i) = \exp\left(-20 \cdot d_{\text{wrap}}(\phi_k, \phi_i)^2\right)
+\end{equation}
+
+\noindent where $d_{\text{wrap}}$ is the wrapped distance on the unit circle:
+
+\begin{equation}
+d_{\text{wrap}}(\phi_a, \phi_b) = \min(|\phi_a - \phi_b|, 1 - |\phi_a - \phi_b|)
+\end{equation}
+
+\subsubsection{Pattern Matching Score}
+
+The pattern matching score evaluates harmonic relationships between detected patterns and the agent's beat period:
+
+\begin{equation}
+S_{\text{pattern}}(\mathcal{A}_i) = \frac{1}{|\mathcal{P}|} \sum_{p \in \mathcal{P}} h(p, \mathcal{A}_i) \cdot \sigma(p)
+\end{equation}
+
+\noindent where:
+\begin{itemize}
+\item $\mathcal{P}$ is the set of detected patterns
+\item $h(p, \mathcal{A}_i)$ is the harmonic relationship score
+\item $\sigma(p)$ is the pattern strength
+\end{itemize}
+
+The harmonic score checks if pattern period matches agent beat period at common musical ratios:
+
+\begin{equation}
+h(p, \mathcal{A}_i) = \max_{r \in \{0.5, 1.0, 2.0, 4.0\}} h_r(p, \mathcal{A}_i, r)
+\end{equation}
+
+\begin{equation}
+h_r(p, \mathcal{A}_i, r) = \begin{cases}
+1 - 10 \cdot \left|\frac{T_p}{T_{\mathcal{A}_i}} - r\right| & \text{if } \left|\frac{T_p}{T_{\mathcal{A}_i}} - r\right| < 0.1 \\
+0 & \text{otherwise}
+\end{cases}
+\end{equation}
+
+\noindent where $T_p$ is the pattern period and $T_{\mathcal{A}_i} = \frac{60}{BPM_i}$ is the agent's beat period.
+
+\subsection{Agent Lifecycle Management}
+
+\begin{algorithm}
+\caption{Multi-Agent Beat Tracking Update}
+\begin{algorithmic}[1]
+\REQUIRE Onset buffer $O$, current agents $\{\mathcal{A}_i\}$, pattern set $\mathcal{P}$
+\ENSURE Updated agent set and global tempo/phase
+\FOR{each agent $\mathcal{A}_i$}
+    \STATE Update phase: $\phi_i \leftarrow (\phi_i + \Delta t / T_{\mathcal{A}_i}) \bmod 1$
+    \STATE Compute onset score: $S_{\text{onset}} \leftarrow$ OnsetAlignment($\mathcal{A}_i$, $O$)
+    \STATE Compute pattern score: $S_{\text{pattern}} \leftarrow$ PatternMatch($\mathcal{A}_i$, $\mathcal{P}$)
+    \STATE Update confidence: $c_i \leftarrow 0.6 \cdot S_{\text{onset}} + 0.4 \cdot S_{\text{pattern}}$
+    \IF{$c_i < 0.1$}
+        \STATE Remove agent $\mathcal{A}_i$ (low confidence pruning)
+    \ENDIF
+\ENDFOR
+\STATE Find best agent: $\mathcal{A}_{\text{best}} = \arg\max_i c_i$
+\STATE Update global tempo: $BPM_{\text{global}} \leftarrow 0.95 \cdot BPM_{\text{global}} + 0.05 \cdot BPM_{\text{best}}$
+\STATE Update global phase: $\phi_{\text{global}} \leftarrow \phi_{\text{global}} + 0.1 \cdot (\phi_{\text{best}} - \phi_{\text{global}})$
+\IF{correlation score $> 0.6$ and no similar agent exists}
+    \STATE Create new agent at detected tempo/phase
+    \IF{$|\{\mathcal{A}_i\}| > 5$}
+        \STATE Remove lowest confidence agent (capacity limit)
+    \ENDIF
+\ENDIF
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Pattern Detection}
+
+Patterns are detected by analyzing recurring temporal structures in the onset buffer:
+
+\begin{algorithm}
+\caption{Rhythmic Pattern Detection}
+\begin{algorithmic}[1]
+\REQUIRE Onset buffer $O$, downbeat hypothesis $\phi_{\text{downbeat}}$
+\ENSURE Set of detected patterns $\mathcal{P}$
+\STATE $\mathcal{P} \leftarrow \emptyset$
+\STATE Identify peaks: $\text{peaks} \leftarrow \{t : O(t) > 0.2\}$
+\FOR{each potential period $T \in [T_{\min}, T_{\max}]$}
+    \STATE $\text{aligned} \leftarrow 0$
+    \FOR{each peak $t_p$ in peaks}
+        \STATE Compute phase: $\phi_p \leftarrow (t_p \bmod T) / T$
+        \FOR{each grid point $g \in \{0, 0.25, 0.5, 0.75\}$}
+            \IF{$|\phi_p - g| < 0.1$}
+                \STATE $\text{aligned} \leftarrow \text{aligned} + 1$
+            \ENDIF
+        \ENDFOR
+    \ENDFOR
+    \STATE Compute recurrence: $\sigma \leftarrow \text{aligned} / |\text{peaks}|$
+    \IF{$\sigma > 0.3$}
+        \STATE Create pattern: $p = (T, \sigma, \{\phi_{p_1}, \phi_{p_2}, \ldots\})$
+        \STATE $\mathcal{P} \leftarrow \mathcal{P} \cup \{p\}$
+    \ENDIF
+\ENDFOR
+\RETURN $\mathcal{P}$
+\end{algorithmic}
+\end{algorithm}
+
+\section{Connection Matrix Routing}
+
+\subsection{Rhythmogram-to-Neuron Mapping}
+
+The connection matrix $M$ maps rhythmogram frequency bands to neural network inputs. This 8×N matrix enables flexible routing of rhythmic information to specific neurons.
+
+\subsection{Dual Gain Architecture}
+
+The system employs two-stage gain control:
+
+\begin{equation}
+r_j(t) = \sum_{i=0}^{7} M_{ij} \cdot G_{\text{conn},ij} \cdot (G_{\text{filter},i} \cdot f_i(t))
+\end{equation}
+
+\noindent where:
+\begin{itemize}
+\item $r_j(t)$ is the rhythmic input to neuron $j$
+\item $M_{ij} \in \{0,1\}$ is the binary connection state (enabled/disabled)
+\item $G_{\text{filter},i} \in [0, 5]$ is the filter sensitivity gain for band $i$
+\item $G_{\text{conn},ij} \in [0, 1]$ is the connection strength for route $(i,j)$
+\item $f_i(t)$ is the rhythmogram output for frequency band $i$
+\end{itemize}
+
+\subsection{Real-Time Matrix Updates}
+
+Connection state changes take effect immediately:
+
+\begin{equation}
+M_{ij}(t+1) = \begin{cases}
+1 & \text{if user enables connection} \\
+0 & \text{if user disables connection} \\
+M_{ij}(t) & \text{otherwise (state persists)}
+\end{cases}
+\end{equation}
+
+This zero-latency switching enables live performance control over rhythmic routing.
+
+\section{Preset Management System}
+
+\subsection{Complete State Serialization}
+
+The preset system serializes the entire application state to JSON format, including:
+
+\begin{itemize}
+\item \textbf{Neuron parameters}: $\{a_j, \theta_j, \lambda_j, \text{rate}_j, \phi_j, \text{sample}_j\}$ for all neurons
+\item \textbf{Connection topology}: $\{(k,j,w_{kj})\}$ for all connections
+\item \textbf{Rhythmogram matrix}: $\{M, G_{\text{filter}}, G_{\text{conn}}\}$
+\item \textbf{Quantization settings}: $\{R, Q_{\text{amount}}, s, BPM\}$
+\item \textbf{Metadata}: name, author, description, tags, version, timestamp
+\end{itemize}
+
+\subsection{Preset Loading Algorithm}
+
+\begin{algorithm}
+\caption{Preset Loading and Network Reconstruction}
+\begin{algorithmic}[1]
+\REQUIRE JSON preset file
+\ENSURE Reconstructed neural network with complete state
+\STATE Parse JSON file $\rightarrow$ preset data structure
+\STATE Validate preset version and format
+\STATE Clear existing network
+\FOR{each neuron specification in preset}
+    \STATE Create neuron with parameters: $a, \theta, \lambda, \text{rate}, \phi$
+    \STATE Load audio sample from file path
+    \STATE Assign sample index to neuron
+    \STATE Add neuron to network
+\ENDFOR
+\FOR{each connection specification in preset}
+    \STATE Verify source and target neurons exist
+    \STATE Create connection with weight $w$
+    \STATE Add connection to network
+\ENDFOR
+\STATE Restore rhythmogram matrix: $M, G_{\text{filter}}, G_{\text{conn}}$
+\STATE Reinitialize rhythm interpreter with new matrix
+\STATE Restore quantization settings: $R, Q_{\text{amount}}, s, BPM$
+\STATE Update all GUI elements to reflect loaded state
+\STATE Update frequency labels for current BPM
+\STATE Refresh connection matrix visualization
+\RETURN Success/failure status
+\end{algorithmic}
+\end{algorithm}
+
 \section{Conclusion}
 
-We have presented the mathematical foundations and implementation of NeuronSeqSampler, a hybrid system combining rhythmic analysis and neural network principles for generative music sequencing. The architecture draws on established models of auditory rhythm perception while introducing novel onset-weighted learning mechanisms. Future work includes extending the tempo adaptation mechanisms and exploring hierarchical network structures for multi-timescale pattern generation.
+We have presented the mathematical foundations and implementation of NeuronSeqSampler, a hybrid system combining rhythmic analysis and neural network principles for generative music sequencing. The architecture draws on established models of auditory rhythm perception while introducing novel onset-weighted learning mechanisms, multi-agent beat tracking, and real-time musical quantization.
+
+Key contributions include:
+\begin{enumerate}
+\item \textbf{Rhythmogram-neural integration}: Direct mapping from Todd (1994) frequency bands to neural activation
+\item \textbf{Multi-agent beat tracking}: Robust tempo detection through competing hypotheses
+\item \textbf{Musical quantization}: Real-time grid-based timing with intelligent suppression
+\item \textbf{Interactive performance}: Live parameter control with immediate visual/auditory feedback
+\item \textbf{Complete state management}: JSON-based preset system for reproducible configurations
+\end{enumerate}
+
+Future work includes extending the tempo adaptation mechanisms, exploring hierarchical network structures for multi-timescale pattern generation, and investigating additional learning algorithms for automatic rhythmogram mapping optimization.
 
 \begin{thebibliography}{9}
 

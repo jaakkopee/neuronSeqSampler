@@ -96,6 +96,214 @@ make
 ./NeuronSeqSampler --testing
 ```
 
+## Step-by-Step Operational Guide
+
+### Getting Started (Complete Workflow)
+
+**1. Launch the Application**
+```bash
+# Option A: Start with empty network (for building from scratch)
+./NeuronSeqSampler
+
+# Option B: Start with pre-configured 3-neuron drum network (recommended for first-time users)
+./NeuronSeqSampler --testing
+```
+
+**2. Understanding the Interface Layout**
+
+The window is divided into several key areas:
+- **Center**: Neural network visualization canvas (neurons displayed as circles)
+- **Left Panel**: Neuron activation sliders and function dropdowns
+- **Right Panel**: Connection weight sliders and network controls
+- **Bottom**: Spectral/rhythmogram display (when recording is active)
+- **Top**: Menu bar with File, Network, Presets, and View menus
+
+**3. Basic Network Operation (Testing Mode)**
+
+If you started with `--testing`, you already have:
+- **Neuron 1**: Kick drum sample
+- **Neuron 2**: Clap sample
+- **Neuron 3**: 808 bass sample
+
+Try these actions:
+```
+a) Press number keys 1, 2, or 3 to trigger individual samples
+b) Press Spacebar to trigger random neurons
+c) Click directly on neurons in the visualization to activate them
+d) Watch the neurons light up and connections animate when firing
+```
+
+**4. Start Audio Recording and Rhythm Analysis**
+
+Press **R** to start recording. This enables:
+- Audio output capture to WAV file
+- Rhythmogram analysis of the network's output
+- Real-time frequency band decomposition
+- Neural feedback from rhythmic analysis
+
+You'll see: `🎙️ Recording started: neuronseq_output_[timestamp].wav`
+
+**5. Open the Rhythmogram Connection Matrix**
+
+Press **M** to show the connection matrix panel. This reveals:
+- **8 rows**: Todd (1994) frequency bands (0.125Hz - 16Hz)
+- **N columns**: One column per neuron in your network
+- **Toggle buttons**: Click to enable/disable frequency→neuron routing (○ off, ● on)
+- **Filter gain sliders**: Adjust sensitivity (0x-5x) for each frequency band
+- **Connection gain sliders**: Fine-tune individual route strengths (0-100%)
+- **BPM control**: Tempo slider (30-260 BPM) with large value display
+- **Autodetect Tempo button**: Enable automatic tempo detection from audio
+
+**6. Configure Rhythmogram Routing**
+
+Quick setup for typical drum patterns:
+```
+a) Click "Random" button to create varied connections
+b) Or manually enable specific routes:
+   - Low frequencies (Phrase, Whole, Half) → Kick neuron
+   - Mid frequencies (Quarter, Eighth) → Snare/Clap neuron  
+   - High frequencies (16th, 32nd, Onset) → Hi-hat neuron
+c) Adjust filter gains to control sensitivity
+d) Fine-tune connection gains for optimal neural input levels
+```
+
+**7. Enable Musical Quantization (Optional)**
+
+Press **Q** to show the quantization panel. Configure:
+```
+a) Check "Enable" to turn on quantization
+b) Select grid resolution from dropdown:
+   - 1/4 Note: Standard quarter note timing (recommended start)
+   - 1/16 Note: Sixteenth note precision (default, tight timing)
+   - 1/32 Note: Very fine grid for dense patterns
+c) Adjust "Quantization Amount" slider:
+   - 0%: No quantization (free neural timing)
+   - 50%: Partial quantization (hybrid approach)
+   - 100%: Strict musical grid (locked timing)
+d) Add swing if desired (-1.0 to 1.0 for groove)
+```
+
+**8. Live Performance and Parameter Adjustment**
+
+While audio is playing:
+```
+a) Adjust neuron activation sliders (left panel) to change self-modulation
+b) Modify connection weights (right panel) to alter network topology
+c) Toggle rhythmogram connections (M panel) for dynamic routing changes
+d) Change quantization grid (Q panel) to shift musical feel
+e) Trigger neurons manually (number keys) for live input
+f) Watch the visualization respond in real-time
+```
+
+**9. Save Your Configuration**
+
+When you've created something interesting:
+```
+Option A - Quick Save:
+  Press S key → Saves to presets/user/quicksave_[timestamp].json
+
+Option B - Named Save:
+  1. Open Presets menu → Save Preset
+  2. Enter name, author, description in dialog
+  3. Add tags for organization (comma-separated)
+  4. Click "Save"
+  
+Your preset includes:
+  - All neuron parameters and activation functions
+  - Complete connection topology and weights
+  - Rhythmogram matrix configuration
+  - Quantization settings
+  - Metadata and tags
+```
+
+**10. Load Presets**
+
+To load existing configurations:
+```
+Quick Load Factory Preset:
+  Press L key → Loads factory drum pattern
+
+Full Preset Browser:
+  1. Open Presets menu → Browse Presets
+  2. View preset list with metadata
+  3. Select preset and click "Load"
+  
+Factory presets available:
+  - drum_pattern.json: 3-neuron rhythmic network
+  - ambient_textures.json: 2-neuron ambient soundscape
+```
+
+**11. Build Custom Networks from Scratch**
+
+Starting from empty network:
+```
+1. Network menu → Add Neuron
+   - System prompts for sample file selection
+   - Choose from organized samples/ directory
+   - Neuron appears in visualization
+
+2. Add more neurons (repeat step 1)
+
+3. Network menu → Add Connection
+   - Enter source neuron ID
+   - Enter target neuron ID
+   - Connection appears as line between neurons
+
+4. Configure neuron parameters (left panel)
+   - Set activation function (Linear/Sigmoid/ReLU/Tanh)
+   - Adjust self-modulation rate slider
+
+5. Configure connection weights (right panel)
+   - Adjust slider for connection strength
+
+6. Set up rhythmogram routing (M key)
+   - Enable desired frequency→neuron connections
+   - Adjust filter and connection gains
+
+7. Configure quantization if desired (Q key)
+
+8. Save your creation (S key or Presets menu)
+```
+
+**12. Advanced Features**
+
+**Fullscreen Mode**:
+```
+Press F11 to toggle fullscreen
+- Windowed: 1280x720 (default)
+- Fullscreen: Uses your monitor's native resolution
+- Layout adapts automatically to any screen size
+```
+
+**Autodetect Tempo**:
+```
+1. Open connection matrix (M key)
+2. Click "Autodetect Tempo" button below BPM slider
+3. When ON:
+   - BPM auto-adjusts based on audio analysis
+   - Manual BPM slider becomes read-only
+   - Frequency labels update in real-time
+   - Musical note indicator (🎵) appears in BPM display
+```
+
+**Dynamic Frequency Labels**:
+```
+All Todd frequency labels show actual scaled frequencies:
+- At 60 BPM: Quarter = 0.5Hz, Half = 0.25Hz
+- At 120 BPM: Quarter = 1Hz (baseline)
+- At 240 BPM: Quarter = 2Hz, Half = 1Hz
+Labels update automatically when BPM changes
+```
+
+**Multiple Recordings**:
+```
+Each recording session creates timestamped WAV file:
+- Format: neuronseq_output_YYYYMMDD_HHMMSS.wav
+- Location: Application root directory
+- 44.1kHz sample rate, stereo
+- Captures complete network output
+```
+
 ### System Requirements
 
 - **OS**: Linux (Debian/Ubuntu), macOS (tested)
@@ -161,25 +369,46 @@ This is **normal behavior** - quantization intelligently blocks neural triggers 
 
 ### GUI Controls
 
-**Main Interface:**
-- **Mouse**: Click neurons to activate, drag to pan view, scroll to zoom
-- **Spacebar**: Random network activation
-- **R Key**: Toggle audio recording
-- **M Key**: Toggle connection matrix visibility
-- **Q Key**: Toggle quantization panel (musical timing controls)
-- **S Key**: Quick save current network as preset
-- **L Key**: Load factory drum pattern preset
-- **Number Keys (1-9)**: Activate specific neurons
-- **Menu System**: Add/remove neurons and connections
-- **Presets Menu**: Complete preset management with save/load/browse dialogs
+**Keyboard Shortcuts (Global):**
+- **Spacebar**: Random network activation - triggers random neurons for testing
+- **R Key**: Toggle audio recording - starts/stops recording network output to WAV
+- **M Key**: Toggle connection matrix visibility - shows/hides rhythmogram routing panel
+- **Q Key**: Toggle quantization panel - shows/hides musical timing controls
+- **S Key**: Quick save - saves current network to `presets/user/quicksave_[timestamp].json`
+- **L Key**: Quick load - loads factory drum pattern preset (3-neuron network)
+- **F11 Key**: Toggle fullscreen - switches between windowed (1280x720) and fullscreen mode
+- **Number Keys (1-9)**: Activate specific neurons - direct neuron triggering for live performance
+- **ESC Key**: Close dialogs and modal windows
+
+**Mouse Controls:**
+- **Left Click on Neuron**: Manually activate a neuron and trigger its sample
+- **Left Click + Drag**: Pan the neural network view
+- **Mouse Wheel Scroll**: Zoom in/out on the neural network visualization
+- **Right Click**: Context menu (future feature)
+
+**Menu System:**
+- **File Menu**: Quit application
+- **Network Menu**: Add neurons, remove neurons, add connections, remove connections, clear network
+- **Presets Menu**: Save preset, load preset, browse presets, load factory drum pattern, load factory ambient textures
+- **View Menu**: Toggle connection matrix (M), toggle quantization panel (Q), toggle fullscreen (F11)
 
 **Left Panel - Neuron Controls:**
 - **Activation Sliders**: Control self-modulation rate (-0.1 to 0.6) for each neuron
-- **Function Dropdowns**: Select activation function (Linear, Sigmoid, ReLU, Tanh) per neuron
+  - Positive values create self-oscillating neurons (autonomous rhythm generators)
+  - Negative values create self-dampening neurons (natural decay patterns)
+  - Zero means standard neuron behavior without self-modification
+- **Function Dropdowns**: Select activation function per neuron:
+  - **Linear**: Direct proportional response - predictable, mathematical patterns
+  - **Sigmoid**: Smooth 0-1 saturation curves - flowing, ambient progressions
+  - **ReLU**: Hard thresholding - sharp, percussive triggers
+  - **Tanh**: Bipolar -1 to 1 response - expressive, dynamic behavior
 
 **Right Panel - Connection Controls:**
 - **Weight Sliders**: Adjust connection strength (-1.2 to 1.2) between neurons
-- **Real-time Feedback**: Connections dance only when weights are non-zero
+  - Positive weights: excitatory connections (increase activation)
+  - Negative weights: inhibitory connections (decrease activation)
+  - Zero weight: connection disabled
+- **Real-time Feedback**: Connections animate only when weights are non-zero
 
 **Rhythmogram Mapping Panel** (Press M to toggle):
 - **📊 Scrollable 8×N Matrix**: Visual grid routes Todd (1994) frequencies to neurons with optimized spacing
