@@ -35,6 +35,14 @@ __pycache__/
 *.pyc
 *.pyo
 
+# LaTeX auxiliary files
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+
 # media files
 *.wav
 *.mp3
