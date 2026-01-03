@@ -963,7 +963,43 @@ The integration of BeatTracker with Todd's rhythmogram analysis creates a **dual
 ### Neural Network Foundations
 
 #### **Dr. Pauli Laine's Computational Music Research**
-Dr. Laine's doctoral thesis, "[A Method for Generating Musical Motion Patterns](http://hdl.handle.net/10138/19434)" at the University of Helsinki, investigates computational approaches to musical sequence generation, providing the neural network architecture foundation.
+Dr. Laine's doctoral thesis, "A Method for Generating Musical Motion Patterns," Academic dissertation, by Pauli Laine, publicly discussed at the University of Helsinki, March 24, 2000, investigates computational approaches to musical sequence generation through neural modeling principles, providing the theoretical foundation for NeuronSeqSampler's neural network architecture.
+
+**Citation:** Laine, P. (2000). *A Method for Generating Musical Motion Patterns*. Academic dissertation, University of Helsinki, publicly discussed March 24, 2000. Available: [http://hdl.handle.net/10138/19434](http://hdl.handle.net/10138/19434)
+
+**Key Theoretical Contributions:**
+
+Laine's research established foundational principles for generating musical sequences through computational neural models:
+
+- **Musical Motion as Neural Process**: Musical patterns emerge from activation dynamics in computational units that mirror aspects of human musical cognition
+- **Activation-Based Event Generation**: Musical events occur when computational neurons reach specific activation thresholds, creating temporal structure
+- **Temporal Decay and Memory**: Neurons maintain activation states that decay over time, enabling context-sensitive pattern formation
+- **Hierarchical Temporal Organization**: Musical structures operate simultaneously at multiple temporal scales, from individual notes to phrase-level patterns
+- **Weighted Connection Networks**: Interactions between computational units governed by adjustable connection strengths enable emergent musical behaviors
+
+**Influence on NeuronSeqSampler Design:**
+
+The principles from Laine's thesis directly influenced several core aspects of NeuronSeqSampler's implementation:
+
+1. **Leaky Integrate-and-Fire Neuron Model**: Following Laine's activation-based triggering principle, each neuron accumulates activation from inputs, decays over time, and fires upon reaching threshold—directly triggering audio samples to create rhythmic patterns.
+
+2. **Configurable Network Topology**: Laine's emphasis on weighted connections is realized through user-definable connection matrices where neurons influence each other with adjustable excitatory and inhibitory weights.
+
+3. **Multi-Scale Temporal Dynamics**: The hierarchical organization proposed by Laine is achieved by combining individual neuron dynamics (millisecond scale) with rhythmogram analysis (62.5 ms to 8 seconds) to create musical structures across multiple temporal scales.
+
+4. **Flexible Parameter Space**: Per-neuron activation functions (Linear, Sigmoid, ReLU, Tanh), adjustable decay rates, and self-modulation capabilities provide the parameter flexibility Laine identified as essential for musical expressiveness.
+
+5. **Emergent Pattern Formation**: Complex musical sequences emerge from simple neural interaction rules, demonstrating Laine's principle that sophisticated musical behaviors can arise from basic computational primitives.
+
+**Extension of Laine's Framework:**
+
+NeuronSeqSampler extends Laine's theoretical foundations by integrating:
+- Todd's (1994) rhythmogram analysis for external rhythmic input and multi-scale temporal decomposition
+- Real-time interactive parameter control enabling live performance and composition
+- Musical quantization system for grid-aligned timing and rhythmic coherence
+- Multi-agent beat tracking for tempo-aware operation across diverse musical styles
+
+This synthesis creates a system that honors Laine's vision of neural-based musical generation while adding modern rhythm analysis and interactive performance capabilities.
 
 #### **Biological Inspiration: Central Pattern Generators (CPGs)**
 The core concept is rooted in **Central Pattern Generators** - specialized neural circuits found in biological systems that produce rhythmic, repetitive outputs with remarkable stability, enabling autonomous musical pattern generation.

@@ -33,6 +33,86 @@ The system architecture consists of three primary components:
 \item An adaptive learning system with onset-weighted updates
 \end{enumerate}
 
+\section{Theoretical Foundations: Musical Motion Patterns}
+
+\subsection{Laine's Method for Generating Musical Motion Patterns}
+
+The neural network architecture of NeuronSeqSampler is grounded in the theoretical framework developed by Pauli Laine in his doctoral thesis \textit{A Method for Generating Musical Motion Patterns} \cite{laine2000}. Laine's research established foundational principles for computational generation of musical sequences through neural modeling, which directly influenced the design of our neuron model.
+
+\subsection{Core Principles from Laine's Thesis}
+
+Laine's work introduced several key concepts that form the basis of NeuronSeqSampler's neural architecture:
+
+\subsubsection{Musical Motion as Computational Process}
+
+Laine proposed that musical motion patterns—sequences of notes and rhythmic events—can be generated through computational models that mirror aspects of human musical cognition. Rather than purely stochastic generation or rigid algorithmic rules, his approach emphasized:
+
+\begin{itemize}
+\item \textbf{Dynamic temporal evolution}: Musical patterns emerge through time-dependent state changes in computational units
+\item \textbf{Context-sensitive activation}: Each musical event is influenced by preceding events and structural context
+\item \textbf{Hierarchical organization}: Musical structures operate simultaneously at multiple temporal scales
+\end{itemize}
+
+\subsubsection{Neural Modeling for Musical Generation}
+
+Central to Laine's thesis is the application of neural network principles to musical sequence generation. The core ideas include:
+
+\begin{enumerate}
+\item \textbf{Activation-based triggering}: Musical events occur when computational units reach specific activation thresholds
+\item \textbf{Temporal decay and memory}: Units maintain activation states that decay over time, creating temporal memory effects
+\item \textbf{Weighted connections}: Interactions between units are governed by adjustable connection strengths
+\item \textbf{Emergent pattern formation}: Complex musical sequences emerge from simple interaction rules
+\end{enumerate}
+
+\subsection{Influence on NeuronSeqSampler Design}
+
+Laine's theoretical framework directly influenced several aspects of NeuronSeqSampler's implementation:
+
+\paragraph{Leaky Integrate-and-Fire Neurons}
+Following Laine's principle of activation-based triggering with temporal decay, our neurons implement a leaky integrate-and-fire model where:
+\begin{itemize}
+\item Activation accumulates from external inputs and recurrent connections
+\item Activation decays exponentially when below threshold
+\item Firing occurs upon threshold crossing, triggering audio samples
+\item Post-firing reset creates temporal structure in output patterns
+\end{itemize}
+
+\paragraph{Configurable Network Topology}
+Laine's emphasis on weighted connections and context-sensitive activation is realized through:
+\begin{itemize}
+\item User-definable connection matrices specifying which neurons influence others
+\item Adjustable connection weights controlling influence strength
+\item Support for both excitatory and inhibitory connections
+\end{itemize}
+
+\paragraph{Multi-Scale Temporal Organization}
+The hierarchical temporal organization proposed by Laine is achieved by integrating:
+\begin{itemize}
+\item Individual neuron dynamics operating at millisecond timescales
+\item Rhythmogram analysis capturing patterns from phrase-level (8 seconds) to onset-level (62.5 ms)
+\item Network-level emergent behaviors creating musical structures across multiple temporal scales
+\end{itemize}
+
+\paragraph{Adaptive Parameter Space}
+Laine's work highlighted the importance of parameter flexibility for musical expressiveness. NeuronSeqSampler implements this through:
+\begin{itemize}
+\item Per-neuron activation functions (Linear, Sigmoid, ReLU, Tanh)
+\item Adjustable decay rates and threshold parameters
+\item Self-modulation capabilities enabling autonomous oscillatory behavior
+\end{itemize}
+
+\subsection{Extension Beyond Laine's Framework}
+
+While drawing heavily on Laine's theoretical foundations, NeuronSeqSampler extends the framework by:
+\begin{itemize}
+\item Integrating Todd's (1994) rhythmogram analysis for external rhythmic input
+\item Implementing real-time interactive parameter control for live performance
+\item Adding musical quantization for grid-aligned timing
+\item Incorporating multi-agent beat tracking for tempo-aware operation
+\end{itemize}
+
+This synthesis of Laine's neural modeling principles with modern rhythm analysis techniques creates a system capable of both autonomous pattern generation and responsive interaction with external musical input.
+
 \section{Rhythmogram Analysis}
 
 \subsection{Theoretical Foundation}
@@ -118,7 +198,7 @@ Audio Input
 
 \subsection{Neuron Model}
 
-Each neuron $j$ in the network is modeled as a leaky integrate-and-fire unit following Laine's (2000) \cite{laine2000} neural approach to musical note modeling, with activation function $\phi_j$:
+Each neuron $j$ in the network is modeled as a leaky integrate-and-fire unit following Laine's (2000) \cite{laine2000} approach to generating musical motion patterns through neural activation dynamics, with activation function $\phi_j$:
 
 \begin{equation}
 a_j(t+1) = \phi_j\left(\lambda_j \cdot a_j(t) + \sum_{k \in \mathcal{P}(j)} w_{kj} \cdot s_k(t) + r_j(t)\right)
@@ -608,7 +688,7 @@ The onset bias parameter $\alpha$ significantly affects learning behavior:
 
 \section{Discussion}
 
-NeuronSeqSampler represents a synthesis of rhythm perception models \cite{todd1994} and neural network principles adapted from musical note modeling \cite{laine2000}. The key innovations include:
+NeuronSeqSampler represents a synthesis of rhythm perception models \cite{todd1994} and neural network principles drawn from Laine's method for generating musical motion patterns \cite{laine2000}. The key innovations include:
 
 \begin{enumerate}
 \item \textbf{Multi-scale rhythmic analysis}: Unlike fixed-tempo beat trackers, the logarithmic filter bank captures relationships across tempo ranges
@@ -971,10 +1051,10 @@ Future work includes extending the tempo adaptation mechanisms, exploring hierar
 \begin{thebibliography}{9}
 
 \bibitem{laine2000}
-Laine, U. K. (2000). 
-\textit{Analysis and Modeling of the Musical Note Onset}. 
-Helsinki University of Technology, Department of Electrical and Communications Engineering. 
-Available: \url{https://helda.helsinki.fi/server/api/core/bitstreams/6c68217b-752a-47bd-9b75-fb50e1fdc798/content}
+Laine, P. (2000). 
+\textit{A Method for Generating Musical Motion Patterns}. 
+Academic dissertation, University of Helsinki, publicly discussed March 24, 2000. 
+Available: \url{http://hdl.handle.net/10138/19434}
 
 \bibitem{todd1994}
 Todd, N.P. (1994). 
