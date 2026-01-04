@@ -1,5 +1,3 @@
-![NeuronSeqSampler](NeuronSeqSampler1.png)
-
 # Recent Updates
 
 ![Neural Network Visualization](https://img.shields.io/badge/Interface-Real--time%20Neural%20Visualization-blue)
