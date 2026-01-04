@@ -647,6 +647,23 @@ void GUI::updateStatusDisplay() {
         beatTrackerUpdateCounter = 0;
         if (network->getBeatTracker() && beatTrackerStatusLabel) {
             auto beatTracker = network->getBeatTracker();
+            
+            // Sync button state with actual tracker state
+            if (beatTrackerToggle) {
+                bool isEnabled = beatTracker->isEnabled();
+                tgui::String currentText = beatTrackerToggle->getText();
+                
+                if (isEnabled && currentText != "TRACK ON") {
+                    beatTrackerToggle->setText("TRACK ON");
+                    beatTrackerToggle->getRenderer()->setBackgroundColor(tgui::Color(100, 150, 100));
+                    beatTrackerToggle->getRenderer()->setTextColor(tgui::Color::White);
+                } else if (!isEnabled && currentText != "TRACK OFF") {
+                    beatTrackerToggle->setText("TRACK OFF");
+                    beatTrackerToggle->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 60));
+                    beatTrackerToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
+                }
+            }
+            
             if (beatTracker->isEnabled()) {
                 std::ostringstream statusStream;
                 statusStream << std::fixed << std::setprecision(2);
@@ -3068,15 +3085,15 @@ void GUI::createConnectionMatrixPanel() {
     beatTrackerToggle->onPress([this]() {
         if (!network || !network->getBeatTracker()) return;
         auto beatTracker = network->getBeatTracker();
-        bool enabled = beatTracker->isEnabled();
-        beatTracker->setEnabled(!enabled);
+        bool wasEnabled = beatTracker->isEnabled();
+        beatTracker->setEnabled(!wasEnabled);
         
-        // Update button appearance
-        if (!enabled) {
+        // Update button appearance based on NEW state (after toggle)
+        if (!wasEnabled) {  // Was off, now on
             beatTrackerToggle->setText("TRACK ON");
             beatTrackerToggle->getRenderer()->setBackgroundColor(tgui::Color(100, 150, 100));
             beatTrackerToggle->getRenderer()->setTextColor(tgui::Color::White);
-        } else {
+        } else {  // Was on, now off
             beatTrackerToggle->setText("TRACK OFF");
             beatTrackerToggle->getRenderer()->setBackgroundColor(tgui::Color(60, 60, 60));
             beatTrackerToggle->getRenderer()->setTextColor(tgui::Color(180, 180, 180));

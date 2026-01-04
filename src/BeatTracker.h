@@ -185,7 +185,7 @@ public:
     /**
      * @brief Enable/disable beat tracking
      */
-    void setEnabled(bool enabled) { this->enabled = enabled; }
+    void setEnabled(bool enabled);
     bool isEnabled() const { return enabled; }
     
     /**

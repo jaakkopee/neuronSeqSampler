@@ -11,7 +11,7 @@
 BeatTracker::BeatTracker(size_t sampleRate, size_t frameSize)
     : sampleRate(sampleRate)
     , frameSize(frameSize)
-    , enabled(false)
+    , enabled(false)  // Start disabled - user can enable via button
     , currentPhase(0.0f)
     , detectedTempo(120.0f)
     , phaseConfidence(0.0f)
@@ -777,4 +777,8 @@ void BeatTracker::setGlobalTempo(float tempo) {
     // Update beat period
     beatPeriodSamples = (60.0f / detectedTempo) * sampleRate;
     phaseVelocity = 1.0f / beatPeriodSamples;
+}
+
+void BeatTracker::setEnabled(bool newState) {
+    enabled = newState;
 }
