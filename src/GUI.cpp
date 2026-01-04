@@ -3632,9 +3632,11 @@ bool GUI::checkWidgetTreeForFocusedEditBox(tgui::Container::Ptr container) const
 void GUI::showSavePresetDialog() {
     auto dialog = tgui::ChildWindow::create("Save Preset");
     dialog->setSize(400, 450);
-    dialog->setPosition("50%", "50%");
+    dialog->setPosition("(&.size - size) / 2", "(&.size - size) / 2");  // Center in window
     dialog->getRenderer()->setBackgroundColor(tgui::Color(40, 40, 40));
     dialog->getRenderer()->setBorderColor(tgui::Color::White);
+    dialog->setResizable(false);
+    dialog->setKeepInParent(true);
     
     // Name input
     auto nameLabel = tgui::Label::create("Preset Name:");
@@ -3646,6 +3648,7 @@ void GUI::showSavePresetDialog() {
     nameInput->setSize(300, 30);
     nameInput->setPosition(20, 55);
     nameInput->setText("My Preset");
+    nameInput->setFocused(true);  // Focus the name input
     dialog->add(nameInput);
     
     // Version input
@@ -3702,6 +3705,8 @@ void GUI::showSavePresetDialog() {
     saveButton->setPosition(80, 380);
     saveButton->setSize(100, 30);
     saveButton->onPress([this, nameInput, versionInput, authorInput, tagsInput, descInput, dialog]() {
+        std::cout << "💾 Save button pressed!" << std::endl;
+        
         PresetManager::PresetInfo info;
         info.name = nameInput->getText().toStdString();
         info.version = versionInput->getText().toStdString();
@@ -3725,12 +3730,15 @@ void GUI::showSavePresetDialog() {
     cancelButton->setPosition(220, 380);
     cancelButton->setSize(100, 30);
     cancelButton->onPress([dialog]() {
+        std::cout << "❌ Cancel button pressed!" << std::endl;
         dialog->close();
     });
     dialog->add(cancelButton);
     
     gui->add(dialog);
     dialog->moveToFront();
+    
+    std::cout << "📝 Save preset dialog created and added to GUI" << std::endl;
 }
 
 void GUI::showLoadPresetDialog() {
