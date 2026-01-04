@@ -662,14 +662,22 @@ public:
 };
 
 int main() {
-    // Initialize preset system
-    PresetManager::createPresetDirectory();
+    // Prepare app initialization as background task
+    std::atomic<bool> loadingComplete(false);
     
-    std::cout << "🎵 Neuron Sequence Sampler" << std::endl;
-    std::cout << "💾 Preset Controls:" << std::endl;
-    std::cout << "   S - Save current network as preset" << std::endl;
-    std::cout << "   L - Load factory drum pattern preset" << std::endl;
-    std::cout << std::endl;
+    auto initTask = []() {
+        // Initialize preset system
+        PresetManager::createPresetDirectory();
+        
+        std::cout << "🎵 Neuron Sequence Sampler" << std::endl;
+        std::cout << "💾 Preset Controls:" << std::endl;
+        std::cout << "   S - Save current network as preset" << std::endl;
+        std::cout << "   L - Load factory drum pattern preset" << std::endl;
+        std::cout << std::endl;
+    };
+    
+    // Show startup animation while loading in background
+    StartupAnimation::showWindow(initTask, &loadingComplete);
     
     NeuronSeqSampler app;
     app.run();
