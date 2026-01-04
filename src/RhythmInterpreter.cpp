@@ -27,7 +27,7 @@ RhythmInterpreter::RhythmInterpreter(size_t sampleRate, size_t bufferSize)
     // Initialize onset detection
     onsetHistory.resize(bandCount);
     previousOutputs.resize(bandCount, 0.0f);
-    onsetThreshold = 0.1f;            // Default: detect 10% increase as onset
+    onsetThreshold = 0.02f;           // Lower threshold: detect 2% increase as onset (was 0.1)
     onsetBufferSize = 100;            // Keep last 100 onsets per band
     currentTime = 0.0f;
     
@@ -681,6 +681,19 @@ std::vector<float> GammaToneFilterBank::process(const std::vector<float>& input)
 // ========================= ONSET DETECTION METHODS =========================
 
 void RhythmInterpreter::detectOnsets() {
+    // Clean up old onsets first (older than 5 seconds)
+    const float maxOnsetAge = 5.0f;
+    for (size_t bandIndex = 0; bandIndex < bandCount; ++bandIndex) {
+        auto& history = onsetHistory[bandIndex];
+        history.erase(
+            std::remove_if(history.begin(), history.end(),
+                [this, maxOnsetAge](const OnsetEvent& onset) {
+                    return (currentTime - onset.timestamp) > maxOnsetAge;
+                }),
+            history.end()
+        );
+    }
+    
     for (size_t bandIndex = 0; bandIndex < bandCount; ++bandIndex) {
         float currentOutput = filterOutputs[bandIndex];
         float previousOutput = previousOutputs[bandIndex];
@@ -688,7 +701,20 @@ void RhythmInterpreter::detectOnsets() {
         // Detect onset if current output exceeds previous by threshold
         float outputChange = currentOutput - previousOutput;
         
-        if (outputChange > onsetThreshold && currentOutput > 0.05f) {
+        // Enforce minimum absolute threshold to prevent constant triggering
+        float minAbsoluteThreshold = 0.005f; // At least 0.5% change required
+        float effectiveThreshold = std::max(onsetThreshold, minAbsoluteThreshold);
+        
+        // Use relative threshold - detect if increase is significant relative to previous level
+        float relativeThreshold = effectiveThreshold;
+        if (previousOutput > 0.01f) {
+            // For signals with existing level, use percentage-based threshold
+            relativeThreshold = std::max(effectiveThreshold, previousOutput * effectiveThreshold);
+        }
+        
+        // Detect onset with both absolute and minimum level checks
+        // Require significant positive change AND minimum output level
+        if (outputChange > relativeThreshold && currentOutput > 0.01f) {
             // Onset detected - add to history
             OnsetEvent onset(currentTime, outputChange, bandIndex);
             onsetHistory[bandIndex].push_back(onset);

@@ -2349,8 +2349,8 @@ void GUI::createConnectionMatrixPanel() {
     
     auto onsetThresholdSlider = tgui::Slider::create(0.0f, 0.5f);
     onsetThresholdSlider->setPosition(70, 82);
-    onsetThresholdSlider->setSize(70, 16);
-    onsetThresholdSlider->setStep(0.01f);
+    onsetThresholdSlider->setSize(120, 16);
+    onsetThresholdSlider->setStep(0.001f);
     onsetThresholdSlider->setValue(rhythmInterpreter->getOnsetThreshold());
     onsetThresholdSlider->onValueChange([this, rhythmInterpreter](float value) {
         rhythmInterpreter->setOnsetThreshold(value);
@@ -2358,7 +2358,7 @@ void GUI::createConnectionMatrixPanel() {
         auto display = connectionMatrixPanel->get<tgui::Label>("OnsetThresholdDisplay");
         if (display) {
             std::ostringstream oss;
-            oss << std::fixed << std::setprecision(2) << value;
+            oss << std::fixed << std::setprecision(3) << value;
             display->setText(oss.str());
         }
     });
@@ -2366,22 +2366,22 @@ void GUI::createConnectionMatrixPanel() {
     
     auto onsetThresholdDisplay = tgui::Label::create();
     std::ostringstream oss_thresh;
-    oss_thresh << std::fixed << std::setprecision(2) << rhythmInterpreter->getOnsetThreshold();
+    oss_thresh << std::fixed << std::setprecision(3) << rhythmInterpreter->getOnsetThreshold();
     onsetThresholdDisplay->setText(oss_thresh.str());
-    onsetThresholdDisplay->setPosition(145, 80);
+    onsetThresholdDisplay->setPosition(195, 80);
     onsetThresholdDisplay->setTextSize(9);
     onsetThresholdDisplay->getRenderer()->setTextColor(tgui::Color::White);
     connectionMatrixPanel->add(onsetThresholdDisplay, "OnsetThresholdDisplay");
     
     // Onset buffer size control
     auto bufferSizeLabel = tgui::Label::create("Buffer Size:");
-    bufferSizeLabel->setPosition(190, 80);
+    bufferSizeLabel->setPosition(5, 105);
     bufferSizeLabel->setTextSize(9);
     bufferSizeLabel->getRenderer()->setTextColor(tgui::Color(180, 180, 180));
     connectionMatrixPanel->add(bufferSizeLabel);
     
     auto onsetBufferSlider = tgui::Slider::create(10.0f, 500.0f);
-    onsetBufferSlider->setPosition(270, 82);
+    onsetBufferSlider->setPosition(70, 107);
     onsetBufferSlider->setSize(70, 16);
     onsetBufferSlider->setStep(10.0f);
     onsetBufferSlider->setValue(static_cast<float>(rhythmInterpreter->getOnsetBufferSize()));
@@ -2396,14 +2396,14 @@ void GUI::createConnectionMatrixPanel() {
     connectionMatrixPanel->add(onsetBufferSlider);
     
     auto onsetBufferDisplay = tgui::Label::create(std::to_string(rhythmInterpreter->getOnsetBufferSize()));
-    onsetBufferDisplay->setPosition(345, 80);
+    onsetBufferDisplay->setPosition(145, 105);
     onsetBufferDisplay->setTextSize(9);
     onsetBufferDisplay->getRenderer()->setTextColor(tgui::Color::White);
     connectionMatrixPanel->add(onsetBufferDisplay, "OnsetBufferDisplay");
     
     // Clear onset history button
     auto clearOnsetsButton = tgui::Button::create("Clear Onsets");
-    clearOnsetsButton->setPosition(390, 78);
+    clearOnsetsButton->setPosition(230, 103);
     clearOnsetsButton->setSize(85, 20);
     clearOnsetsButton->setTextSize(9);
     clearOnsetsButton->getRenderer()->setBackgroundColor(tgui::Color(80, 60, 40));
