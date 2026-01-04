@@ -59,7 +59,7 @@ bool AudioManager::playSample(int sampleIndex, float offsetSeconds, float volume
         // Set volume based on activation function result, sample volume, and master volume
         float sampleVol = sampleVolumes.count(sampleIndex) ? sampleVolumes[sampleIndex] : 1.0f;
         float finalVolume = volume * sampleVol * masterVolume;
-        float clampedVolume = std::max(0.0f, std::min(100.0f, finalVolume));
+        float clampedVolume = std::max(0.0f, std::min(200.0f, finalVolume));
         it->second->setVolume(clampedVolume);
         
         // Always play audio directly (no filtering)
@@ -67,15 +67,8 @@ bool AudioManager::playSample(int sampleIndex, float offsetSeconds, float volume
         it->second->play();
         DEBUG_PRINT_STREAM("🔊 Playing sample " << sampleIndex << " directly (volume: " << clampedVolume << "%)");
         
-        // Run rhythmogram analysis separately (if enabled) without affecting audio playback
-        if (rhythmInterpreter) {
-            std::vector<float> sampleData = getSampleData(sampleIndex);
-            if (!sampleData.empty()) {
-                DEBUG_PRINT_STREAM("🎛️ Running rhythmogram analysis on sample " << sampleIndex << " (" << sampleData.size() << " samples)");
-                rhythmInterpreter->processAudioFrame(sampleData);
-                DEBUG_PRINT("🎛️ Rhythmogram analysis complete - data available for neuron activation");
-            }
-        }
+        // Mixed output analysis is now done in updateMixedAudioAnalysis() called from main loop
+        // This allows capturing the complete mixed output instead of individual samples
         
         // Handle F-key filtered audio output (if enabled via F key)
         if (filterCallback) {
@@ -329,14 +322,61 @@ std::vector<float> AudioManager::getNextInputChunk(std::size_t chunkSize) {
 }
 
 void AudioManager::setMasterVolume(float volume) {
-    masterVolume = std::max(0.0f, std::min(1.0f, volume));
+    masterVolume = std::max(0.0f, std::min(2.0f, volume));
 }
 
 void AudioManager::setSampleVolume(int sampleIndex, float volume) {
-    sampleVolumes[sampleIndex] = std::max(0.0f, std::min(1.0f, volume));
+    sampleVolumes[sampleIndex] = std::max(0.0f, std::min(2.0f, volume));
 }
 
 float AudioManager::getSampleVolume(int sampleIndex) const {
     auto it = sampleVolumes.find(sampleIndex);
     return (it != sampleVolumes.end()) ? it->second : 1.0f;
+}
+
+void AudioManager::updateMixedAudioAnalysis() {
+    if (!rhythmInterpreter || !analyzeMixedOutput) {
+        return;
+    }
+    
+    // Only analyze at the specified interval (20ms by default)
+    if (analysisTimer.getElapsedTime().asSeconds() < analysisInterval) {
+        return;
+    }
+    analysisTimer.restart();
+    
+    // Collect samples from all currently playing sounds
+    const size_t chunkSize = 1024; // Analyze 1024 samples at a time
+    mixBuffer.clear();
+    mixBuffer.resize(chunkSize, 0.0f);
+    
+    bool hasPlayingSounds = false;
+    for (auto& [index, sound] : sounds) {
+        if (sound->getStatus() == sf::Sound::Playing) {
+            hasPlayingSounds = true;
+            auto bufferIt = soundBuffers.find(index);
+            if (bufferIt != soundBuffers.end()) {
+                const sf::Int16* samples = bufferIt->second->getSamples();
+                sf::Uint64 sampleCount = bufferIt->second->getSampleCount();
+                sf::Time offset = sound->getPlayingOffset();
+                unsigned int sampleRate = bufferIt->second->getSampleRate();
+                unsigned int channels = bufferIt->second->getChannelCount();
+                
+                // Calculate current position in samples
+                sf::Uint64 currentPos = static_cast<sf::Uint64>(offset.asSeconds() * sampleRate * channels);
+                
+                // Mix this sound into the buffer
+                float volume = sound->getVolume() / 100.0f;
+                for (size_t i = 0; i < chunkSize && (currentPos + i) < sampleCount; ++i) {
+                    float sample = samples[currentPos + i] / 32768.0f; // Convert Int16 to float
+                    mixBuffer[i] += sample * volume;
+                }
+            }
+        }
+    }
+    
+    // Only process if there are actually playing sounds
+    if (hasPlayingSounds && !mixBuffer.empty()) {
+        rhythmInterpreter->processAudioFrame(mixBuffer);
+    }
 }

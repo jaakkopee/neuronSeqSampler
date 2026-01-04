@@ -626,6 +626,9 @@ public:
         clock.restart();
     }
     
+    // Update mixed audio analysis for rhythmogram
+    audioManager.updateMixedAudioAnalysis();
+    
     // Update spectral display
     spectralDisplay.update();
     

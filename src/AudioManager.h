@@ -31,6 +31,12 @@ private:
     // RhythmInterpreter reference for filter modes
     RhythmInterpreter* rhythmInterpreter;
     
+    // Mixed audio analysis
+    std::vector<float> mixBuffer;
+    bool analyzeMixedOutput = true;
+    sf::Clock analysisTimer;
+    const float analysisInterval = 0.02f; // 20ms = 50 FPS
+    
     // Storage for filtered sound buffers (needed to keep them alive during playback)
     std::unordered_map<int, std::unique_ptr<sf::SoundBuffer>> filteredBuffers;
 
@@ -68,6 +74,9 @@ public:
     void setFilterMode(bool enabled); // Enable or disable filter mode
     void setAdaptiveFilterMode(bool enabled); // Enable or disable adaptive filter mode
     bool isFilterModeEnabled() const { return filterCallback != nullptr; }
+    
+    // Mixed audio analysis
+    void updateMixedAudioAnalysis(); // Call this regularly to analyze mixed output
     
     // Internal recording methods
     void setInternalRecorder(Recorder* recorder);
