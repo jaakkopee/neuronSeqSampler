@@ -3759,11 +3759,11 @@ void GUI::showSavePresetDialog() {
         
         dialog->close();
     });
-    saveButton->onMouseEnter([=]() {
-        std::cout << "🖱️ Mouse entered Save button" << std::endl;
+    saveButton->onMouseEnter([saveButton]() {
+        saveButton->getRenderer()->setBackgroundColor(tgui::Color(80, 150, 80));
     });
-    saveButton->onMouseLeave([=]() {
-        std::cout << "🖱️ Mouse left Save button" << std::endl;
+    saveButton->onMouseLeave([saveButton]() {
+        saveButton->getRenderer()->setBackgroundColor(tgui::Color(60, 120, 60));
     });
     dialog->add(saveButton);
     
