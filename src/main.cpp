@@ -633,6 +633,13 @@ public:
         if (!chunk.empty()) {
             network.processAudioForRhythm(chunk);
         }
+    } else {
+        // When no external input, use network's own audio output for rhythm analysis
+        // This works whether recording is active or not
+        auto outputChunk = recorder.getRealtimeAudioBuffer(512);
+        if (!outputChunk.empty()) {
+            network.processAudioForRhythm(outputChunk);
+        }
     }
     }
 
