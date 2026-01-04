@@ -5,7 +5,25 @@
 ![Neural Network Visualization](https://img.shields.io/badge/Interface-Real--time%20Neural%20Visualization-blue)
 ![Audio Engine](https://img.shields.io/badge/Audio-SFML%20Based-green)
 ![Build Status](https://img.shields.io/badge/Build-CMake%20%2B%20C%2B%2B17-orange)
-![Preset System](https://img.shields.io/badge/Presets-JSON%20Save%2FLoad-purple)*🎵 Musical Quantization System**: Professional-grade musical timing with smart grid-based trigger suppression (Q-key toggle).
+![Preset System](https://img.shields.io/badge/Presets-JSON%20Save%2FLoad-purple)
+
+## Screenshots
+
+### Neural Network Visualization
+![Neural Network Interface](neuronseq01.png)
+*Real-time neural network visualization with connection weights and rhythmogram matrix*
+
+### Connection Matrix and Controls
+![Connection Matrix](neuronseq02.png)
+*Rhythmogram connection matrix with per-band gain controls and tempo detection*
+
+### Beat Tracking and Pattern Analysis
+![Beat Tracker](neuronseq03.png)
+*Advanced beat tracking with multi-agent system and pattern timeline visualization*
+
+## Key Features
+
+- **🎵 Musical Quantization System**: Professional-grade musical timing with smart grid-based trigger suppression (Q-key toggle).
 - **💾 Smart Preset Management**: Factory presets, user presets, metadata support, and automatic network restoration.
 - **Rhythmogram Matrix Panel**: Toggle with 'M', scrollable 8×N grid, real-time routing, per-band and per-connection gain controls.
 - **Robust Keyboard Shortcuts**: Global keys (e.g., 'M' for matrix, 'Q' for quantization) work reliably after all GUI actions.
@@ -16,6 +34,7 @@
 # NeuronSeqSampler
 
 **A real-time neural network audio sampler that creates dynamic music through artificial neurons**
+
 
 
 NeuronSeqSampler is an innovative experimental audio application that uses interconnected artificial neurons to trigger and sequence audio samples. Each neuron can be connected to others through customizable connection matrices, creating complex cascading patterns that generate evolving rhythms, melodies, and soundscapes in real-time.
