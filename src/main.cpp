@@ -85,6 +85,12 @@ private:
 #ifdef USE_TGUI
             // Always pass events to TGUI first for proper dialog/widget handling
             eventConsumedByGUI = gui.handleEvent(event);
+            
+            // WORKAROUND: TGUI sometimes doesn't consume TextEntered events even when EditBox has focus
+            // Force consumption when text input is active to ensure EditBoxes work properly
+            if (event.is<sf::Event::TextEntered>() && guiManager.isTextInputActive()) {
+                eventConsumedByGUI = true;
+            }
 #endif
             
             // Debug GUI event consumption for mouse clicks
@@ -144,6 +150,13 @@ private:
 #ifdef USE_TGUI
                     bool textInputActive = guiManager.isTextInputActive();
                     bool dialogOpen = guiManager.isDialogOpen();
+                    
+                    // Debug keyboard input
+                    if (textInputActive || dialogOpen) {
+                        std::cout << "⌨️ KeyPressed - TextInputActive: " << textInputActive 
+                                  << " DialogOpen: " << dialogOpen 
+                                  << " EventConsumed: " << eventConsumedByGUI << std::endl;
+                    }
 #else
                     bool textInputActive = false;
                     bool dialogOpen = false;
@@ -164,6 +177,15 @@ private:
                         handleKeyPress(code);
                     }
                 }
+            } else if (event.is<sf::Event::TextEntered>()) {
+                // TextEntered events are already handled by gui.handleEvent() above
+                // This explicit check ensures they're not ignored in the final else clause
+#ifdef USE_TGUI
+                if (const auto* e = event.getIf<sf::Event::TextEntered>()) {
+                    std::cout << "📝 TextEntered: unicode=" << e->unicode 
+                              << " consumed=" << eventConsumedByGUI << std::endl;
+                }
+#endif
             } else {
                 // Ignore other events
             }

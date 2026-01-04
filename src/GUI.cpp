@@ -128,7 +128,10 @@ void GUI::createMenuBar() {
     menuBar->connectMenuItem("Recording", "Record NeuronSeq Output", [this]() { this->startInternalRecording(); });
     menuBar->connectMenuItem("Recording", "Record External Microphone", [this]() { this->startExternalRecording(); });
     menuBar->connectMenuItem("Recording", "Stop Recording", [this]() { this->stopRecording(); });
-    menuBar->connectMenuItem("Presets", "Save Preset", [this]() { this->showSavePresetDialog(); });
+    menuBar->connectMenuItem("Presets", "Save Preset", [this]() { 
+        std::cout << "🔔 Menu item 'Save Preset' clicked!" << std::endl;
+        this->showSavePresetDialog(); 
+    });
     menuBar->connectMenuItem("Presets", "Load Preset", [this]() { this->showLoadPresetDialog(); });
     menuBar->connectMenuItem("Presets", "Load Factory Drum Pattern", [this]() { this->loadFactoryDrumPattern(); });
     menuBar->connectMenuItem("Presets", "Browse Presets", [this]() { this->showPresetBrowser(); });
@@ -3630,6 +3633,18 @@ bool GUI::checkWidgetTreeForFocusedEditBox(tgui::Container::Ptr container) const
 // ================================================================================================
 
 void GUI::showSavePresetDialog() {
+    std::cout << "🔔 showSavePresetDialog() called!" << std::endl;
+    
+    // Close any existing "Save Preset" dialogs to prevent duplicates
+    auto widgets = gui->getWidgets();
+    for (auto& widget : widgets) {
+        auto childWindow = std::dynamic_pointer_cast<tgui::ChildWindow>(widget);
+        if (childWindow && childWindow->getTitle() == "Save Preset") {
+            std::cout << "⚠️ Closing existing Save Preset dialog" << std::endl;
+            gui->remove(childWindow);
+        }
+    }
+    
     auto dialog = tgui::ChildWindow::create("Save Preset");
     dialog->setSize(400, 450);
     dialog->setPosition("(&.size - size) / 2", "(&.size - size) / 2");  // Center in window
@@ -3704,6 +3719,9 @@ void GUI::showSavePresetDialog() {
     auto saveButton = tgui::Button::create("Save");
     saveButton->setPosition(80, 380);
     saveButton->setSize(100, 30);
+    saveButton->getRenderer()->setBackgroundColor(tgui::Color(60, 120, 60));
+    saveButton->getRenderer()->setBackgroundColorHover(tgui::Color(80, 150, 80));
+    saveButton->getRenderer()->setTextColor(tgui::Color::White);
     saveButton->onPress([this, nameInput, versionInput, authorInput, tagsInput, descInput, dialog]() {
         std::cout << "💾 Save button pressed!" << std::endl;
         
@@ -3724,11 +3742,20 @@ void GUI::showSavePresetDialog() {
         
         dialog->close();
     });
+    saveButton->onMouseEnter([=]() {
+        std::cout << "🖱️ Mouse entered Save button" << std::endl;
+    });
+    saveButton->onMouseLeave([=]() {
+        std::cout << "🖱️ Mouse left Save button" << std::endl;
+    });
     dialog->add(saveButton);
     
     auto cancelButton = tgui::Button::create("Cancel");
     cancelButton->setPosition(220, 380);
     cancelButton->setSize(100, 30);
+    cancelButton->getRenderer()->setBackgroundColor(tgui::Color(120, 60, 60));
+    cancelButton->getRenderer()->setBackgroundColorHover(tgui::Color(150, 80, 80));
+    cancelButton->getRenderer()->setTextColor(tgui::Color::White);
     cancelButton->onPress([dialog]() {
         std::cout << "❌ Cancel button pressed!" << std::endl;
         dialog->close();
