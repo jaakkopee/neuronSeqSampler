@@ -3701,7 +3701,7 @@ void GUI::showSavePresetDialog() {
     auto saveButton = tgui::Button::create("Save");
     saveButton->setPosition(80, 380);
     saveButton->setSize(100, 30);
-    saveButton->onPress([=]() {
+    saveButton->onPress([this, nameInput, versionInput, authorInput, tagsInput, descInput, dialog]() {
         PresetManager::PresetInfo info;
         info.name = nameInput->getText().toStdString();
         info.version = versionInput->getText().toStdString();
@@ -3724,12 +3724,13 @@ void GUI::showSavePresetDialog() {
     auto cancelButton = tgui::Button::create("Cancel");
     cancelButton->setPosition(220, 380);
     cancelButton->setSize(100, 30);
-    cancelButton->onPress([=]() {
+    cancelButton->onPress([dialog]() {
         dialog->close();
     });
     dialog->add(cancelButton);
     
     gui->add(dialog);
+    dialog->moveToFront();
 }
 
 void GUI::showLoadPresetDialog() {
@@ -3783,7 +3784,7 @@ void GUI::showLoadPresetDialog() {
     auto loadButton = tgui::Button::create("Load");
     loadButton->setPosition(150, 340);
     loadButton->setSize(100, 30);
-    loadButton->onPress([=]() {
+    loadButton->onPress([this, presetList, dialog]() {
         auto selectedItem = presetList->getSelectedItem();
         if (!selectedItem.empty() && presetList->getSelectedItemId() != "") {
             std::string filename = presetList->getSelectedItemId().toStdString();
@@ -3829,12 +3830,13 @@ void GUI::showLoadPresetDialog() {
     auto cancelButton = tgui::Button::create("Cancel");
     cancelButton->setPosition(270, 340);
     cancelButton->setSize(100, 30);
-    cancelButton->onPress([=]() {
+    cancelButton->onPress([dialog]() {
         dialog->close();
     });
     dialog->add(cancelButton);
     
     gui->add(dialog);
+    dialog->moveToFront();
 }
 
 void GUI::loadFactoryDrumPattern() {
