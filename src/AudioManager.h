@@ -16,6 +16,10 @@ private:
     std::unordered_map<int, std::unique_ptr<sf::Sound>> sounds;
     std::string samplesDirectory;
     
+    // Volume control
+    std::unordered_map<int, float> sampleVolumes;  // Per-sample volume (0.0-1.0)
+    float masterVolume = 1.0f;  // Master volume (0.0-1.0)
+    
     // Internal recording support
     Recorder* internalRecorder;
     bool recordingOutput;
@@ -48,7 +52,11 @@ public:
     bool playSample(int sampleIndex, float offsetSeconds); // Play sample from beginning with time offset
     bool playSample(int sampleIndex, float offsetSeconds, float volume); // Play sample with specific volume (0.0-100.0)
     
-    void setVolume(float volume);  // 0.0 to 100.0
+    void setVolume(float volume);  // 0.0 to 100.0 (legacy - sets master volume)
+    void setMasterVolume(float volume);  // 0.0 to 1.0
+    void setSampleVolume(int sampleIndex, float volume);  // 0.0 to 1.0
+    float getMasterVolume() const { return masterVolume; }
+    float getSampleVolume(int sampleIndex) const;
     void stopAllSounds();
     
     bool isSampleLoaded(int sampleIndex) const;

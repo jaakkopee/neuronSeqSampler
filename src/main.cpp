@@ -167,6 +167,7 @@ private:
                     // hijacking normal text input which GUI will typically consume.
                     sf::Keyboard::Key code = e->code;
                     bool isGlobalShortcut = (code == sf::Keyboard::Key::M) || (code == sf::Keyboard::Key::Q) ||
+                                            (code == sf::Keyboard::Key::V) || (code == sf::Keyboard::Key::O) ||
                                             (code == sf::Keyboard::Key::Space) || (code == sf::Keyboard::Key::F) ||
                                             (code >= sf::Keyboard::Key::Num1 && code <= sf::Keyboard::Key::Num9) ||
                                             (code == sf::Keyboard::Key::S) || (code == sf::Keyboard::Key::L) ||
@@ -497,6 +498,15 @@ public:
                 ESSENTIAL_PRINT("🎵 Toggled quantizer panel visibility");
 #else
                 ESSENTIAL_PRINT("🎵 Quantizer toggle requires GUI support (TGUI not available)");
+#endif
+                break;
+            case sf::Keyboard::Key::V:
+                // Toggle mixer visibility
+#ifdef USE_TGUI
+                guiManager.toggleMixerVisibility();
+                ESSENTIAL_PRINT("🎚️ Toggled mixer panel visibility");
+#else
+                ESSENTIAL_PRINT("🎚️ Mixer toggle requires GUI support (TGUI not available)");
 #endif
                 break;
             case sf::Keyboard::Key::Equal:  // + key (Shift+Equal)

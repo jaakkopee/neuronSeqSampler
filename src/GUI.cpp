@@ -119,6 +119,12 @@ void GUI::createMenuBar() {
     menuBar->addMenuItem("Presets", "Load Factory Drum Pattern");
     menuBar->addMenuItem("Presets", "Browse Presets");
     
+    // Add "View" menu
+    menuBar->addMenu("View");
+    menuBar->addMenuItem("View", "Toggle Mixer");
+    menuBar->addMenuItem("View", "Toggle Rhythmogram Matrix");
+    menuBar->addMenuItem("View", "Toggle Quantization");
+    
     // Connect menu actions
     menuBar->connectMenuItem("Network", "Add Neuron", [this]() { this->addNeuron(); });
     menuBar->connectMenuItem("Network", "Remove Neuron", [this]() { this->removeNeuron(); });
@@ -135,6 +141,9 @@ void GUI::createMenuBar() {
     menuBar->connectMenuItem("Presets", "Load Preset", [this]() { this->showLoadPresetDialog(); });
     menuBar->connectMenuItem("Presets", "Load Factory Drum Pattern", [this]() { this->loadFactoryDrumPattern(); });
     menuBar->connectMenuItem("Presets", "Browse Presets", [this]() { this->showPresetBrowser(); });
+    menuBar->connectMenuItem("View", "Toggle Mixer", [this]() { this->toggleMixerVisibility(); });
+    menuBar->connectMenuItem("View", "Toggle Rhythmogram Matrix", [this]() { this->toggleMatrixVisibility(); });
+    menuBar->connectMenuItem("View", "Toggle Quantization", [this]() { this->toggleQuantizerVisibility(); });
     
     // Adjust control panel position to account for menu bar
     controlPanelTopOffset = 4.0f; // 4% for menu bar
@@ -3611,14 +3620,14 @@ bool GUI::isDialogOpen() const {
     }
     
     // Check if any modal dialog ChildWindow is currently open
-    // Exclude permanent windows like "Rhythmogram Mapping" and "Quantization"
+    // Exclude permanent windows like "Rhythmogram Mapping", "Quantization", and "Mixer"
     for (auto& widget : gui->getWidgets()) {
         auto childWindow = std::dynamic_pointer_cast<tgui::ChildWindow>(widget);
         if (childWindow) {
             auto title = childWindow->getTitle().toStdString();
             
             // Skip permanent panels/windows
-            if (title == "Rhythmogram Mapping" || title == "Quantization") {
+            if (title == "Rhythmogram Mapping" || title == "Quantization" || title == "Mixer") {
                 continue;
             }
             // This is a modal dialog
@@ -4168,4 +4177,157 @@ void GUI::drawPatternTimeline(const Pattern& pattern) {
     infoLabel->setTextSize(7);
     infoLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 100));
     patternTimelinePanel->add(infoLabel);
+}
+
+void GUI::createMixerWindow() {
+    if (mixerWindow) {
+        return; // Already created
+    }
+    
+    // Create mixer window
+    mixerWindow = tgui::ChildWindow::create("Mixer");
+    mixerWindow->setSize(400, 500);
+    mixerWindow->setPosition("(&.size - size) / 2");  // Center on screen
+    mixerWindow->setResizable(true);
+    mixerWindow->setKeepInParent(true);
+    mixerWindow->getRenderer()->setTitleBarColor(tgui::Color(40, 60, 80));
+    mixerWindow->getRenderer()->setBackgroundColor(tgui::Color(30, 30, 30));
+    mixerWindow->setVisible(false); // Start hidden
+    mixerWindow->setTitleButtons(tgui::ChildWindow::TitleButton::None); // Remove close button
+    gui->add(mixerWindow);
+    
+    size_t numNeurons = network->getNeurons().size();
+    
+    // Clear existing sliders
+    neuronVolumeSliders.clear();
+    neuronVolumeLabels.clear();
+    
+    // Calculate layout
+    int sliderWidth = 40;
+    int sliderHeight = 300;
+    int spacing = 60;
+    int startX = 20;
+    int startY = 60;
+    
+    // Create volume slider for each neuron
+    for (size_t i = 0; i < numNeurons; ++i) {
+        int x = startX + i * spacing;
+        
+        // Neuron label
+        auto neuronLabel = tgui::Label::create("N" + std::to_string(i + 1));
+        neuronLabel->setPosition(x, 20);
+        neuronLabel->setTextSize(10);
+        neuronLabel->getRenderer()->setTextColor(tgui::Color::White);
+        mixerWindow->add(neuronLabel);
+        
+        // Volume slider (vertical)
+        auto volumeSlider = tgui::Slider::create(0.0f, 2.0f);
+        volumeSlider->setPosition(x, startY);
+        volumeSlider->setSize(sliderWidth, sliderHeight);
+        volumeSlider->setStep(0.01f);
+        volumeSlider->setValue(1.0f); // Default volume
+        volumeSlider->setVerticalScroll(true);
+        // Default vertical behavior: top = high, bottom = low
+        
+        // Connect to audio manager per-sample volume control
+        volumeSlider->onValueChange([this, i](float value) {
+            if (audioManager) {
+                audioManager->setSampleVolume(i + 1, value); // Sample indices are 1-based
+            }
+            // Update display label
+            if (i < neuronVolumeLabels.size()) {
+                std::ostringstream oss;
+                oss << std::fixed << std::setprecision(2) << value;
+                neuronVolumeLabels[i]->setText(oss.str());
+            }
+        });
+        
+        mixerWindow->add(volumeSlider);
+        neuronVolumeSliders.push_back(volumeSlider);
+        
+        // Volume value display
+        auto valueLabel = tgui::Label::create("1.00");
+        valueLabel->setPosition(x - 5, startY + sliderHeight + 10);
+        valueLabel->setTextSize(9);
+        valueLabel->getRenderer()->setTextColor(tgui::Color(200, 200, 200));
+        mixerWindow->add(valueLabel);
+        neuronVolumeLabels.push_back(valueLabel);
+    }
+    
+    // Master volume section
+    int masterX = startX + numNeurons * spacing + 40;
+    
+    auto masterLabel = tgui::Label::create("MASTER");
+    masterLabel->setPosition(masterX - 10, 20);
+    masterLabel->setTextSize(11);
+    masterLabel->getRenderer()->setTextColor(tgui::Color(255, 200, 100));
+    mixerWindow->add(masterLabel);
+    
+    // Master volume slider
+    masterVolumeSlider = tgui::Slider::create(0.0f, 2.0f);
+    masterVolumeSlider->setPosition(masterX, startY);
+    masterVolumeSlider->setSize(sliderWidth, sliderHeight);
+    masterVolumeSlider->setStep(0.01f);
+    masterVolumeSlider->setValue(1.0f);
+    masterVolumeSlider->setVerticalScroll(true);
+    // Default vertical behavior: top = high, bottom = low
+    
+    masterVolumeSlider->onValueChange([this](float value) {
+        if (audioManager) {
+            // AudioManager expects volume in range 0-100
+            audioManager->setVolume(value * 100.0f);
+        }
+        if (masterVolumeLabel) {
+            std::ostringstream oss;
+            oss << std::fixed << std::setprecision(2) << value;
+            masterVolumeLabel->setText(oss.str());
+        }
+    });
+    
+    mixerWindow->add(masterVolumeSlider);
+    
+    // Master volume value display
+    masterVolumeLabel = tgui::Label::create("1.00");
+    masterVolumeLabel->setPosition(masterX - 5, startY + sliderHeight + 10);
+    masterVolumeLabel->setTextSize(9);
+    masterVolumeLabel->getRenderer()->setTextColor(tgui::Color(255, 200, 100));
+    mixerWindow->add(masterVolumeLabel);
+    
+    std::cout << "🎚️ Mixer window created with " << numNeurons << " neuron volume sliders" << std::endl;
+}
+
+void GUI::toggleMixerVisibility() {
+    if (!mixerWindow) {
+        createMixerWindow();
+    }
+    
+    if (mixerWindow) {
+        bool currentState = mixerWindow->isVisible();
+        bool newState = !currentState;
+        mixerWindow->setVisible(newState);
+        
+        // Force the window to the front if showing
+        if (newState && gui) {
+            mixerWindow->moveToFront();
+            updateMixerWindow(); // Update slider count if needed
+        }
+        
+        std::cout << "🎚️ Mixer " << (newState ? "shown" : "hidden") << " (press V to toggle)" << std::endl;
+    }
+}
+
+void GUI::updateMixerWindow() {
+    if (!mixerWindow || !mixerWindow->isVisible()) {
+        return;
+    }
+    
+    size_t numNeurons = network->getNeurons().size();
+    
+    // Recreate if neuron count changed
+    if (neuronVolumeSliders.size() != numNeurons) {
+        gui->remove(mixerWindow);
+        mixerWindow = nullptr;
+        createMixerWindow();
+        mixerWindow->setVisible(true);
+    }
 }

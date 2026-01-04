@@ -29,6 +29,7 @@ bool AudioManager::loadSampleFromPath(int sampleIndex, const std::string& fullPa
     auto sound = std::make_unique<sf::Sound>(*buffer);
     soundBuffers[sampleIndex] = std::move(buffer);
     sounds[sampleIndex] = std::move(sound);
+    sampleVolumes[sampleIndex] = 1.0f;  // Default volume
     DEBUG_PRINT_STREAM("Loaded sample " << sampleIndex << " from " << fullPath);
     return true;
 }
@@ -55,8 +56,10 @@ bool AudioManager::playSample(int sampleIndex, float offsetSeconds, float volume
         // Stop any previous instance of this specific sample (neuron offset behavior)
         it->second->stop();
         
-        // Set volume based on activation function result
-        float clampedVolume = std::max(0.0f, std::min(100.0f, volume));
+        // Set volume based on activation function result, sample volume, and master volume
+        float sampleVol = sampleVolumes.count(sampleIndex) ? sampleVolumes[sampleIndex] : 1.0f;
+        float finalVolume = volume * sampleVol * masterVolume;
+        float clampedVolume = std::max(0.0f, std::min(100.0f, finalVolume));
         it->second->setVolume(clampedVolume);
         
         // Always play audio directly (no filtering)
@@ -323,4 +326,17 @@ std::vector<float> AudioManager::getNextInputChunk(std::size_t chunkSize) {
         }
     }
     return chunk;
+}
+
+void AudioManager::setMasterVolume(float volume) {
+    masterVolume = std::max(0.0f, std::min(1.0f, volume));
+}
+
+void AudioManager::setSampleVolume(int sampleIndex, float volume) {
+    sampleVolumes[sampleIndex] = std::max(0.0f, std::min(1.0f, volume));
+}
+
+float AudioManager::getSampleVolume(int sampleIndex) const {
+    auto it = sampleVolumes.find(sampleIndex);
+    return (it != sampleVolumes.end()) ? it->second : 1.0f;
 }

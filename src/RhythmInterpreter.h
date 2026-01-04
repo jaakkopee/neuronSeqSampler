@@ -267,6 +267,8 @@ private:
     // Onset detection state
     std::vector<std::vector<OnsetEvent>> onsetHistory;  // Per-band onset buffers
     std::vector<float> previousOutputs;                  // Previous frame outputs for onset detection
+    std::vector<float> spectralFlux;                     // Spectral flux per band for transient detection
+    std::vector<float> previousSpectralEnergy;           // Previous spectral energy for flux calculation
     float onsetThreshold;                                // Threshold for onset detection
     size_t onsetBufferSize;                              // Max onsets to keep per band
     float currentTime;                                   // Current time in seconds

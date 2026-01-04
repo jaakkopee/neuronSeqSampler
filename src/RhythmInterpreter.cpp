@@ -27,6 +27,8 @@ RhythmInterpreter::RhythmInterpreter(size_t sampleRate, size_t bufferSize)
     // Initialize onset detection
     onsetHistory.resize(bandCount);
     previousOutputs.resize(bandCount, 0.0f);
+    spectralFlux.resize(bandCount, 0.0f);
+    previousSpectralEnergy.resize(bandCount, 0.0f);
     onsetThreshold = 0.02f;           // Lower threshold: detect 2% increase as onset (was 0.1)
     onsetBufferSize = 100;            // Keep last 100 onsets per band
     currentTime = 0.0f;
@@ -698,25 +700,57 @@ void RhythmInterpreter::detectOnsets() {
         float currentOutput = filterOutputs[bandIndex];
         float previousOutput = previousOutputs[bandIndex];
         
-        // Detect onset if current output exceeds previous by threshold
-        float outputChange = currentOutput - previousOutput;
+        // Calculate spectral flux (positive difference in energy)
+        float currentEnergy = currentOutput * currentOutput;
+        float previousEnergy = previousSpectralEnergy[bandIndex];
         
-        // Enforce minimum absolute threshold to prevent constant triggering
-        float minAbsoluteThreshold = 0.005f; // At least 0.5% change required
-        float effectiveThreshold = std::max(onsetThreshold, minAbsoluteThreshold);
+        // Spectral flux: sum of positive energy differences (transient detection)
+        float flux = std::max(0.0f, currentEnergy - previousEnergy);
         
-        // Use relative threshold - detect if increase is significant relative to previous level
-        float relativeThreshold = effectiveThreshold;
-        if (previousOutput > 0.01f) {
-            // For signals with existing level, use percentage-based threshold
-            relativeThreshold = std::max(effectiveThreshold, previousOutput * effectiveThreshold);
+        // Apply frequency-dependent weighting for different transient types
+        float freq = bandFrequencies[bandIndex];
+        float freqWeight = 1.0f;
+        
+        // Lower frequencies (kick): strong weighting
+        if (freq < 1.5f) {
+            freqWeight = 3.0f;
+        }
+        // Mid frequencies (snare): moderate weighting
+        else if (freq < 4.0f) {
+            freqWeight = 2.0f;
+        }
+        // High frequencies (hats, clave): lighter weighting
+        else {
+            freqWeight = 1.5f + (freq / 20.0f);
         }
         
-        // Detect onset with both absolute and minimum level checks
-        // Require significant positive change AND minimum output level
-        if (outputChange > relativeThreshold && currentOutput > 0.01f) {
+        flux *= freqWeight;
+        
+        // Smooth the flux with a short moving average
+        const float smoothing = 0.4f;
+        spectralFlux[bandIndex] = smoothing * flux + (1.0f - smoothing) * spectralFlux[bandIndex];
+        
+        // Simple onset detection based on raw flux and energy change
+        float outputChange = currentOutput - previousOutput;
+        
+        // Enforce minimum absolute threshold
+        float minAbsoluteThreshold = 0.003f; // Lowered from 0.005
+        float effectiveThreshold = std::max(onsetThreshold, minAbsoluteThreshold);
+        
+        // Detect onset with multiple criteria
+        bool fluxOnset = flux > (effectiveThreshold * freqWeight);
+        bool energyOnset = (outputChange > effectiveThreshold) && (currentOutput > 0.008f);
+        
+        // Additional criterion: sharp rise in output level
+        float outputRatio = (previousOutput > 0.001f) ? (currentOutput / previousOutput) : 1.0f;
+        bool sharpRise = (outputRatio > 1.2f) && (currentOutput > 0.01f); // 20% increase
+        
+        if (fluxOnset || energyOnset || sharpRise) {
+            // Calculate onset strength
+            float onsetStrength = std::max({flux, outputChange, currentOutput * 0.5f});
+            
             // Onset detected - add to history
-            OnsetEvent onset(currentTime, outputChange, bandIndex);
+            OnsetEvent onset(currentTime, onsetStrength, bandIndex);
             onsetHistory[bandIndex].push_back(onset);
             
             // Maintain buffer size limit - remove oldest if exceeded
@@ -725,8 +759,9 @@ void RhythmInterpreter::detectOnsets() {
             }
         }
         
-        // Update previous output for next frame
+        // Update state for next frame
         previousOutputs[bandIndex] = currentOutput;
+        previousSpectralEnergy[bandIndex] = currentEnergy;
     }
 }
 

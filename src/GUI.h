@@ -166,6 +166,13 @@ private:
     tgui::ChildWindow::Ptr quantizerWindow; // popover window for quantizer controls
     float lastQuantizerBPM = -1.0f;             // Track last BPM to avoid unnecessary updates
     
+    // Mixer window
+    tgui::ChildWindow::Ptr mixerWindow;          // Mixer window for volume controls
+    std::vector<tgui::Slider::Ptr> neuronVolumeSliders;  // Volume slider per neuron
+    std::vector<tgui::Label::Ptr> neuronVolumeLabels;    // Volume value labels
+    tgui::Slider::Ptr masterVolumeSlider;        // Master volume slider
+    tgui::Label::Ptr masterVolumeLabel;          // Master volume value label
+    
     // Layout
     float controlPanelTopOffset = 0.0f;
     
@@ -236,6 +243,11 @@ public:
     // Matrix visibility control
     void toggleMatrixVisibility();
     void openInputFileDialog();
+    
+    // Mixer visibility control
+    void toggleMixerVisibility();
+    void createMixerWindow();
+    void updateMixerWindow();
     
     // Quantization control
     void toggleQuantizerVisibility();
