@@ -56,3 +56,5 @@ __pycache__/
 test_sfml_audio
 recorder_demo
 debug_recorder
+switchboard_demo
+test_switchboard
