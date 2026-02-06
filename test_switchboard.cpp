@@ -175,6 +175,90 @@ TEST(duplicate_registration) {
     assert(exceptionThrown);
 }
 
+// Test 9: Invalid Connection - Nonexistent Output Module
+TEST(invalid_connection_output_module) {
+    Switchboard switchboard;
+    ExampleModule moduleB("ModuleB");
+    
+    switchboard.registerModule("ModuleB", {"input"}, {"output"}, &moduleB);
+    
+    bool exceptionThrown = false;
+    try {
+        switchboard.connect("NonexistentModule.output", "ModuleB.input");
+    } catch (const std::runtime_error& e) {
+        exceptionThrown = true;
+    }
+    assert(exceptionThrown);
+}
+
+// Test 10: Invalid Connection - Nonexistent Input Module
+TEST(invalid_connection_input_module) {
+    Switchboard switchboard;
+    ExampleModule moduleA("ModuleA");
+    
+    switchboard.registerModule("ModuleA", {"input"}, {"output"}, &moduleA);
+    
+    bool exceptionThrown = false;
+    try {
+        switchboard.connect("ModuleA.output", "NonexistentModule.input");
+    } catch (const std::runtime_error& e) {
+        exceptionThrown = true;
+    }
+    assert(exceptionThrown);
+}
+
+// Test 11: Invalid Connection - Nonexistent Output Port
+TEST(invalid_connection_output_port) {
+    Switchboard switchboard;
+    ExampleModule moduleA("ModuleA");
+    ExampleModule moduleB("ModuleB");
+    
+    switchboard.registerModule("ModuleA", {"input"}, {"output"}, &moduleA);
+    switchboard.registerModule("ModuleB", {"input"}, {"output"}, &moduleB);
+    
+    bool exceptionThrown = false;
+    try {
+        switchboard.connect("ModuleA.nonexistent", "ModuleB.input");
+    } catch (const std::runtime_error& e) {
+        exceptionThrown = true;
+    }
+    assert(exceptionThrown);
+}
+
+// Test 12: Invalid Connection - Nonexistent Input Port
+TEST(invalid_connection_input_port) {
+    Switchboard switchboard;
+    ExampleModule moduleA("ModuleA");
+    ExampleModule moduleB("ModuleB");
+    
+    switchboard.registerModule("ModuleA", {"input"}, {"output"}, &moduleA);
+    switchboard.registerModule("ModuleB", {"input"}, {"output"}, &moduleB);
+    
+    bool exceptionThrown = false;
+    try {
+        switchboard.connect("ModuleA.output", "ModuleB.nonexistent");
+    } catch (const std::runtime_error& e) {
+        exceptionThrown = true;
+    }
+    assert(exceptionThrown);
+}
+
+// Test 13: Invalid Connection - Malformed Key
+TEST(invalid_connection_format) {
+    Switchboard switchboard;
+    ExampleModule moduleA("ModuleA");
+    
+    switchboard.registerModule("ModuleA", {"input"}, {"output"}, &moduleA);
+    
+    bool exceptionThrown = false;
+    try {
+        switchboard.connect("InvalidFormat", "ModuleA.input");
+    } catch (const std::runtime_error& e) {
+        exceptionThrown = true;
+    }
+    assert(exceptionThrown);
+}
+
 int main() {
     std::cout << "=== Switchboard Test Suite ===" << std::endl;
     std::cout << std::endl;
@@ -187,6 +271,11 @@ int main() {
     RUN_TEST(no_connection_handling);
     RUN_TEST(nonexistent_module);
     RUN_TEST(duplicate_registration);
+    RUN_TEST(invalid_connection_output_module);
+    RUN_TEST(invalid_connection_input_module);
+    RUN_TEST(invalid_connection_output_port);
+    RUN_TEST(invalid_connection_input_port);
+    RUN_TEST(invalid_connection_format);
     
     std::cout << std::endl;
     std::cout << "=== All Tests Passed ===" << std::endl;

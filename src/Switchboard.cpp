@@ -8,7 +8,7 @@ void Switchboard::registerModule(const std::string& moduleName,
                                  const std::vector<std::string>& outputs,
                                  BaseModule* modulePtr) {
     if (modules_.find(moduleName) != modules_.end()) {
-        throw std::runtime_error("Module '" + moduleName + "' already registered");
+        throw std::runtime_error("Module '" + moduleName + "' is already registered. Use a different name or unregister the existing module first.");
     }
     
     ModuleInfo info;
@@ -24,6 +24,56 @@ void Switchboard::registerModule(const std::string& moduleName,
 }
 
 void Switchboard::connect(const std::string& outputKey, const std::string& inputKey) {
+    // Validate output key format and module existence
+    size_t outDotPos = outputKey.find('.');
+    if (outDotPos == std::string::npos) {
+        throw std::runtime_error("Invalid output key format: '" + outputKey + "'. Expected format: 'ModuleName.outputName'");
+    }
+    std::string outModuleName = outputKey.substr(0, outDotPos);
+    std::string outPortName = outputKey.substr(outDotPos + 1);
+    
+    auto outModuleIt = modules_.find(outModuleName);
+    if (outModuleIt == modules_.end()) {
+        throw std::runtime_error("Output module '" + outModuleName + "' not registered");
+    }
+    
+    // Check if output port exists
+    bool outputExists = false;
+    for (const auto& output : outModuleIt->second.outputs) {
+        if (output == outPortName) {
+            outputExists = true;
+            break;
+        }
+    }
+    if (!outputExists) {
+        throw std::runtime_error("Output port '" + outPortName + "' does not exist in module '" + outModuleName + "'");
+    }
+    
+    // Validate input key format and module existence
+    size_t inDotPos = inputKey.find('.');
+    if (inDotPos == std::string::npos) {
+        throw std::runtime_error("Invalid input key format: '" + inputKey + "'. Expected format: 'ModuleName.inputName'");
+    }
+    std::string inModuleName = inputKey.substr(0, inDotPos);
+    std::string inPortName = inputKey.substr(inDotPos + 1);
+    
+    auto inModuleIt = modules_.find(inModuleName);
+    if (inModuleIt == modules_.end()) {
+        throw std::runtime_error("Input module '" + inModuleName + "' not registered");
+    }
+    
+    // Check if input port exists
+    bool inputExists = false;
+    for (const auto& input : inModuleIt->second.inputs) {
+        if (input == inPortName) {
+            inputExists = true;
+            break;
+        }
+    }
+    if (!inputExists) {
+        throw std::runtime_error("Input port '" + inPortName + "' does not exist in module '" + inModuleName + "'");
+    }
+    
     connections_[outputKey].push_back(inputKey);
     std::cout << "Connected: " << outputKey << " -> " << inputKey << std::endl;
 }

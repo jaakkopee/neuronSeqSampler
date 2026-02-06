@@ -126,7 +126,7 @@ g++ -std=c++17 -I. switchboard_demo.cpp src/Switchboard.cpp src/ExampleModule.cp
 Or using CMake:
 
 ```bash
-cmake -B build_sb -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=CMakeLists_switchboard.txt
+cmake -B build_sb -DCMAKE_BUILD_TYPE=Release -S . -C CMakeLists_switchboard.txt
 cmake --build build_sb
 ./build_sb/switchboard_demo
 ```
