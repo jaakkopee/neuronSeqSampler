@@ -1,0 +1,65 @@
+cmake_minimum_required(VERSION 3.10)
+project(neuronSeqSampler_GUI2)
+
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Find SFML - compatible with both 2.5+ and 3.x
+find_package(SFML 2.5 COMPONENTS graphics window system audio)
+if(NOT SFML_FOUND)
+    # Try SFML 3 with capitalized component names
+    find_package(SFML 3 COMPONENTS Graphics Window System Audio REQUIRED)
+    # Create aliases for consistency
+    set(SFML_LIBRARIES SFML::Graphics SFML::Window SFML::System SFML::Audio)
+else()
+    set(SFML_LIBRARIES sfml-graphics sfml-window sfml-system sfml-audio)
+endif()
+
+# Include directories - use CMAKE_CURRENT_SOURCE_DIR for proper paths
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# Source files for GUI2
+set(GUI2_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/GUI2.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/GUI2Demo.cpp
+)
+
+# Core source files for the wrapped classes
+set(CORE_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/AudioManager.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Recorder.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/NeuronNetwork.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/BeatTracker.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/RhythmInterpreter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Quantizer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Neuron.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Connection.cpp
+)
+
+# Create executable
+add_executable(gui2_demo 
+    ${GUI2_SOURCES}
+    ${CORE_SOURCES}
+)
+
+# Link SFML libraries
+target_link_libraries(gui2_demo ${SFML_LIBRARIES})
+
+# Compiler flags
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(gui2_demo PRIVATE -Wall -Wextra -pedantic)
+endif()
+
+# macOS specific settings
+if(APPLE)
+    set_target_properties(gui2_demo PROPERTIES
+        MACOSX_BUNDLE FALSE
+    )
+endif()
+
+# Installation
+install(TARGETS gui2_demo DESTINATION bin)
+
+message(STATUS "GUI2 Demo configured successfully")
+message(STATUS "Build with: cmake --build . && ./gui2_demo")

@@ -1,0 +1,47 @@
+cmake_minimum_required(VERSION 3.10)
+project(neuronSeqSampler_GUI2_Simple)
+
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Find SFML - compatible with SFML 3.x
+find_package(SFML 3 COMPONENTS Graphics Window System REQUIRED)
+
+# Include directories
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# Source files for GUI2 - minimal version without full module implementations
+set(GUI2_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/GUI2.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/GUI2Demo_Simple.cpp
+)
+
+# Create executable
+add_executable(gui2_demo ${GUI2_SOURCES})
+
+# Link SFML libraries (SFML 3 style)
+target_link_libraries(gui2_demo 
+    SFML::Graphics
+    SFML::Window
+    SFML::System
+)
+
+# Compiler flags
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(gui2_demo PRIVATE -Wall -Wextra -Wno-unused-parameter)
+endif()
+
+# macOS specific settings
+if(APPLE)
+    set_target_properties(gui2_demo PROPERTIES
+        MACOSX_BUNDLE FALSE
+    )
+endif()
+
+# Installation
+install(TARGETS gui2_demo DESTINATION bin)
+
+message(STATUS "GUI2 Simple Demo configured successfully")
+message(STATUS "This is a demonstration of the GUI system without full module implementations")
+message(STATUS "Build with: cmake --build . && ./gui2_demo")
