@@ -37,10 +37,17 @@ public:
             parameters.push_back(Parameter("Learning Rate", 0.01f, 0.0f, 1.0f, ""));
         }
         else if (type == "BeatTracker") {
-            inputPorts.push_back(Port("Onset In", PortType::ONSET_IN, 0, true));
+            inputPorts.push_back(Port("Network Firings", PortType::CONTROL_IN, 0, true));
+            inputPorts.push_back(Port("Input Onsets", PortType::AUDIO_IN, 1, true));
             outputPorts.push_back(Port("Beat Phase", PortType::CONTROL_OUT, 0, false));
             outputPorts.push_back(Port("Tempo", PortType::CONTROL_OUT, 1, false));
-            parameters.push_back(Parameter("BPM", 120.0f, 60.0f, 180.0f, "BPM"));
+            outputPorts.push_back(Port("Learning Gain", PortType::CONTROL_OUT, 2, false));
+            outputPorts.push_back(Port("Confidence", PortType::CONTROL_OUT, 3, false));
+            parameters.push_back(Parameter("Enabled", 1.0f, 0.0f, 1.0f, ""));
+            parameters.push_back(Parameter("Global Tempo", 120.0f, 40.0f, 320.0f, "BPM"));
+            parameters.push_back(Parameter("Beat Boost", 5.0f, 1.0f, 20.0f, "x"));
+            parameters.push_back(Parameter("Phase Window", 0.1f, 0.01f, 0.5f, ""));
+            parameters.push_back(Parameter("Boost Target", 0.0f, 0.0f, 2.0f, ""));
         }
         else if (type == "Rhythmogram") {
             inputPorts.push_back(Port("Audio In", PortType::AUDIO_IN, 0, true));
