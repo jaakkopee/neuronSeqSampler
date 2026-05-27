@@ -4,6 +4,9 @@
 #include <optional>
 #include <iostream>
 #include <map>
+#include <algorithm>
+#include <cstdlib>
+#include <vector>
 
 #ifdef USE_TGUI
 #include <TGUI/Backend/SFML-Graphics.hpp>
@@ -75,6 +78,23 @@ void loadPresetSamplesIntoAudioManager(NeuronNetwork& network, AudioManager& aud
 
 class NeuronSeqSampler {
 private:
+    void runPatternConvergenceUpdate(float elapsedMs) {
+        if (!visualizer.hasTargetPatternImage()) {
+            network.clearVisualizerTargetPattern();
+            return;
+        }
+
+        std::vector<float> targetPattern = visualizer.sampleTargetPatternAtNeurons();
+        std::vector<float> observedPattern = visualizer.captureCurrentNeuronPattern();
+        if (targetPattern.empty() || observedPattern.empty()) {
+            return;
+        }
+
+        network.setVisualizerTargetPattern(targetPattern);
+        float dtSeconds = std::max(0.001f, elapsedMs / 1000.0f);
+        network.learnFromPatternObservation(observedPattern, dtSeconds);
+    }
+
     void handleEvents() {
         while (auto eventOpt = window.pollEvent()) {
             if (!eventOpt) break;
@@ -266,6 +286,16 @@ public:
         network.setLearningEnabled(true);
         network.setLearningRate(0.02f);
         ESSENTIAL_PRINT("🧠 Learning enabled: weights adapt to rhythmogram targets");
+        network.setPreferredMetalBackend(true);
+        ESSENTIAL_PRINT("🧠 LIF backend: " << network.getLIFBackendName());
+
+        if (const char* patternImagePath = std::getenv("NSS_PATTERN_IMAGE")) {
+            if (visualizer.loadTargetPatternImage(patternImagePath)) {
+                ESSENTIAL_PRINT("🖼️ Loaded pattern target image: " << patternImagePath);
+            } else {
+                ESSENTIAL_PRINT("⚠️ Could not load NSS_PATTERN_IMAGE: " << patternImagePath);
+            }
+        }
         
         // Start with an empty network - users can add neurons via the menu
         
@@ -655,6 +685,7 @@ public:
             network.processAudioForRhythm(outputChunk);
         }
     }
+    runPatternConvergenceUpdate(elapsedMs);
     }
 
     void render() {

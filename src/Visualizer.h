@@ -2,6 +2,8 @@
 #include <SFML/Graphics.hpp>
 #include <memory>
 #include <cmath>
+#include <string>
+#include <vector>
 
 // Forward declarations
 class NeuronNetwork;
@@ -59,6 +61,10 @@ private:
     sf::Clock tooltipTimer;
     bool showTooltip;
     static constexpr float TOOLTIP_DELAY = 0.5f; // Show tooltip after 0.5 seconds
+
+    // Optional target pattern image used for pattern convergence learning
+    sf::Image targetPatternImage;
+    bool targetPatternLoaded;
     
     void calculateNeuronPositions();
     void calculateGridPositions();
@@ -87,6 +93,11 @@ public:
     void render();
     void refreshLayout(); // Call this when the network structure changes
     bool loadFont(const std::string& fontPath); // Load font for text rendering
+    bool loadTargetPatternImage(const std::string& imagePath);
+    void clearTargetPatternImage();
+    bool hasTargetPatternImage() const { return targetPatternLoaded; }
+    std::vector<float> sampleTargetPatternAtNeurons() const;
+    std::vector<float> captureCurrentNeuronPattern() const;
     
     // Settings
     void setNeuronRadius(float radius) { neuronRadius = radius; }

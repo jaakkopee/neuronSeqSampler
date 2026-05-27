@@ -11,6 +11,7 @@ NeuronNetwork::NeuronNetwork()
 {
     // Initialize beat tracker (44100 Hz, 512 frame size as defaults)
     beatTracker = std::make_unique<BeatTracker>(44100, 512);
+    lifMetalInterface.initialize(true);
 }
 
 NeuronNetwork::~NeuronNetwork() {
@@ -134,6 +135,7 @@ bool NeuronNetwork::removeConnection(size_t index) {
 void NeuronNetwork::clearNetwork() {
     connections.clear();
     neurons.clear();
+    visualizerTargetPattern.clear();
     delete rhythmInterpreter; // Also clear rhythm interpreter
     rhythmInterpreter = nullptr;
 }
@@ -412,4 +414,91 @@ size_t NeuronNetwork::getNeuronBandMapping(size_t neuronIndex) const {
         return neuronBandMap[neuronIndex];
     }
     return assignedBandForNeuron(neuronIndex);
+}
+
+void NeuronNetwork::setVisualizerTargetPattern(const std::vector<float>& pattern) {
+    visualizerTargetPattern = pattern;
+}
+
+void NeuronNetwork::clearVisualizerTargetPattern() {
+    visualizerTargetPattern.clear();
+}
+
+void NeuronNetwork::learnFromPatternObservation(const std::vector<float>& observedPattern, float dtSeconds) {
+    if (!learningEnabled || neurons.empty() || observedPattern.empty() || visualizerTargetPattern.empty()) {
+        return;
+    }
+
+    size_t sampleCount = std::min(neurons.size(), std::min(observedPattern.size(), visualizerTargetPattern.size()));
+    if (sampleCount == 0) {
+        return;
+    }
+
+    std::vector<float> rhythmFeatures;
+    float detectedTempo = 120.0f;
+    if (rhythmInterpreter) {
+        rhythmFeatures = rhythmInterpreter->getFilterOutputs();
+        detectedTempo = rhythmInterpreter->getDetectedTempo();
+    }
+    if (rhythmFeatures.empty()) {
+        rhythmFeatures.assign(1, 0.0f);
+    }
+
+    float maxRhythm = 0.0f;
+    for (float value : rhythmFeatures) {
+        maxRhythm = std::max(maxRhythm, value);
+    }
+    float invMaxRhythm = (maxRhythm > 1e-6f) ? (1.0f / maxRhythm) : 1.0f;
+    for (float& value : rhythmFeatures) {
+        value *= invMaxRhythm;
+    }
+
+    float dtScale = std::max(0.05f, std::min(2.0f, dtSeconds * 60.0f));
+    float lossAccum = 0.0f;
+
+    for (size_t n = 0; n < sampleCount; ++n) {
+        size_t band = assignedBandForNeuron(n);
+        float rhythmFeature = (band < rhythmFeatures.size()) ? rhythmFeatures[band] : 0.0f;
+        float blend = lifMetalInterface.adaptPatternBlend(visualizerPatternBlend, detectedTempo, rhythmFeature);
+
+        float targetPattern = std::max(0.0f, std::min(1.0f, visualizerTargetPattern[n]));
+        float target = blend * targetPattern + (1.0f - blend) * rhythmFeature;
+        float observed = std::max(0.0f, std::min(1.0f, observedPattern[n]));
+
+        float error = observed - target;
+        lossAccum += error * error;
+
+        float correctiveInput = -error * visualizerPatternGain * (0.5f + 0.5f * rhythmFeature) * dtScale;
+        neurons[n]->addExternalInput(correctiveInput);
+
+        float adaptiveLR = lifMetalInterface.adaptLearningRate(learningRate, detectedTempo, rhythmFeature);
+        if (beatTracker && beatTracker->isEnabled() &&
+            beatTracker->getBoostTarget() == BoostTarget::Learning) {
+            adaptiveLR *= beatTracker->getPhaseBasedLearningGain();
+        }
+        adaptiveLR *= dtScale;
+
+        for (auto& connection : connections) {
+            Connection* conn = connection.get();
+            if (!conn || conn->getTarget() != neurons[n].get()) {
+                continue;
+            }
+
+            float srcAct = conn->getSource() ? conn->getSource()->getActivation() : 0.0f;
+            float gradient = error * srcAct * (0.4f + 0.6f * rhythmFeature);
+            float weight = conn->getWeight();
+            weight -= adaptiveLR * gradient;
+            weight -= weightDecay * weight * dtScale;
+            if (weight > maxWeight) weight = maxWeight;
+            if (weight < -maxWeight) weight = -maxWeight;
+            conn->setWeight(weight);
+        }
+    }
+
+    float mse = lossAccum / static_cast<float>(sampleCount);
+    visualizerPatternLoss = 0.9f * visualizerPatternLoss + 0.1f * mse;
+}
+
+void NeuronNetwork::setPreferredMetalBackend(bool enabled) {
+    lifMetalInterface.setPreferredMetalBackend(enabled);
 }

@@ -1,8 +1,10 @@
 #pragma once
 #include <vector>
 #include <memory>
+#include <string>
 #include "Neuron.h"
 #include "Connection.h"
+#include "LIFMetalInterface.h"
 
 // Forward declarations
 class AudioManager;
@@ -30,6 +32,11 @@ private:
     float maxWeight = 1.0f;      // clamp weights for stability
     float mappingGain = 0.2f;    // global scaling for rhythm mapping strength
     float onsetBias = 0.5f;      // 0.0 = filter output only, 1.0 = onset only, 0.5 = balanced
+    std::vector<float> visualizerTargetPattern; // normalized [0,1], aligned to neurons
+    float visualizerPatternBlend = 0.7f;        // blend target image and rhythm features
+    float visualizerPatternGain = 0.12f;        // external-input correction strength
+    float visualizerPatternLoss = 0.0f;         // exponential moving average of MSE
+    LIFMetalInterface lifMetalInterface;
     
     void ensureMatrixSize(size_t bandCount, size_t neuronCount);
     // Per-neuron rhythmogram band mapping (user configurable)
@@ -97,6 +104,18 @@ public:
     // Mapping controls
     void setNeuronBandMapping(size_t neuronIndex, size_t bandIndex);
     size_t getNeuronBandMapping(size_t neuronIndex) const;
+
+    // Visualizer pattern convergence controls
+    void setVisualizerTargetPattern(const std::vector<float>& pattern);
+    void clearVisualizerTargetPattern();
+    bool hasVisualizerTargetPattern() const { return !visualizerTargetPattern.empty(); }
+    void learnFromPatternObservation(const std::vector<float>& observedPattern, float dtSeconds = 0.016f);
+    float getVisualizerPatternLoss() const { return visualizerPatternLoss; }
+
+    // LIF compute backend controls (CPU + optional Metal)
+    void setPreferredMetalBackend(bool enabled);
+    bool isUsingMetalBackend() const { return lifMetalInterface.isUsingMetal(); }
+    std::string getLIFBackendName() const { return lifMetalInterface.backendName(); }
     
     // Getters
     const std::vector<std::unique_ptr<Neuron>>& getNeurons() const { return neurons; }

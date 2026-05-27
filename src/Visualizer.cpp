@@ -7,6 +7,7 @@
 #include <vector>
 #include <string>
 #include <cstdint>
+#include <algorithm>
 
 Visualizer::Visualizer(sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetwork)
     : window(renderWindow)
@@ -25,6 +26,7 @@ Visualizer::Visualizer(sf::RenderWindow* renderWindow, NeuronNetwork* neuronNetw
     , hoveredNeuronIndex(-1)
     , mousePosition(0.0f, 0.0f)
     , showTooltip(false)
+    , targetPatternLoaded(false)
 {
     // Try to load a default system font
     loadFont("");
@@ -39,6 +41,89 @@ void Visualizer::setCanvasArea(float x, float y, float width, float height) {
 
 void Visualizer::refreshLayout() {
     calculateNeuronPositions();
+}
+
+bool Visualizer::loadTargetPatternImage(const std::string& imagePath) {
+    sf::Image image;
+    if (!image.loadFromFile(imagePath)) {
+        return false;
+    }
+    targetPatternImage = image;
+    targetPatternLoaded = true;
+    return true;
+}
+
+void Visualizer::clearTargetPatternImage() {
+    targetPatternImage = sf::Image();
+    targetPatternLoaded = false;
+}
+
+std::vector<float> Visualizer::sampleTargetPatternAtNeurons() const {
+    std::vector<float> sampledPattern;
+    if (!targetPatternLoaded || !network || neuronPositions.empty() || canvasSize.x <= 0.0f || canvasSize.y <= 0.0f) {
+        return sampledPattern;
+    }
+
+    const auto imageSize = targetPatternImage.getSize();
+    if (imageSize.x == 0 || imageSize.y == 0) {
+        return sampledPattern;
+    }
+
+    const std::uint8_t* pixels = targetPatternImage.getPixelsPtr();
+    if (!pixels) {
+        return sampledPattern;
+    }
+
+    const auto& neurons = network->getNeurons();
+    size_t count = std::min(neurons.size(), neuronPositions.size());
+    sampledPattern.reserve(count);
+
+    for (size_t i = 0; i < count; ++i) {
+        float u = (neuronPositions[i].x - canvasOffset.x) / canvasSize.x;
+        float v = (neuronPositions[i].y - canvasOffset.y) / canvasSize.y;
+        u = std::max(0.0f, std::min(1.0f, u));
+        v = std::max(0.0f, std::min(1.0f, v));
+
+        std::uint32_t px = static_cast<std::uint32_t>(u * static_cast<float>(imageSize.x - 1));
+        std::uint32_t py = static_cast<std::uint32_t>(v * static_cast<float>(imageSize.y - 1));
+        size_t pixelIndex = (static_cast<size_t>(py) * imageSize.x + px) * 4;
+
+        float r = pixels[pixelIndex] / 255.0f;
+        float g = pixels[pixelIndex + 1] / 255.0f;
+        float b = pixels[pixelIndex + 2] / 255.0f;
+        float luminance = 0.2126f * r + 0.7152f * g + 0.0722f * b;
+        sampledPattern.push_back(luminance);
+    }
+
+    return sampledPattern;
+}
+
+std::vector<float> Visualizer::captureCurrentNeuronPattern() const {
+    std::vector<float> currentPattern;
+    if (!network) {
+        return currentPattern;
+    }
+
+    const auto& neurons = network->getNeurons();
+    if (neurons.empty()) {
+        return currentPattern;
+    }
+
+    currentPattern.reserve(neurons.size());
+    float maxActivation = 1e-6f;
+    for (const auto& neuron : neurons) {
+        maxActivation = std::max(maxActivation, std::abs(neuron->getActivation()));
+    }
+
+    for (const auto& neuron : neurons) {
+        float normalized = std::abs(neuron->getActivation()) / maxActivation;
+        if (neuron->getHasFired()) {
+            normalized = std::min(1.0f, normalized + 0.2f);
+        }
+        currentPattern.push_back(std::max(0.0f, std::min(1.0f, normalized)));
+    }
+
+    return currentPattern;
 }
 
 void Visualizer::calculateNeuronPositions() {

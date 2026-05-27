@@ -21,6 +21,7 @@ add_executable(test_build
     src/BeatTracker.cpp
     src/Neuron.cpp
     src/Connection.cpp
+    src/LIFMetalInterface.cpp
     src/AudioManager.cpp
     src/Visualizer.cpp
     src/Recorder.cpp
