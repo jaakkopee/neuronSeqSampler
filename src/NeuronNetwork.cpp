@@ -8,7 +8,7 @@
 #include <limits>
 
 namespace {
-constexpr float TWO_PI = 6.28318530718f;
+constexpr float TWO_PI = 2.0f * static_cast<float>(std::acos(-1.0f));
 constexpr float STM_NEURON_DECAY = 0.70f;
 constexpr float STM_NEURON_ACTIVATION_BLEND = 0.20f;
 constexpr float STM_NEURON_LTM_BLEND = 0.10f;
@@ -350,8 +350,9 @@ void NeuronNetwork::exchangeMemoryPhaseState() {
         float stmUpdated = STM_NEURON_DECAY * stmNeuronPhase[n]
                          + STM_NEURON_ACTIVATION_BLEND * currentActivation
                          + STM_NEURON_LTM_BLEND * ltmNeuronPhase[n];
+        stmUpdated = std::clamp(stmUpdated, 0.0f, 1.0f);
         float ltmUpdated = LTM_NEURON_DECAY * ltmNeuronPhase[n] + LTM_NEURON_STM_BLEND * stmUpdated;
-        stmNeuronPhase[n] = std::clamp(stmUpdated, 0.0f, 1.0f);
+        stmNeuronPhase[n] = stmUpdated;
         ltmNeuronPhase[n] = std::clamp(ltmUpdated, 0.0f, 1.0f);
 
         // Feed reciprocal memory phase into neuron as bounded external drive
@@ -369,8 +370,9 @@ void NeuronNetwork::exchangeMemoryPhaseState() {
 
         float magnitude = std::clamp(std::abs(conn->getWeight()), 0.0f, 1.0f);
         float stmUpdated = STM_CONNECTION_DECAY * stmConnectionPhase[c] + STM_CONNECTION_WEIGHT_BLEND * magnitude;
+        stmUpdated = std::clamp(stmUpdated, 0.0f, 1.0f);
         float ltmUpdated = LTM_CONNECTION_DECAY * ltmConnectionPhase[c] + LTM_CONNECTION_STM_BLEND * stmUpdated;
-        stmConnectionPhase[c] = std::clamp(stmUpdated, 0.0f, 1.0f);
+        stmConnectionPhase[c] = stmUpdated;
         ltmConnectionPhase[c] = std::clamp(ltmUpdated, 0.0f, 1.0f);
 
         float sign = conn->getWeight() >= 0.0f ? 1.0f : -1.0f;
@@ -427,9 +429,6 @@ void NeuronNetwork::convergeSTMTopology() {
     }
 
     // Prune isolated/weak neurons after connection pruning
-    if (neurons.size() <= 2) {
-        return;
-    }
     std::vector<size_t> degree(neurons.size(), 0);
     for (const auto& conn : connections) {
         if (!conn) continue;
@@ -445,7 +444,7 @@ void NeuronNetwork::convergeSTMTopology() {
     float weakestNeuronScore = std::numeric_limits<float>::max();
     size_t weakestNeuronIndex = neurons.size();
     for (size_t n = 0; n < neurons.size(); ++n) {
-        if (degree[n] != 0) continue; // preserve connected neurons
+        if (degree[n] != 0) continue; // only isolated neurons are eligible for pruning
         float score = NEURON_SCORE_STM * stmNeuronPhase[n] + NEURON_SCORE_LTM * ltmNeuronPhase[n];
         if (score < weakestNeuronScore) {
             weakestNeuronScore = score;
