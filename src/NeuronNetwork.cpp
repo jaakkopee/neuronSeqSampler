@@ -6,6 +6,7 @@
 #include <cmath>
 #include <iostream>
 #include <limits>
+#include <unordered_map>
 
 namespace {
 constexpr float TWO_PI = 2.0f * static_cast<float>(std::acos(-1.0f));
@@ -430,14 +431,22 @@ void NeuronNetwork::convergeSTMTopology() {
 
     // Prune isolated/weak neurons after connection pruning
     std::vector<size_t> degree(neurons.size(), 0);
+    std::unordered_map<const Neuron*, size_t> neuronIndexMap;
+    neuronIndexMap.reserve(neurons.size());
+    for (size_t n = 0; n < neurons.size(); ++n) {
+        if (neurons[n]) {
+            neuronIndexMap[neurons[n].get()] = n;
+        }
+    }
     for (const auto& conn : connections) {
         if (!conn) continue;
-        for (size_t n = 0; n < neurons.size(); ++n) {
-            Neuron* neuron = neurons[n].get();
-            if (!neuron) continue;
-            if (conn->getSource() == neuron || conn->getTarget() == neuron) {
-                degree[n]++;
-            }
+        auto sourceIt = neuronIndexMap.find(conn->getSource());
+        if (sourceIt != neuronIndexMap.end()) {
+            degree[sourceIt->second]++;
+        }
+        auto targetIt = neuronIndexMap.find(conn->getTarget());
+        if (targetIt != neuronIndexMap.end()) {
+            degree[targetIt->second]++;
         }
     }
 
