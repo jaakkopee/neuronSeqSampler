@@ -5,6 +5,37 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <limits>
+#include <unordered_map>
+
+namespace {
+constexpr float TWO_PI = 2.0f * static_cast<float>(std::acos(-1.0f));
+constexpr float STM_NEURON_DECAY = 0.70f;
+constexpr float STM_NEURON_ACTIVATION_BLEND = 0.20f;
+constexpr float STM_NEURON_LTM_BLEND = 0.10f;
+constexpr float LTM_NEURON_DECAY = 0.96f;
+constexpr float LTM_NEURON_STM_BLEND = 0.04f;
+constexpr float NEURON_LTM_DRIVE_BLEND = 0.60f;
+constexpr float NEURON_STM_DRIVE_BLEND = 0.40f;
+constexpr float NEURON_MEMORY_DRIVE_SCALE = 0.08f;
+constexpr float STM_CONNECTION_DECAY = 0.75f;
+constexpr float STM_CONNECTION_WEIGHT_BLEND = 0.25f;
+constexpr float LTM_CONNECTION_DECAY = 0.97f;
+constexpr float LTM_CONNECTION_STM_BLEND = 0.03f;
+constexpr float CONNECTION_STM_WEIGHT_BLEND = 0.65f;
+constexpr float CONNECTION_LTM_WEIGHT_BLEND = 0.35f;
+constexpr float CONNECTION_CURRENT_WEIGHT_BLEND = 0.985f;
+constexpr float CONNECTION_CANDIDATE_WEIGHT_BLEND = 0.015f;
+constexpr float CONNECTION_SCORE_WEIGHT = 0.60f;
+constexpr float CONNECTION_SCORE_STM = 0.25f;
+constexpr float CONNECTION_SCORE_LTM = 0.15f;
+constexpr float CONNECTION_PRUNE_BASE = 0.08f;
+constexpr float CONNECTION_PRUNE_RHYTHM_SCALE = 0.20f;
+constexpr float NEURON_SCORE_STM = 0.70f;
+constexpr float NEURON_SCORE_LTM = 0.30f;
+constexpr float NEURON_PRUNE_BASE = 0.05f;
+constexpr float NEURON_PRUNE_RHYTHM_SCALE = 0.20f;
+}
 
 NeuronNetwork::NeuronNetwork() 
     : audioManager(nullptr), rhythmInterpreter(nullptr), quantizer(nullptr)
@@ -55,6 +86,7 @@ Neuron* NeuronNetwork::addNeuron(int sampleIndex, float initialActivation,
     
     Neuron* rawPtr = neuron.get();
     neurons.push_back(std::move(neuron));
+    ensureMemoryStateSize();
     
     // updateNetworkSize removed: minimal RhythmInterpreter does not support this method
     
@@ -65,6 +97,7 @@ Connection* NeuronNetwork::connect(Neuron* source, Neuron* target, float weight)
     auto connection = std::make_unique<Connection>(source, target, weight);
     Connection* rawPtr = connection.get();
     connections.push_back(std::move(connection));
+    ensureMemoryStateSize();
     return rawPtr;
 }
 
@@ -116,6 +149,7 @@ bool NeuronNetwork::removeNeuron(size_t index) {
     
     // Remove the neuron itself
     neurons.erase(neurons.begin() + index);
+    ensureMemoryStateSize();
     
     // updateNetworkSize removed: minimal RhythmInterpreter does not support this method
     
@@ -128,12 +162,18 @@ bool NeuronNetwork::removeConnection(size_t index) {
     }
     
     connections.erase(connections.begin() + index);
+    ensureMemoryStateSize();
     return true;
 }
 
 void NeuronNetwork::clearNetwork() {
     connections.clear();
     neurons.clear();
+    stmNeuronPhase.clear();
+    ltmNeuronPhase.clear();
+    stmConnectionPhase.clear();
+    ltmConnectionPhase.clear();
+    convergenceFrameCounter = 0;
     delete rhythmInterpreter; // Also clear rhythm interpreter
     rhythmInterpreter = nullptr;
 }
@@ -180,6 +220,11 @@ void NeuronNetwork::processAudioForRhythm(const std::vector<float>& audioData) {
         if (learningEnabled) {
             learnFromRhythm();
         }
+
+        // Exchange phase-coupled STM/LTM activations and adapt to minimal topology
+        ensureMemoryStateSize();
+        exchangeMemoryPhaseState();
+        convergeSTMTopology();
     }
 }
 
@@ -274,6 +319,150 @@ void NeuronNetwork::ensureMatrixSize(size_t bandCount, size_t neuronCount) {
         for (size_t n = start; n < neuronCount; ++n) {
             neuronBandMap[n] = n % bands; // default cyclic assignment
         }
+    }
+}
+
+void NeuronNetwork::ensureMemoryStateSize() {
+    if (stmNeuronPhase.size() != neurons.size()) {
+        stmNeuronPhase.resize(neurons.size(), 0.0f);
+    }
+    if (ltmNeuronPhase.size() != neurons.size()) {
+        ltmNeuronPhase.resize(neurons.size(), 0.0f);
+    }
+    if (stmConnectionPhase.size() != connections.size()) {
+        stmConnectionPhase.resize(connections.size(), 0.0f);
+    }
+    if (ltmConnectionPhase.size() != connections.size()) {
+        ltmConnectionPhase.resize(connections.size(), 0.0f);
+    }
+}
+
+void NeuronNetwork::exchangeMemoryPhaseState() {
+    if (neurons.empty()) return;
+
+    const float phase = beatTracker ? beatTracker->getCurrentPhase() : 0.0f;
+    const float phaseEnvelope = 0.5f + 0.5f * std::cos(TWO_PI * phase);
+
+    // Bidirectional STM <-> LTM phase exchange for neurons
+    for (size_t n = 0; n < neurons.size(); ++n) {
+        float currentActivation = neurons[n] ? std::abs(neurons[n]->getActivation()) : 0.0f;
+        currentActivation = std::clamp(currentActivation, 0.0f, 1.0f);
+
+        float stmUpdated = STM_NEURON_DECAY * stmNeuronPhase[n]
+                         + STM_NEURON_ACTIVATION_BLEND * currentActivation
+                         + STM_NEURON_LTM_BLEND * ltmNeuronPhase[n];
+        stmUpdated = std::clamp(stmUpdated, 0.0f, 1.0f);
+        float ltmUpdated = LTM_NEURON_DECAY * ltmNeuronPhase[n] + LTM_NEURON_STM_BLEND * stmUpdated;
+        stmNeuronPhase[n] = stmUpdated;
+        ltmNeuronPhase[n] = std::clamp(ltmUpdated, 0.0f, 1.0f);
+
+        // Feed reciprocal memory phase into neuron as bounded external drive
+        float reciprocalMemory = (NEURON_LTM_DRIVE_BLEND * ltmNeuronPhase[n]) + (NEURON_STM_DRIVE_BLEND * stmNeuronPhase[n]);
+        float memoryDrive = (reciprocalMemory - currentActivation) * NEURON_MEMORY_DRIVE_SCALE * phaseEnvelope;
+        if (neurons[n] && std::abs(memoryDrive) > 1e-5f) {
+            neurons[n]->addExternalInput(memoryDrive);
+        }
+    }
+
+    // Track STM/LTM phase state for weighted connections and blend back to weights
+    for (size_t c = 0; c < connections.size(); ++c) {
+        Connection* conn = connections[c].get();
+        if (!conn) continue;
+
+        float magnitude = std::clamp(std::abs(conn->getWeight()), 0.0f, 1.0f);
+        float stmUpdated = STM_CONNECTION_DECAY * stmConnectionPhase[c] + STM_CONNECTION_WEIGHT_BLEND * magnitude;
+        stmUpdated = std::clamp(stmUpdated, 0.0f, 1.0f);
+        float ltmUpdated = LTM_CONNECTION_DECAY * ltmConnectionPhase[c] + LTM_CONNECTION_STM_BLEND * stmUpdated;
+        stmConnectionPhase[c] = stmUpdated;
+        ltmConnectionPhase[c] = std::clamp(ltmUpdated, 0.0f, 1.0f);
+
+        float sign = conn->getWeight() >= 0.0f ? 1.0f : -1.0f;
+        float coupledMagnitude = CONNECTION_STM_WEIGHT_BLEND * stmConnectionPhase[c]
+                               + CONNECTION_LTM_WEIGHT_BLEND * ltmConnectionPhase[c];
+        float candidateWeight = sign * coupledMagnitude;
+        float blendedWeight = CONNECTION_CURRENT_WEIGHT_BLEND * conn->getWeight()
+                            + CONNECTION_CANDIDATE_WEIGHT_BLEND * candidateWeight;
+        conn->setWeight(std::clamp(blendedWeight, -maxWeight, maxWeight));
+    }
+}
+
+void NeuronNetwork::convergeSTMTopology() {
+    if (!structuralConvergenceEnabled || neurons.size() <= 2 || connections.empty()) {
+        return;
+    }
+    if (!beatTracker || !beatTracker->isEnabled()) {
+        return;
+    }
+
+    ++convergenceFrameCounter;
+    if (convergenceFrameCounter < convergenceIntervalFrames) {
+        return;
+    }
+    convergenceFrameCounter = 0;
+
+    const float phaseConfidence = beatTracker->getPhaseConfidence();
+    const Pattern pattern = beatTracker->getStrongestPattern();
+    const float rhythmStrength = std::max(pattern.strength, phaseConfidence);
+
+    // Only prune when rhythm tracking is stable enough
+    if (rhythmStrength < 0.20f || phaseConfidence < 0.10f) {
+        return;
+    }
+
+    // Remove one least-useful connection at a time while rhythm remains stable
+    if (connections.size() > 1) {
+        float weakestScore = std::numeric_limits<float>::max();
+        size_t weakestIndex = 0;
+        for (size_t i = 0; i < connections.size(); ++i) {
+            Connection* conn = connections[i].get();
+            if (!conn) continue;
+            float score = (CONNECTION_SCORE_WEIGHT * std::abs(conn->getWeight()))
+                        + (CONNECTION_SCORE_STM * stmConnectionPhase[i])
+                        + (CONNECTION_SCORE_LTM * ltmConnectionPhase[i]);
+            if (score < weakestScore) {
+                weakestScore = score;
+                weakestIndex = i;
+            }
+        }
+        if (weakestScore < (CONNECTION_PRUNE_BASE + CONNECTION_PRUNE_RHYTHM_SCALE * rhythmStrength)) {
+            removeConnection(weakestIndex);
+        }
+    }
+
+    // Prune isolated/weak neurons after connection pruning
+    std::vector<size_t> degree(neurons.size(), 0);
+    std::unordered_map<const Neuron*, size_t> neuronIndexMap;
+    neuronIndexMap.reserve(neurons.size());
+    for (size_t n = 0; n < neurons.size(); ++n) {
+        if (neurons[n]) {
+            neuronIndexMap[neurons[n].get()] = n;
+        }
+    }
+    for (const auto& conn : connections) {
+        if (!conn) continue;
+        auto sourceIt = neuronIndexMap.find(conn->getSource());
+        if (sourceIt != neuronIndexMap.end()) {
+            degree[sourceIt->second]++;
+        }
+        auto targetIt = neuronIndexMap.find(conn->getTarget());
+        if (targetIt != neuronIndexMap.end()) {
+            degree[targetIt->second]++;
+        }
+    }
+
+    float weakestNeuronScore = std::numeric_limits<float>::max();
+    size_t weakestNeuronIndex = neurons.size();
+    for (size_t n = 0; n < neurons.size(); ++n) {
+        if (degree[n] != 0) continue; // only isolated neurons are eligible for pruning
+        float score = NEURON_SCORE_STM * stmNeuronPhase[n] + NEURON_SCORE_LTM * ltmNeuronPhase[n];
+        if (score < weakestNeuronScore) {
+            weakestNeuronScore = score;
+            weakestNeuronIndex = n;
+        }
+    }
+
+    if (weakestNeuronIndex < neurons.size() && weakestNeuronScore < (NEURON_PRUNE_BASE + NEURON_PRUNE_RHYTHM_SCALE * rhythmStrength)) {
+        removeNeuron(weakestNeuronIndex);
     }
 }
 

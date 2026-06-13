@@ -303,7 +303,7 @@ public:
     }
     
     void setupTestingNetwork() {
-        ESSENTIAL_PRINT("Setting up testing network with 3 fully connected neurons...");
+        ESSENTIAL_PRINT("Setting up testing network with sparse starter topology...");
         
         // Load samples for testing
         bool kickLoaded = audioManager.loadSampleFromPath(1, "samples/kick/kick (ghost).wav");
@@ -326,19 +326,16 @@ public:
         Neuron* bassNeuron = network.addNeuron(3, 0.0f, 1.0f, 0.5f, 0.0f); // Sample 3
 
         if (kickNeuron && clapNeuron && bassNeuron) {
-            // Create fully connected network (each neuron connected to every other)
+            // Start sparse and let rhythm-driven STM/LTM adaptation shape the topology
             network.connect(kickNeuron, clapNeuron, 0.6f);
-            network.connect(kickNeuron, bassNeuron, 0.7f);
-            network.connect(clapNeuron, kickNeuron, 0.5f);
-            network.connect(clapNeuron, bassNeuron, 0.8f);
-            network.connect(bassNeuron, kickNeuron, 0.4f);
-            network.connect(bassNeuron, clapNeuron, 0.6f);
-            
+            network.connect(clapNeuron, bassNeuron, 0.6f);
+            network.connect(bassNeuron, kickNeuron, 0.45f);
+             
             ESSENTIAL_PRINT("Testing network created successfully!");
             ESSENTIAL_PRINT_STREAM("- Kick neuron (sample 1): " << (kickLoaded ? "✓" : "✗"));
             ESSENTIAL_PRINT_STREAM("- Clap neuron (sample 2): " << (clapLoaded ? "✓" : "✗"));
             ESSENTIAL_PRINT_STREAM("- 808 neuron (sample 3): " << (bassLoaded ? "✓" : "✗"));
-            DEBUG_PRINT("- 6 connections created (fully connected)");
+            DEBUG_PRINT("- 3 sparse starter connections created");
             
             // Connection matrix setup removed: minimal RhythmInterpreter does not support setConnectionWeight
             DEBUG_PRINT("- Minimal RhythmInterpreter initialized");

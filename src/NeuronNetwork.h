@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <vector>
 #include <memory>
 #include "Neuron.h"
@@ -30,8 +31,20 @@ private:
     float maxWeight = 1.0f;      // clamp weights for stability
     float mappingGain = 0.2f;    // global scaling for rhythm mapping strength
     float onsetBias = 0.5f;      // 0.0 = filter output only, 1.0 = onset only, 0.5 = balanced
-    
+
+    // STM/LTM phase-coupled memory state (neurons + connections)
+    std::vector<float> stmNeuronPhase;
+    std::vector<float> ltmNeuronPhase;
+    std::vector<float> stmConnectionPhase;
+    std::vector<float> ltmConnectionPhase;
+    size_t convergenceFrameCounter = 0;
+    size_t convergenceIntervalFrames = 256;
+    bool structuralConvergenceEnabled = true;
+     
     void ensureMatrixSize(size_t bandCount, size_t neuronCount);
+    void ensureMemoryStateSize();
+    void exchangeMemoryPhaseState();
+    void convergeSTMTopology();
     // Per-neuron rhythmogram band mapping (user configurable)
     std::vector<size_t> neuronBandMap; // size = neurons, values in [0, bandCount)
     size_t assignedBandForNeuron(size_t neuronIndex) const;
@@ -89,6 +102,10 @@ public:
     // Onset bias (balance between onset and filter output learning)
     void setOnsetBias(float bias) { onsetBias = std::max(0.0f, std::min(bias, 1.0f)); }
     float getOnsetBias() const { return onsetBias; }
+    void setStructuralConvergenceEnabled(bool enabled) { structuralConvergenceEnabled = enabled; }
+    bool isStructuralConvergenceEnabled() const { return structuralConvergenceEnabled; }
+    void setConvergenceIntervalFrames(size_t interval) { convergenceIntervalFrames = std::max<size_t>(16, interval); }
+    size_t getConvergenceIntervalFrames() const { return convergenceIntervalFrames; }
     
     // Beat tracker controls
     BeatTracker* getBeatTracker() { return beatTracker.get(); }
